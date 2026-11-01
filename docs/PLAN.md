@@ -36,7 +36,7 @@ Preview sound, test notification, and reset controls belong in the appropriate s
 ## Stages
 
 1. **Authentication feasibility:** Native OAuth adapter, multiple account metadata, account-specific identity checks and calendar-list access, enable/disable, token renewal/reconnect checks, restart persistence, reconnect badge/popup, and a reproducible real-account acceptance matrix. Technical prototype implemented; live validation pending.
-2. **Extension foundation/calendar shell:** Shared UI system, full calendar navigation, FullCalendar Standard, event database (Dexie), and broader settings schema/layout.
+2. **Extension foundation/calendar shell:** Implemented in v0.2.0: shared UI system, popup/full-tab month/week navigation, FullCalendar Standard, Dexie event foundation with isolated samples, details/previews/filters, and broader shared settings. See `STAGE-2.md`.
 3. **Calendar reading and synchronization:** Calendar events/recurrence, incremental sync, filtering, cache coverage, offline reading, stale states, and configurable event-sync timing.
 4. **Event writing:** Forms, writable account/calendar selection, recurrence edits, offline outbox, retry-safe writes, and conflict resolution. Add event write scopes at this stage.
 5. **Reminders and time zones:** Notification scheduling, offscreen audio, imported sounds, snooze, DND schedules, dual-zone presentation, restart/sleep recovery, and related settings.
@@ -44,7 +44,7 @@ Preview sound, test notification, and reset controls belong in the appropriate s
 
 ## Proposed stack
 
-WXT + React + TypeScript, FullCalendar Standard (MIT), Tailwind/shadcn when the calendar shell needs them, Dexie/IndexedDB for event data, `chrome.storage.local` for preferences, Temporal and rrule for dates/recurrence, React Hook Form/Zod for forms, native fetch/Chrome Identity for Google, Vitest/Playwright for verification. Stage 1 installs only the dependencies it uses.
+Implemented: WXT + React + TypeScript, FullCalendar Standard v7 (MIT), Tailwind v4, Radix Dialog/Tooltip primitives, Lucide icons, Dexie/IndexedDB for event data, `chrome.storage.local` for preferences, Temporal for dates/zones, Zod validation, native fetch/Chrome Identity for Google, and Vitest/Playwright for verification. Radix supplies the needed primitives directly without adding a separate shadcn component layer. Recurrence/form libraries will be selected when their concrete features require them; dependencies are installed only when used.
 
 ## Known constraints
 

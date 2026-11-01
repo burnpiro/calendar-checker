@@ -21,11 +21,13 @@ Use feature branches after the initial implementation. Keep changes focused and 
 
 Register service-worker listeners synchronously. Persist durable state. Rebuild scheduling after worker/browser restarts, and never assume a timer or worker global will stay alive. Keep interactive sign-in behind an explicit user action. Treat alarms as approximate, and implement missed-reminder handling when reminders are introduced.
 
-Use `chrome.storage.local` for settings and metadata. Stage 3 introduces Dexie/IndexedDB for larger event collections and outbox transactions. Migrate schemas deliberately; reject unsupported versions without erasing data.
+Use `chrome.storage.local` for settings and metadata. Stage 2 introduces Dexie/IndexedDB for event records and isolated samples; later stages extend it with sync and outbox data. Migrate schemas deliberately; reject unsupported versions without erasing data. Settings updates are partial patches merged by the worker. See `STAGE-2.md`.
 
 ## Tests and checks
 
 `npm run check` runs TypeScript, domain/adapter tests, formatting, and a production build. `npm run test:extension` exercises the real bundled worker, options page, popup, and local state in an isolated Chromium profile. Install Playwright Chromium first. A Chromium process launch may need sandbox approval in restricted coding environments; it must never use the user's existing profile.
+
+Run those commands sequentially: both build `.output/chrome-mv3`, so parallel builds can race a browser loading the unpacked extension.
 
 Important test areas are account isolation, token retry limits, no credential leakage, offline state, durable writes, stale coverage, conflict handling, recurrence, DST, and scheduling recovery. Prefer observable outcomes and meaningful invariants over markup snapshots and tests that duplicate implementation.
 

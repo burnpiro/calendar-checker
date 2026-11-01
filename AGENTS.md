@@ -16,7 +16,7 @@ Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.
 
 ## Development workflow
 
-1. Confirm scope against the stage plan. Stage 1 is authentication and calendar-list access, not calendar event synchronization or editing.
+1. Confirm scope against the stage plan. Stage 2 adds calendar UI, isolated local samples, and shared preferences. Real Google event synchronization is stage 3; writes and reminders remain in later stages. Read `docs/STAGE-2.md` for the current UI/data boundaries.
 2. Verify changing Chrome/Google API behavior against primary documentation. Record architecture decisions in `docs/decisions/`.
 3. Keep browser adapters small and domain behavior independently testable. Validate external data and runtime messages.
 4. Add tests for meaningful auth, sync, persistence, scheduling, or conflict behavior. Avoid tests that merely restate markup or constants.
@@ -26,7 +26,7 @@ Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.
 
 ## Implementation rules
 
-- Use `chrome.storage.local`, and later Dexie/IndexedDB for event data. Do not use `chrome.storage.sync` or `window.localStorage`.
+- Use `chrome.storage.local` for preferences/metadata and Dexie/IndexedDB for event data. Do not use `chrome.storage.sync` or `window.localStorage`.
 - Worker globals are temporary. Persist durable state and recreate scheduling from preferences when needed.
 - Serialize state mutations; do not keep storage transactions open across network requests.
 - Interactive sign-in requires an explicit UI action. Background/startup checks must stay noninteractive.
@@ -35,8 +35,11 @@ Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.
 - Preserve browser API receivers when wrapping native functions: use the global-context fetch wrapper, not a native `fetch` stored and invoked as an object method. Keep real-worker coverage; Node mocks do not enforce Chrome's receiver rules.
 - Request the narrowest scopes needed by the current stage. Add event write scopes with the event-writing feature.
 - Treat Google event text and all API responses as untrusted. Do not render raw HTML.
+- Preserve demo/Google table isolation and worker-owned writes. Never use samples to stand in for an unsynced Google calendar. Sample-only reset must not touch Google rows or future pending writes.
+- Settings commands are partial patches. Merge and validate in the worker; never reset unrelated preferences. Diagnostic exports must not include account/calendar visibility keys.
+- FullCalendar v7 differs from v6: use installed package types and documented render hooks/theme variables. Do not depend on hashed internal CSS class names.
 - Keep production CSP restrictive and dependencies bundled. Prefer system fonts and local assets.
-- Use ordinary CSS/design tokens in the stage 1 shell. Adopt planned UI libraries when the calendar UI needs them; do not add unused packages.
+- Reuse local design tokens, Tailwind, Radix primitives, and Lucide icons. Do not add unused packages or duplicate the existing component system.
 - Never rotate `config/extension-key.json` casually: it fixes the extension ID and OAuth registration. Its public key is safe to commit; no private signing key belongs in the repository.
 
 ## Handoff

@@ -97,13 +97,34 @@ test("setup, local settings and background alarms survive a browser restart", as
       }),
     ).toHaveValue("27");
     await reopened.goto(`chrome-extension://${second.id}/popup.html`);
+    await expect(reopened.getByTestId("calendar-grid")).toBeVisible();
     await expect(
-      reopened.getByRole("heading", { name: "Your accounts", exact: true }),
+      reopened.getByRole("button", { name: "Settings", exact: true }),
     ).toBeVisible();
-    await expect(
-      reopened.getByRole("button", { name: "Settings ↗", exact: true }),
-    ).toBeVisible();
-    await reopened.screenshot({ path: "test-results/popup.png" });
+    await expect(reopened.locator(".calendar-day-row")).toHaveCount(6);
+    const lastRow = reopened.locator(".calendar-day-row").last();
+    await expect(lastRow).toBeInViewport({ ratio: 1 });
+    const more = reopened.locator(".calendar-more-link").first();
+    await expect(more).toBeVisible();
+    // Compact cells must fit both the visible event and its overflow control.
+    await expect
+      .poll(() =>
+        more.evaluate((el) => {
+          const cell = el.closest(".calendar-day-cell")!;
+          const event = cell.querySelector(".calendar-event")!;
+          return (
+            el.getBoundingClientRect().top >=
+            event.getBoundingClientRect().bottom - 1
+          );
+        }),
+      )
+      .toBe(true);
+    await more.click();
+    await expect(reopened.getByRole("dialog")).toBeVisible();
+    await reopened.keyboard.press("Escape");
+    await reopened
+      .locator(".calendar-app")
+      .screenshot({ path: "test-results/popup.png" });
   } finally {
     await active?.close();
     await rm(profile, { recursive: true, force: true });
@@ -169,8 +190,15 @@ test("popup identifies only the affected account and pausing it clears the real 
       .toBe("!");
     await page.goto(`chrome-extension://${id}/popup.html`);
     await expect(page.getByRole("alert")).toContainText(
-      "1 account needs to be reconnected",
+      "1 account needs reconnecting",
     );
+    await expect(page.getByRole("alert")).toContainText(
+      "account-a@example.test",
+    );
+    await expect(page.getByRole("alert")).not.toContainText(
+      "account-b@example.test",
+    );
+    await page.goto(`chrome-extension://${id}/options.html`);
     const affected = page
       .locator("article")
       .filter({ hasText: "account-a@example.test" });
@@ -186,7 +214,6 @@ test("popup identifies only the affected account and pausing it clears the real 
     // Controlled checkboxes reflect the worker's persisted response asynchronously.
     await affected.getByRole("checkbox").click();
     await expect(affected.getByRole("checkbox")).not.toBeChecked();
-    await expect(page.getByRole("alert")).toHaveCount(0);
     await expect
       .poll(() => page.evaluate(() => chrome.action.getBadgeText({})))
       .toBe("");
@@ -197,8 +224,140 @@ test("popup identifies only the affected account and pausing it clears the real 
     expect(storeSchema.parse(saved).accounts[1]?.calendars[0]?.summary).toBe(
       "Fixture calendar",
     );
+    await page.goto(`chrome-extension://${id}/popup.html`);
+    await expect(page.getByRole("alert")).toHaveCount(0);
     await page.goto(`chrome-extension://${id}/options.html`);
     await page.screenshot({ path: "test-results/options.png", fullPage: true });
+  } finally {
+    await active?.close();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test("calendar navigation, demo isolation, event details, shared preferences and offline persistence", async () => {
+  test.setTimeout(60_000);
+  const profile = await mkdtemp(join(tmpdir(), "calendar-checker-calendar-"));
+  let active: BrowserContext | undefined;
+  try {
+    const { context, id } = await launch(profile);
+    active = context;
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 1440, height: 960 });
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto(`chrome-extension://${id}/calendar.html`);
+    await expect(
+      page.getByText("Sample events, just for exploring.", { exact: false }),
+    ).toBeVisible();
+    const design = page
+      .locator(".calendar-event")
+      .filter({ hasText: "Design review" })
+      .first();
+    await expect(design).toBeVisible();
+    await design.hover();
+    await expect(page.locator(".event-hover-card")).not.toBeVisible();
+    await expect(page.locator(".event-hover-card")).toBeVisible({
+      timeout: 2500,
+    });
+    await design.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(
+      page.getByRole("dialog").getByRole("heading", { name: "Design review" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).not.toBeVisible();
+    await design.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByRole("searchbox", { name: "Search events" }).fill("Maya");
+    await expect(
+      page.locator(".calendar-event").filter({ hasText: "Maya" }).first(),
+    ).toBeVisible();
+    await expect(
+      page.locator(".calendar-event").filter({ hasNotText: "Maya" }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Clear search", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Week", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Week", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await page
+      .locator(".calendar-app")
+      .screenshot({ path: "test-results/calendar-week.png" });
+    const work = page.getByRole("checkbox", { name: /^Work Work/ });
+    await work.click();
+    await expect(work).not.toBeChecked();
+    await expect(
+      page.locator(".calendar-event").filter({ hasText: "Design review" }),
+    ).toHaveCount(0);
+    await work.click();
+    await expect(work).toBeChecked();
+    await page.getByRole("button", { name: "Month", exact: true }).click();
+    const previousTitle = await page
+      .getByRole("heading", { level: 1 })
+      .textContent();
+    await page
+      .getByRole("button", { name: "Next period", exact: true })
+      .click();
+    await expect(page.getByRole("heading", { level: 1 })).not.toHaveText(
+      previousTitle!,
+    );
+    await page.getByRole("button", { name: "Today", exact: true }).click();
+    await page
+      .locator(".calendar-app")
+      .screenshot({ path: "test-results/calendar-month.png" });
+    await page
+      .getByRole("button", { name: "Show my calendars", exact: true })
+      .click();
+    await expect(
+      page.getByText("Google event syncing is coming next.", { exact: false }),
+    ).toBeVisible();
+    await expect(page.locator(".calendar-event")).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Try demo preview", exact: true })
+      .click();
+    const settings = await context.newPage();
+    await settings.goto(`chrome-extension://${id}/options.html`);
+    await settings
+      .getByRole("combobox", { name: "Theme", exact: true })
+      .selectOption("dark");
+    await settings
+      .getByRole("button", { name: "Save calendar preferences", exact: true })
+      .click();
+    await expect(settings.getByRole("status")).toContainText(
+      "Calendar preferences saved",
+    );
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(
+      page
+        .locator(".calendar-event")
+        .filter({ hasText: "Design review" })
+        .first(),
+    ).toBeVisible();
+    await page
+      .locator(".calendar-app")
+      .screenshot({ path: "test-results/calendar-dark.png" });
+    expect(errors).toEqual([]);
+    await context.close();
+    active = undefined;
+    const reopened = await launch(profile);
+    active = reopened.context;
+    const offlinePage = await reopened.context.newPage();
+    await reopened.context.setOffline(true);
+    await offlinePage.goto(`chrome-extension://${id}/calendar.html`);
+    await expect(offlinePage.locator("html")).toHaveAttribute(
+      "data-theme",
+      "dark",
+    );
+    await expect(
+      offlinePage
+        .locator(".calendar-event")
+        .filter({ hasText: "Design review" })
+        .first(),
+    ).toBeVisible();
   } finally {
     await active?.close();
     await rm(profile, { recursive: true, force: true });

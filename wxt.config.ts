@@ -1,8 +1,10 @@
 import { defineConfig } from "wxt";
+import tailwindcss from "@tailwindcss/vite";
 import { publicKey } from "./config/extension-key.json";
 
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
+  vite: () => ({ plugins: [tailwindcss()] }),
   manifest: () => {
     const clientId = import.meta.env.WXT_GOOGLE_CLIENT_ID?.trim();
     if (

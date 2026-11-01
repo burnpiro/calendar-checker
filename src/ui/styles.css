@@ -283,7 +283,7 @@ main {
   border-radius: 12px;
 }
 .account-card.paused {
-  background: #f7f8f9;
+  background: var(--surface);
 }
 .account-heading {
   display: flex;

@@ -1,6 +1,7 @@
 import { AppError, asAppError } from "../shared/errors";
 import { commandSchema, type Reply } from "../shared/model";
 import type { AuthService } from "./auth-service";
+import type { LocalCalendarPort } from "../calendar/database";
 
 export function isTrustedSender(
   sender: { id?: string; url?: string },
@@ -16,6 +17,7 @@ export async function routeCommand(
   raw: unknown,
   service: AuthService,
   reschedule: () => Promise<void>,
+  localCalendar?: LocalCalendarPort,
 ): Promise<Reply> {
   try {
     const parsed = commandSchema.safeParse(raw);
@@ -47,6 +49,14 @@ export async function routeCommand(
       case "UPDATE_SETTINGS":
         await service.updateSettings(command.settings);
         await reschedule();
+        break;
+      case "PREPARE_DEMO":
+        if (!localCalendar) throw new AppError("unexpected");
+        await localCalendar.prepareDemo(command.month, command.timeZone);
+        break;
+      case "RESET_DEMO":
+        if (!localCalendar) throw new AppError("unexpected");
+        await localCalendar.resetDemo();
         break;
       case "GET_DIAGNOSTICS":
         return {

@@ -6,7 +6,7 @@ import {
   type Configuration,
   type Diagnostic,
   type DiagnosticsReport,
-  type Settings,
+  type SettingsPatch,
   type Snapshot,
   type Store,
 } from "../shared/model";
@@ -229,10 +229,17 @@ export class AuthService {
     await this.save(store);
   }
 
-  async updateSettings(settings: Settings): Promise<void> {
-    const parsed = settingsSchema.safeParse(settings);
-    if (!parsed.success) throw new AppError("invalid-request");
+  async updateSettings(settings: SettingsPatch): Promise<void> {
     const store = await this.deps.repository.read();
+    const parsed = settingsSchema.safeParse({
+      ...store.settings,
+      ...settings,
+      calendarVisibility: {
+        ...store.settings.calendarVisibility,
+        ...settings.calendarVisibility,
+      },
+    });
+    if (!parsed.success) throw new AppError("invalid-request");
     store.settings = parsed.data;
     this.record(store, "settings");
     await this.save(store);
@@ -249,7 +256,10 @@ export class AuthService {
         enabled: store.accounts.filter((account) => account.enabled).length,
         reconnectRequired: store.accounts.filter(needsReconnect).length,
       },
-      settings: store.settings,
+      settings: {
+        connectionCheckMinutes: store.settings.connectionCheckMinutes,
+        staleAfterMinutes: store.settings.staleAfterMinutes,
+      },
       checks: store.diagnostics,
       liveMultiAccountVerification: "requires-manual-validation",
     };

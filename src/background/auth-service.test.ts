@@ -306,6 +306,30 @@ describe("account authentication", () => {
     expect(h.repository.write).not.toHaveBeenCalled();
   });
 
+  it("merges preference patches without resetting other settings or leaking visibility keys into diagnostics", async () => {
+    const h = harness(state);
+    await h.service.updateSettings({
+      theme: "dark",
+      calendarVisibility: { "private-account-and-calendar": false },
+    });
+    await h.service.updateSettings({ connectionCheckMinutes: 12 });
+    await h.service.updateSettings({
+      calendarVisibility: { "another-calendar": true },
+    });
+    expect(h.stored().settings).toMatchObject({
+      theme: "dark",
+      connectionCheckMinutes: 12,
+      calendarVisibility: {
+        "private-account-and-calendar": false,
+        "another-calendar": true,
+      },
+    });
+    expect(h.stored().accounts).toEqual(state.accounts);
+    expect(JSON.stringify(await h.service.diagnostics())).not.toContain(
+      "private-account-and-calendar",
+    );
+  });
+
   it("diagnostics exclude account identities and calendars, and retain at most 50 results", async () => {
     state.diagnostics = Array.from({ length: 50 }, () => ({
       at,

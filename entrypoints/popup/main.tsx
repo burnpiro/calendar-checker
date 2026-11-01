@@ -1,9 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "../../src/ui/App";
+import { CalendarApp } from "../../src/ui/calendar/CalendarApp";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App compact />
+    <CalendarApp compact />
   </StrictMode>,
 );

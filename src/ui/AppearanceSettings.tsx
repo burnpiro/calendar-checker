@@ -1,0 +1,264 @@
+import { useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { getCalendarDatabase } from "../calendar/database";
+import type { Command, Settings } from "../shared/model";
+
+export function AppearanceSettings({
+  settings,
+  busy,
+  run,
+}: {
+  settings: Settings;
+  busy: boolean;
+  run: (command: Command, notice?: string) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState(settings);
+  const counts = useLiveQuery(async () => {
+    try {
+      const db = getCalendarDatabase();
+      return {
+        google: await db.events.count(),
+        demo: await db.demoEvents.count(),
+      };
+    } catch {
+      return null;
+    }
+  }, []);
+  const zones = [
+    ...new Set([
+      "device",
+      "UTC",
+      "Europe/Warsaw",
+      "Europe/London",
+      "America/New_York",
+      "America/Los_Angeles",
+      "Asia/Tokyo",
+      draft.primaryTimeZone,
+    ]),
+  ];
+  return (
+    <>
+      <section className="settings-section">
+        <div>
+          <p className="eyebrow">MAKE IT YOURS</p>
+          <h2>Calendar appearance</h2>
+          <p className="muted">
+            Shared by the popup and full calendar. Changes appear when saved.
+          </p>
+        </div>
+        <form
+          className="settings-form appearance-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const {
+              connectionCheckMinutes: _interval,
+              staleAfterMinutes: _stale,
+              calendarVisibility: _visibility,
+              ...appearance
+            } = draft;
+            void run(
+              { type: "UPDATE_SETTINGS", settings: appearance },
+              "Calendar preferences saved.",
+            );
+          }}
+        >
+          <label>
+            Default view
+            <select
+              value={draft.defaultView}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  defaultView: event.target.value as Settings["defaultView"],
+                })
+              }
+            >
+              <option value="month">Month</option>
+              <option value="week">Week</option>
+            </select>
+          </label>
+          <label>
+            Theme
+            <select
+              value={draft.theme}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  theme: event.target.value as Settings["theme"],
+                })
+              }
+            >
+              <option value="system">Follow device</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </label>
+          <label>
+            Week starts on
+            <select
+              value={draft.weekStartsOn}
+              onChange={(event) =>
+                setDraft({ ...draft, weekStartsOn: Number(event.target.value) })
+              }
+            >
+              {[
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+              ].map((day, index) => (
+                <option value={index} key={day}>
+                  {day}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Clock format
+            <select
+              value={draft.timeFormat}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  timeFormat: event.target.value as Settings["timeFormat"],
+                })
+              }
+            >
+              <option value="24h">24-hour · 14:30</option>
+              <option value="12h">12-hour · 2:30 PM</option>
+            </select>
+          </label>
+          <label>
+            Density
+            <select
+              value={draft.density}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  density: event.target.value as Settings["density"],
+                })
+              }
+            >
+              <option value="comfortable">Comfortable</option>
+              <option value="compact">Compact</option>
+            </select>
+          </label>
+          <label>
+            Primary time zone
+            <input
+              list="time-zone-options"
+              value={draft.primaryTimeZone}
+              onChange={(event) =>
+                setDraft({ ...draft, primaryTimeZone: event.target.value })
+              }
+              required
+            />
+            <datalist id="time-zone-options">
+              {zones.map((zone) => (
+                <option key={zone} value={zone} />
+              ))}
+            </datalist>
+            <small>
+              Use “device” to follow your computer, or an IANA name such as
+              Europe/Warsaw.
+            </small>
+          </label>
+          <label>
+            Week view starts at
+            <span className="input-unit">
+              <input
+                type="number"
+                min="0"
+                max="23"
+                required
+                value={draft.weekStartHour}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    weekStartHour: Number(event.target.value),
+                  })
+                }
+              />
+              :00
+            </span>
+          </label>
+          <label>
+            Week view ends at
+            <span className="input-unit">
+              <input
+                type="number"
+                min="1"
+                max="24"
+                required
+                value={draft.weekEndHour}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    weekEndHour: Number(event.target.value),
+                  })
+                }
+              />
+              :00
+            </span>
+          </label>
+          <label className="check-setting">
+            <input
+              type="checkbox"
+              checked={draft.showWeekends}
+              onChange={(event) =>
+                setDraft({ ...draft, showWeekends: event.target.checked })
+              }
+            />
+            Show weekends
+          </label>
+          <label>
+            Calendar data
+            <select
+              value={draft.dataSource}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  dataSource: event.target.value as Settings["dataSource"],
+                })
+              }
+            >
+              <option value="demo">Demo preview · sample events</option>
+              <option value="google">
+                My Google calendars · event sync coming next
+              </option>
+            </select>
+          </label>
+          <button className="button primary" disabled={busy}>
+            Save calendar preferences
+          </button>
+        </form>
+      </section>
+      <section className="settings-section">
+        <p className="eyebrow">ON THIS DEVICE</p>
+        <h2>Local calendar storage</h2>
+        <p className="muted">
+          {counts
+            ? `${counts.google} cached Google events · ${counts.demo} sample events`
+            : "Local storage is unavailable."}
+        </p>
+        <p className="muted">
+          Sample data has its own database table. Clearing it leaves Google data
+          and account connections intact. It is generated again when you next
+          open the demo calendar.
+        </p>
+        <button
+          className="button subtle"
+          disabled={busy || !counts?.demo}
+          onClick={() =>
+            void run({ type: "RESET_DEMO" }, "Sample cache cleared.")
+          }
+        >
+          Clear sample cache
+        </button>
+      </section>
+    </>
+  );
+}

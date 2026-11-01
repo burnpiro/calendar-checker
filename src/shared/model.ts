@@ -1,4 +1,12 @@
 import { z } from "zod";
+import {
+  DEFAULT_SETTINGS,
+  settingsSchema,
+  settingsPatchSchema,
+  type Settings,
+} from "./preferences";
+export { DEFAULT_SETTINGS, settingsSchema } from "./preferences";
+export type { Settings, SettingsPatch } from "./preferences";
 
 export const STORAGE_KEY = "calendar-checker.state.v1";
 export const AUTH_ALARM = "calendar-checker.auth-check";
@@ -7,16 +15,6 @@ export const SCOPES = [
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
 ] as const;
-
-export const settingsSchema = z.object({
-  connectionCheckMinutes: z.number().int().min(1).max(1440),
-  staleAfterMinutes: z.number().int().min(1).max(10080),
-});
-export type Settings = z.infer<typeof settingsSchema>;
-export const DEFAULT_SETTINGS: Settings = {
-  connectionCheckMinutes: 5,
-  staleAfterMinutes: 15,
-};
 
 export const calendarSchema = z.object({
   id: z.string().min(1),
@@ -98,7 +96,7 @@ export function emptyStore(): Store {
   return {
     schemaVersion: 1,
     accounts: [],
-    settings: { ...DEFAULT_SETTINGS },
+    settings: structuredClone(DEFAULT_SETTINGS),
     diagnostics: [],
   };
 }
@@ -117,7 +115,7 @@ export interface DiagnosticsReport {
   extensionId: string;
   oauthConfigured: boolean;
   accounts: { total: number; enabled: number; reconnectRequired: number };
-  settings: Settings;
+  settings: Pick<Settings, "connectionCheckMinutes" | "staleAfterMinutes">;
   checks: Diagnostic[];
   liveMultiAccountVerification: "requires-manual-validation";
 }
@@ -139,7 +137,16 @@ export const commandSchema = z.discriminatedUnion("type", [
     enabled: z.boolean(),
   }),
   z.object({ type: z.literal("REMOVE"), accountId: z.string().min(1) }),
-  z.object({ type: z.literal("UPDATE_SETTINGS"), settings: settingsSchema }),
+  z.object({
+    type: z.literal("UPDATE_SETTINGS"),
+    settings: settingsPatchSchema,
+  }),
+  z.object({
+    type: z.literal("PREPARE_DEMO"),
+    month: z.string().regex(/^\d{4}-\d{2}-01$/),
+    timeZone: z.string().max(100),
+  }),
+  z.object({ type: z.literal("RESET_DEMO") }),
 ]);
 export type Command = z.infer<typeof commandSchema>;
 export type Reply =

@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AppError } from "../shared/errors";
 import {
-  STORAGE_KEY,
   needsReconnect,
   type Account,
   type Command,
   type Settings,
-  type Snapshot,
 } from "../shared/model";
-import { sendCommand } from "./client";
+import { useExtensionState } from "./use-extension-state";
+import { AppearanceSettings } from "./AppearanceSettings";
+import { useTheme } from "./use-theme";
 import "./styles.css";
 
 function timeLabel(value: string | null): string {
@@ -248,71 +248,26 @@ function SettingsForm({
 }
 
 export function App({ compact = false }: { compact?: boolean }) {
-  const [state, setState] = useState<Snapshot>();
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState("");
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [report, setReport] = useState("");
+  const {
+    state,
+    busy,
+    error,
+    notice,
+    report,
+    progress,
+    run,
+    setError,
+    setNotice,
+  } = useExtensionState();
+  useTheme(state?.settings.theme);
   const [, setClock] = useState(0);
-  const reload = useCallback(async () => {
-    const reply = await sendCommand({ type: "GET_STATE" });
-    setState(reply.state);
-  }, []);
-
   useEffect(() => {
-    void reload().catch((cause: unknown) =>
-      setError(
-        cause instanceof Error ? cause.message : "Unable to load settings.",
-      ),
-    );
-    const listener = (
-      changes: Record<string, chrome.storage.StorageChange>,
-      area: string,
-    ) => {
-      if (area === "local" && changes[STORAGE_KEY])
-        void reload().catch(() => undefined);
-    };
-    chrome.storage.onChanged.addListener(listener);
     const timer = window.setInterval(
       () => setClock((value) => value + 1),
       30_000,
     );
-    return () => {
-      chrome.storage.onChanged.removeListener(listener);
-      window.clearInterval(timer);
-    };
-  }, [reload]);
-
-  const run = async (command: Command, success = "") => {
-    setProgress(
-      command.type === "CONNECT" || command.type === "RECONNECT"
-        ? "Waiting for Google sign-in…"
-        : command.type === "CHECK" || command.type === "CHECK_ALL"
-          ? "Checking Google access…"
-          : "Updating local settings…",
-    );
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const reply = await sendCommand(command);
-      setState(reply.state);
-      if (reply.diagnostics)
-        setReport(JSON.stringify(reply.diagnostics, null, 2));
-      setNotice(success);
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "The operation could not be completed.",
-      );
-      await reload().catch(() => undefined);
-    } finally {
-      setBusy(false);
-    }
-  };
-
+    return () => window.clearInterval(timer);
+  }, []);
   const reconnectCount = state?.accounts.filter(needsReconnect).length ?? 0;
   return (
     <div className={compact ? "app popup" : "app settings-page"}>
@@ -322,6 +277,16 @@ export function App({ compact = false }: { compact?: boolean }) {
             ▦
           </span>
           <span>Calendar Checker</span>
+          <button
+            className="button subtle"
+            onClick={() =>
+              void chrome.tabs.create({
+                url: chrome.runtime.getURL("/calendar.html"),
+              })
+            }
+          >
+            Open calendar ↗
+          </button>
         </div>
         <span className="local-label">
           <span aria-hidden="true">●</span> Stored on this device
@@ -479,6 +444,12 @@ export function App({ compact = false }: { compact?: boolean }) {
                     run={run}
                   />
                 </section>
+                <AppearanceSettings
+                  key={JSON.stringify(state.settings)}
+                  settings={state.settings}
+                  busy={busy}
+                  run={run}
+                />
                 <section className="settings-section">
                   <div>
                     <p className="eyebrow">TROUBLESHOOTING</p>
@@ -525,9 +496,9 @@ export function App({ compact = false }: { compact?: boolean }) {
                     Extension ID <code>{state.extensionId}</code>
                   </p>
                   <p>
-                    Current release connects accounts and verifies calendar-list
-                    access. Calendar views, event editing, notification sounds,
-                    and DND are planned next.
+                    The calendar supports a local demo preview. Google event
+                    syncing, event editing, notification sounds, and DND are
+                    planned next.
                   </p>
                   <p>
                     Adding another account resets this extension’s cached token

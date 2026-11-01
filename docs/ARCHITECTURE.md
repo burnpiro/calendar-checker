@@ -3,7 +3,7 @@
 ## Boundaries
 
 ```text
-React popup / options
+React popup / full calendar / options
         |
 validated, namespaced commands (no tokens)
         |
@@ -12,8 +12,9 @@ MV3 background worker -- native Chrome Identity
         |             -- toolbar badge / periodic alarms
         |
 chrome.storage.local (metadata + preferences + safe diagnostics)
+IndexedDB via Dexie (Google cache reserved, isolated demo records, metadata)
 
-Later: Dexie/IndexedDB events + outbox; offscreen audio; calendar UI.
+Later: Google sync/coverage/recurrence; durable outbox; offscreen audio.
 ```
 
 `entrypoints/background.ts` wires platform APIs, listeners, initialization, scheduling, and a serialized mutation queue. Listeners are registered synchronously at worker creation. Durable state does not depend on worker globals.
@@ -22,16 +23,19 @@ Later: Dexie/IndexedDB events + outbox; offscreen audio; calendar UI.
 
 `src/background/chrome-adapters.ts` contains native identity, local persistence, and badge adapters. `google.ts` validates direct Google responses, handles pagination, and enforces request timeouts. Raw remote errors are never forwarded to UI or diagnostics.
 
-`src/shared/model.ts` defines the versioned storage schema, runtime command schema, settings limits, and UI-facing records. `message-router.ts` validates every command; only this extension's own pages are trusted senders.
+`src/shared/model.ts` defines the versioned storage schema, runtime command schema, and UI-facing records. `src/shared/preferences.ts` defines validated settings, defaults, partial patches, and legacy preference compatibility. `message-router.ts` validates every command; only this extension's own pages are trusted senders.
 
-`src/ui/` is shared by the popup and full options page. It communicates through worker commands. Storage change notifications trigger snapshot reads, keeping multiple open surfaces in sync.
+`src/ui/use-extension-state.ts` shares worker commands and storage-change snapshot reads across the popup, calendar tab, and options page. FullCalendar v7 renders month/week views through its native React package. Radix supplies dialogs/tooltips; local design tokens and Tailwind provide styling. Theme changes propagate across surfaces, including changes to the device theme.
+
+`src/calendar/` defines normalized event records, local sample generation, presentation/filter helpers, and the Dexie repository. The UI reads the selected table with `useLiveQuery`. All sample writes go through validated worker commands and its existing queue. Demo and Google records are never combined. See `STAGE-2.md` and ADR 0003.
 
 ## State and ownership
 
 - Store key: `calendar-checker.state.v1`.
 - Account key: verified Google `sub` (not email, which can change).
 - Account record: email, enabled state, authorization/check status, calendar summaries/permissions, timestamps, safe error code.
-- Settings: connection check interval 1–1440 minutes, stale threshold 1–10080 minutes; defaults 5 and 15 minutes.
+- Settings: connection check interval 1–1440 minutes, stale threshold 1–10080 minutes (defaults 5 and 15), plus calendar appearance, primary zone, visibility, and explicit demo/Google source. Additive appearance defaults preserve existing accounts and timing. Worker commands merge partial patches, including individual calendar-visibility keys, then validate the entire result.
+- Event database: `calendar-checker-events`, version 1. `events` is reserved for Google's future cache, `demoEvents` contains samples, and `meta` contains transactional demo seed markers. Sample reset only clears sample rows and markers. Date-only all-day ends are exclusive; timed records store instants plus an original IANA zone.
 - Diagnostics: most recent 50 action/time/outcome/code entries, with optional fixed failure step/category, HTTP status, and bounded browser network code. No raw provider messages, tokens, account identifiers, email, or calendar contents.
 - OAuth tokens: Chrome-managed; transient local variables in worker operations only.
 
@@ -51,6 +55,6 @@ All app state writes go through the worker's serial queue. UI reads can run whil
 
 Only enabled accounts that require reconnection contribute to the toolbar `!` badge. Startup reconstructs the badge and ensures the periodic alarm exists. Updating timing settings reschedules the alarm; normal worker wake-ups do not postpone it.
 
-## Future event model
+## Future synchronization model
 
-Keep account/calendar/event provenance, Google ETags, recurring masters/exceptions, all-day dates, and original zones. Incremental sync and bounded display-range loading have different request constraints and must be separate. Persist pending writes and conflicts independently of remote snapshots. De-duplicate shared calendar display/reminders without losing write-account provenance.
+Extend the existing account/calendar/event provenance and optional ETag model deliberately for recurring masters/exceptions, coverage, cursors, outbox, and conflicts. Incremental sync and bounded display-range loading have different request constraints and must be separate. Persist pending writes and conflicts independently of remote snapshots. De-duplicate shared calendar display/reminders without losing write-account provenance. The current Google context explicitly reports that sync has not started; demo data never implies Google cache coverage.
