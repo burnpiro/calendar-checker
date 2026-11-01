@@ -2,7 +2,7 @@
 
 A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
 
-## Current release: stage 3 · v0.3.3
+## Current release: stage 3 · v0.3.4
 
 Google event reading and local synchronization are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
 
@@ -10,7 +10,7 @@ Google event reading and local synchronization are implemented. The toolbar popu
 - A collapsible calendar sidebar, independent calendar visibility, local text/type filters, and account reconnect warnings.
 - Event details on click and basic previews after one second of hover; keyboard focus also exposes a preview.
 - Dexie-backed event storage with reactive cross-window queries, persistence across restarts, and offline access to cached Google events.
-- Shared settings for the default view, week start/weekends, 12/24-hour clock, visible week hours, primary time zone, theme, and density.
+- Shared settings for the default view, week start/weekends, 12/24-hour clock, visible week hours, scrolling or fit-to-height week layout, minimum hour height, primary time zone, theme, and density.
 - Light, dark, and follow-device themes; local Google cache counts.
 - Direct Google event reading for enabled accounts, with server-expanded recurring instances, cancellations, original zones, and event details.
 - Independent change cursors and bounded caches, explicit offline/stale/uncached states, durable retry backoff, and manual/background sync.
@@ -47,11 +47,17 @@ npm run build
 npm run extension:id
 ```
 
-Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.3.3. The native-popup sizing correction remains covered by an actual toolbar-popup test.
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.3.4. The native-popup sizing correction remains covered by an actual toolbar-popup test.
 
 Without connected accounts, the calendar shows an empty grid and a prompt to connect an account. Settings displays setup instructions and disables Google sign-in until a client ID is configured. Preserve any existing `.env.local` when updating.
 
 For development, `npm run dev` starts WXT. Use the production build above for the live authentication acceptance run, so hot reload cannot be mistaken for a token lifecycle failure.
+
+## Week view layout
+
+In **Settings → Calendar appearance**, **Week view layout** defaults to **Readable hours · scroll when needed**. Each hour keeps a minimum height of 48 pixels, so long hour ranges scroll inside the calendar. **Minimum hour height** can be changed from 32 to 120 pixels.
+
+Choose **Fit all hours · no vertical scroll** to shrink the configured hour range to the available calendar height. Both popup and full calendar share the setting. The saved minimum height is retained when switching layouts. Month view keeps its existing layout.
 
 ## Connect Google
 

@@ -118,6 +118,50 @@ test("native toolbar popup expands to 800 by 600 and survives reopening", async 
         )
         .toBe(0);
     }
+    await controller.evaluate(() =>
+      chrome.runtime.sendMessage({
+        namespace: "calendar-checker",
+        command: {
+          type: "UPDATE_SETTINGS",
+          settings: { defaultView: "week", weekStartHour: 0, weekEndHour: 24 },
+        },
+      }),
+    );
+    await worker.evaluate(() => chrome.action.openPopup());
+    const nativeWeek = () =>
+      controller.evaluate(() => {
+        const popup = chrome.extension.getViews({ type: "popup" })[0];
+        const grid = popup?.document.querySelector(".calendar-viewport");
+        return popup && grid
+          ? {
+              width: popup.innerWidth,
+              height: popup.innerHeight,
+              scrollable: [...grid.querySelectorAll<HTMLElement>("*")].some(
+                (el) => {
+                  const rect = el.getBoundingClientRect();
+                  return (
+                    rect.width > 0 &&
+                    rect.height > 0 &&
+                    /auto|scroll/.test(popup.getComputedStyle(el).overflowY) &&
+                    el.scrollHeight > el.clientHeight + 1
+                  );
+                },
+              ),
+            }
+          : null;
+      });
+    await expect
+      .poll(nativeWeek)
+      .toEqual({ width: 800, height: 600, scrollable: true });
+    await controller.evaluate(() =>
+      chrome.runtime.sendMessage({
+        namespace: "calendar-checker",
+        command: { type: "UPDATE_SETTINGS", settings: { weekLayout: "fit" } },
+      }),
+    );
+    await expect
+      .poll(nativeWeek)
+      .toEqual({ width: 800, height: 600, scrollable: false });
   } finally {
     await active?.close();
     await rm(profile, { recursive: true, force: true });
@@ -225,7 +269,7 @@ test("setup, local settings and background alarms survive a browser restart", as
         namespace: "calendar-checker",
         command: {
           type: "UPDATE_SETTINGS",
-          settings: { primaryTimeZone: "UTC" },
+          settings: { primaryTimeZone: "UTC", weekLayout: "fit" },
         },
       }),
     );
@@ -978,6 +1022,165 @@ test("explicit Google chooser adds a second account without replacing the native
       path: "test-results/account-chooser.png",
       fullPage: true,
     });
+  } finally {
+    await active?.close();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test("week view scrolls at a readable hour height by default and shares the optional fit layout across restarts", async () => {
+  const profile = await mkdtemp(join(tmpdir(), "calendar-week-layout-"));
+  let active: BrowserContext | undefined;
+  const metrics = (page: Page) =>
+    page.getByTestId("calendar-grid").evaluate((root) => {
+      const slots = [
+        ...root.querySelectorAll<HTMLElement>(".calendar-slot-header"),
+      ];
+      const scrollers = [...root.querySelectorAll<HTMLElement>("*")].filter(
+        (el) => {
+          const rect = el.getBoundingClientRect();
+          return (
+            rect.width > 0 &&
+            rect.height > 0 &&
+            /auto|scroll/.test(getComputedStyle(el).overflowY) &&
+            el.scrollHeight > el.clientHeight + 1
+          );
+        },
+      );
+      return {
+        scrollable: scrollers.length > 0,
+        slotHeight:
+          slots.length > 1
+            ? slots[1]!.getBoundingClientRect().top -
+              slots[0]!.getBoundingClientRect().top
+            : 0,
+      };
+    });
+  try {
+    const first = await launch(profile);
+    active = first.context;
+    const settings = await active.newPage();
+    await settings.goto(`chrome-extension://${first.id}/options.html`);
+    await expect(
+      settings.getByRole("combobox", { name: "Week view layout", exact: true }),
+    ).toHaveValue("scroll");
+    await expect(
+      settings.getByRole("spinbutton", {
+        name: "Minimum hour height",
+        exact: true,
+      }),
+    ).toHaveValue("48");
+    await settings
+      .getByRole("textbox", { name: /^Primary time zone/ })
+      .fill("UTC");
+    await settings
+      .getByRole("combobox", { name: "Default view", exact: true })
+      .selectOption("week");
+    await settings
+      .getByRole("spinbutton", { name: "Week view starts at" })
+      .fill("0");
+    await settings
+      .getByRole("spinbutton", { name: "Week view ends at" })
+      .fill("24");
+    await settings
+      .getByRole("button", { name: "Save calendar preferences", exact: true })
+      .click();
+    await expect(settings.getByRole("status")).toContainText(
+      "Calendar preferences saved",
+    );
+    const popup = await active.newPage();
+    await popup.clock.setFixedTime(new Date("2026-11-02T23:59:00Z"));
+    await popup.setViewportSize({ width: 800, height: 600 });
+    await popup.goto(`chrome-extension://${first.id}/popup.html`);
+    await expect(popup.locator(".calendar-slot-header")).toHaveCount(24);
+    await expect.poll(async () => (await metrics(popup)).scrollable).toBe(true);
+    expect((await metrics(popup)).slotHeight).toBeGreaterThanOrEqual(47);
+    await popup
+      .locator(".calendar-slot-header")
+      .last()
+      .scrollIntoViewIfNeeded();
+    await expect(popup.locator(".calendar-slot-header").last()).toBeInViewport({
+      ratio: 1,
+    });
+    await popup.screenshot({ path: "test-results/week-scroll-popup.png" });
+    const full = await active.newPage();
+    await full.clock.setFixedTime(new Date("2026-11-02T23:59:00Z"));
+    await full.setViewportSize({ width: 1440, height: 900 });
+    await full.goto(`chrome-extension://${first.id}/calendar.html`);
+    await expect(full.locator(".calendar-slot-header")).toHaveCount(48);
+    await expect.poll(async () => (await metrics(full)).scrollable).toBe(true);
+    // Full calendar uses half-hour slots, maintaining the same minimum per hour.
+    expect((await metrics(full)).slotHeight * 2).toBeGreaterThanOrEqual(47);
+    await settings
+      .getByRole("spinbutton", { name: "Minimum hour height", exact: true })
+      .fill("72");
+    await settings
+      .getByRole("button", { name: "Save calendar preferences", exact: true })
+      .click();
+    await expect
+      .poll(async () => (await metrics(popup)).slotHeight)
+      .toBeGreaterThanOrEqual(71);
+    await settings
+      .getByRole("combobox", { name: "Week view layout", exact: true })
+      .selectOption("fit");
+    await expect(
+      settings.getByRole("spinbutton", {
+        name: "Minimum hour height",
+        exact: true,
+      }),
+    ).toBeDisabled();
+    await settings
+      .getByRole("button", { name: "Save calendar preferences", exact: true })
+      .click();
+    await expect(settings.getByRole("status")).toContainText(
+      "Calendar preferences saved",
+    );
+    await expectCalendarFits(popup);
+    await expect(popup.locator(".calendar-slot-header").first()).toBeInViewport(
+      { ratio: 1 },
+    );
+    await expect(popup.locator(".calendar-slot-header").last()).toBeInViewport({
+      ratio: 1,
+    });
+    await expect(full.locator(".calendar-slot-header")).toHaveCount(24);
+    await expect.poll(async () => (await metrics(full)).scrollable).toBe(false);
+    await popup.screenshot({ path: "test-results/week-fit-popup.png" });
+    await full.screenshot({ path: "test-results/week-fit-calendar.png" });
+    await active.close();
+    active = undefined;
+    const reopened = await launch(profile);
+    active = reopened.context;
+    const savedSettings = await active.newPage();
+    await savedSettings.goto(`chrome-extension://${reopened.id}/options.html`);
+    await expect(
+      savedSettings.getByRole("combobox", {
+        name: "Week view layout",
+        exact: true,
+      }),
+    ).toHaveValue("fit");
+    await expect(
+      savedSettings.getByRole("spinbutton", {
+        name: "Minimum hour height",
+        exact: true,
+      }),
+    ).toHaveValue("72");
+    const savedPopup = await active.newPage();
+    await savedPopup.setViewportSize({ width: 800, height: 600 });
+    await savedPopup.goto(`chrome-extension://${reopened.id}/popup.html`);
+    await expect(savedPopup.locator(".calendar-slot-header")).toHaveCount(24);
+    await expectCalendarFits(savedPopup);
+    await savedSettings
+      .getByRole("combobox", { name: "Week view layout", exact: true })
+      .selectOption("scroll");
+    await savedSettings
+      .getByRole("button", { name: "Save calendar preferences", exact: true })
+      .click();
+    await expect
+      .poll(async () => (await metrics(savedPopup)).scrollable)
+      .toBe(true);
+    await expect
+      .poll(async () => (await metrics(savedPopup)).slotHeight)
+      .toBeGreaterThanOrEqual(71);
   } finally {
     await active?.close();
     await rm(profile, { recursive: true, force: true });

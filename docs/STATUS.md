@@ -25,6 +25,12 @@ Stage 4: event creation/editing, writable account/calendar selection, recurrence
 
 After reloading the current build, approve the new read-only event scope through Reconnect where required and exercise the live checks in `STAGE-3.md`. Continue the stage 1 two-account/lifecycle matrix before treating multi-account authentication as accepted. First-account connection is user-confirmed; live stage 3 event reads are not yet verified. Custom sounds, notifications, snooze, DND, and secondary zones remain stage 5.
 
+## Readable and fit week layouts · v0.3.4
+
+Week view now defaults to a 48-pixel minimum per hour and scrolls within the calendar when the selected hour range is too tall. Calendar appearance settings expose **Week view layout** (readable/fit) and **Minimum hour height** (32–120 pixels). Fit mode shows the configured day without vertical scrolling on popup and full calendar; it preserves the saved minimum for switching back. Legacy preferences receive the new defaults. Month layout, sync behavior, and native popup document sizing are unchanged.
+
+Validation: **119 unit/adapter tests**, TypeScript, formatting, production build, and **seven isolated Chromium tests** pass. Browser checks verify native 800×600 popup sizing with scrolling and fit layouts, 24-hour scrolling at the requested minimum, access to the last hour, live propagation between Settings/popup/full calendar, fit mode without scroll, and restoration of the saved layout/minimum through a browser restart. Native popup and week screenshots were inspected. No live Google acceptance is inferred from these UI checks.
+
 ## Explicit Google account chooser · v0.3.3
 
 The native Add flow returned the existing identity without a chooser in the user's real second-account attempt. This fails the original native chooser gate. Add now rejects duplicate identities before calendar-list loading, preserves existing accounts/cache, and displays an accurate error instead of claiming a second addition succeeded.

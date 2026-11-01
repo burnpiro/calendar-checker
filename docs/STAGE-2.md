@@ -2,6 +2,8 @@
 
 Historical release: 0.2.2. Scope: calendar UI, local event storage, and shared preferences. The current release implements synchronization in [stage 3](STAGE-3.md); this page records the stage 2 boundaries and the native-popup sizing correction.
 
+Current behavior changed in v0.3.4: week view now preserves a configurable minimum hour height and scrolls by default. **Settings → Calendar appearance → Week view layout → Fit all hours** restores the no-scroll layout described below. This page otherwise records historical stage 2 behavior.
+
 ## Open the calendar
 
 Build with `npm run build`, then reload Calendar Checker at `chrome://extensions`. The toolbar popup now opens an 800×600 calendar. **Open full calendar** opens `calendar.html` in a tab; **Settings** opens account and calendar preferences. Existing Google OAuth configuration and connected accounts are preserved.

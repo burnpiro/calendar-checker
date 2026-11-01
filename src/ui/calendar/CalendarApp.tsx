@@ -98,6 +98,8 @@ function CalendarBody({
   const { run, error, busy } = bridge;
   const state = snapshot;
   const settings = state.settings;
+  const fitWeek = settings.weekLayout === "fit";
+  const hourlySlots = compact || fitWeek;
   const zone = displayTimeZone(settings.primaryTimeZone);
   const resolvedTheme = useTheme(settings.theme);
   const calendar = useRef<CalendarRef>(null);
@@ -349,7 +351,7 @@ function CalendarBody({
   return (
     <Tooltip.Provider delayDuration={500}>
       <div
-        className={`calendar-app ${compact ? "calendar-popup" : "calendar-page"} density-${settings.density} ${sidebar ? "sidebar-open" : "sidebar-closed"}`}
+        className={`calendar-app ${compact ? "calendar-popup" : "calendar-page"} ${fitWeek ? "week-fit" : "week-scroll"} density-${settings.density} ${sidebar ? "sidebar-open" : "sidebar-closed"}`}
       >
         {sidebar && (
           <aside className="calendar-sidebar" aria-label="Calendar sidebar">
@@ -625,8 +627,10 @@ function CalendarBody({
               scrollTime={`${String(settings.weekStartHour).padStart(2, "0")}:00:00`}
               eventTimeFormat={timeFormat}
               slotHeaderFormat={timeFormat}
-              slotDuration={compact ? "01:00:00" : "00:30:00"}
-              slotMinHeight={compact ? 0 : undefined}
+              slotDuration={hourlySlots ? "01:00:00" : "00:30:00"}
+              slotMinHeight={
+                fitWeek ? 0 : settings.weekHourHeight / (hourlySlots ? 1 : 2)
+              }
               dayLaneClass="calendar-week-day"
               slotHeaderClass="calendar-slot-header"
               slotHeaderInnerClass="calendar-slot-label"

@@ -22,6 +22,8 @@ export const appearanceDefaults = {
   timeFormat: "24h" as const,
   theme: "system" as const,
   density: "comfortable" as const,
+  weekLayout: "scroll" as const,
+  weekHourHeight: 48,
   weekStartHour: 7,
   weekEndHour: 22,
   primaryTimeZone: "device",
@@ -50,6 +52,8 @@ const fields = {
   timeFormat: z.enum(["12h", "24h"]),
   theme: z.enum(["system", "light", "dark"]),
   density: z.enum(["comfortable", "compact"]),
+  weekLayout: z.enum(["scroll", "fit"]),
+  weekHourHeight: z.number().int().min(32).max(120),
   weekStartHour: z.number().int().min(0).max(23),
   weekEndHour: z.number().int().min(1).max(24),
   primaryTimeZone: z

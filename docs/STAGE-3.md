@@ -1,6 +1,6 @@
 # Stage 3: Google event reading and offline synchronization
 
-Release: v0.3.3. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
+Release: v0.3.4. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
 
 ## Use the release
 
@@ -15,6 +15,8 @@ Preview mode and its sample generator have been removed. Existing preview events
 The additional scope is read-only. No event-writing scope or application backend is introduced. Google Cloud identifies the OAuth client and grants direct access to Google; it does not host the extension's local data.
 
 For second-account selection, v0.3.3 adds the optional Web application client chooser described in `MULTI-ACCOUNT-SETUP.md` and ADR 0005. Existing native connections retain their method; live chooser/session renewal acceptance remains pending.
+
+Week layout settings in v0.3.4 default to readable hours with a 48-pixel minimum and internal scrolling for long days. Settings → Calendar appearance can change the minimum (32–120 pixels) or select **Fit all hours** to keep the configured day visible without vertical scrolling. This applies to both calendar surfaces without changing sync coverage.
 
 ## Sync design
 

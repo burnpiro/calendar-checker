@@ -717,13 +717,16 @@
   line-height: 14px;
 }
 /* Keep the current-time marker inside the visible week, including at midnight. */
-.calendar-popup .calendar-week-day {
+.calendar-popup .calendar-week-day,
+.week-fit .calendar-week-day {
   overflow: clip;
 }
-.calendar-popup .calendar-slot-header {
+.calendar-popup .calendar-slot-header,
+.week-fit .calendar-slot-header {
   padding-block: 0;
 }
-.calendar-popup .calendar-slot-label {
+.calendar-popup .calendar-slot-label,
+.week-fit .calendar-slot-label {
   font-size: 10px;
   line-height: 12px;
   padding-block: 0;

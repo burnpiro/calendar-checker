@@ -20,16 +20,16 @@
 
 Provide a dedicated page accessible from the popup and full calendar. Settings are validated, versioned, locally persisted, and reflected across all open surfaces.
 
-| Area               | Planned controls                                                                                                                |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts/calendars | Connect/reconnect/remove, enable/disable, visibility, default account/calendar, colors.                                         |
-| Synchronization    | Background interval (initial target 5 minutes), refresh on open, stale threshold (15 minutes), manual sync, per-account status. |
-| Notifications      | Sound and desktop switches, privacy, multiple reminder offsets, calendar overrides, snooze presets, missed-reminder policy.     |
-| Custom sounds      | Import multiple local audio files, name/preview/delete, volume, default and per-calendar assignments.                           |
-| DND                | Manual, until-time, weekly/overnight schedules, schedule time zone.                                                             |
-| Appearance         | Default view, week start, weekends, 12/24-hour clock, visible week hours, theme, density, default filters.                      |
-| Time zones         | Primary, optional secondary, follow device.                                                                                     |
-| Offline storage    | Cache window/retention, storage usage, clear cache with unsynced-write protection.                                              |
+| Area               | Planned controls                                                                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts/calendars | Connect/reconnect/remove, enable/disable, visibility, default account/calendar, colors.                                                                   |
+| Synchronization    | Background interval (initial target 5 minutes), refresh on open, stale threshold (15 minutes), manual sync, per-account status.                           |
+| Notifications      | Sound and desktop switches, privacy, multiple reminder offsets, calendar overrides, snooze presets, missed-reminder policy.                               |
+| Custom sounds      | Import multiple local audio files, name/preview/delete, volume, default and per-calendar assignments.                                                     |
+| DND                | Manual, until-time, weekly/overnight schedules, schedule time zone.                                                                                       |
+| Appearance         | Default view, week start, weekends, 12/24-hour clock, visible week hours, readable/fit week layout, minimum hour height, theme, density, default filters. |
+| Time zones         | Primary, optional secondary, follow device.                                                                                                               |
+| Offline storage    | Cache window/retention, storage usage, clear cache with unsynced-write protection.                                                                        |
 
 Preview sound, test notification, and reset controls belong in the appropriate settings sections. Useful user-facing behavior should be configurable; limits and security invariants remain enforced. Do not expose settings for unimplemented functionality as if they work.
 

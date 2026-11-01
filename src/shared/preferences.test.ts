@@ -26,6 +26,8 @@ describe("preference compatibility and event presentation", () => {
       staleAfterMinutes: 27,
       defaultView: "month",
       theme: "system",
+      weekLayout: "scroll",
+      weekHourHeight: 48,
     });
     expect(settingsSchema.safeParse({}).success).toBe(false);
   });
@@ -49,6 +51,27 @@ describe("preference compatibility and event presentation", () => {
     });
     expect(
       settingsPatchSchema.safeParse({ unknownSetting: true }).success,
+    ).toBe(false);
+  });
+  it.each([0, 31, 121, 48.5])(
+    "rejects an invalid minimum hour height of %s",
+    (weekHourHeight) => {
+      expect(settingsPatchSchema.safeParse({ weekHourHeight }).success).toBe(
+        false,
+      );
+    },
+  );
+  it("accepts a fit-layout patch without resetting the saved hour height or other preferences", () => {
+    const previous = { ...DEFAULT_SETTINGS, theme: "dark", weekHourHeight: 72 };
+    const patch = settingsPatchSchema.parse({ weekLayout: "fit" });
+    expect(patch).toEqual({ weekLayout: "fit" });
+    expect(settingsSchema.parse({ ...previous, ...patch })).toMatchObject({
+      weekLayout: "fit",
+      weekHourHeight: 72,
+      theme: "dark",
+    });
+    expect(
+      settingsPatchSchema.safeParse({ weekLayout: "invalid" }).success,
     ).toBe(false);
   });
   it("rejects invalid visible hours and unknown time zones", () => {

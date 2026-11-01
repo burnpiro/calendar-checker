@@ -208,6 +208,52 @@ export function AppearanceSettings({
               :00
             </span>
           </label>
+          <label>
+            Week view layout
+            <select
+              aria-label="Week view layout"
+              value={draft.weekLayout}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  weekLayout: event.target.value as Settings["weekLayout"],
+                })
+              }
+            >
+              <option value="scroll">
+                Readable hours · scroll when needed
+              </option>
+              <option value="fit">Fit all hours · no vertical scroll</option>
+            </select>
+            <small>
+              Choose whether long days scroll or shrink to fit the calendar
+              height.
+            </small>
+          </label>
+          <label>
+            Minimum hour height
+            <span className="input-unit">
+              <input
+                type="number"
+                aria-label="Minimum hour height"
+                min="32"
+                max="120"
+                required
+                disabled={draft.weekLayout === "fit"}
+                value={draft.weekHourHeight}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    weekHourHeight: Number(event.target.value),
+                  })
+                }
+              />
+              px
+            </span>
+            <small>
+              Used in the scroll layout. Default: 48 pixels per hour.
+            </small>
+          </label>
           <label className="check-setting">
             <input
               type="checkbox"
