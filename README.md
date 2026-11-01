@@ -15,7 +15,7 @@ This is the account-connection feasibility build. It includes:
 - A settings page with check interval and stale-data threshold controls.
 - A local diagnostic report containing safe failure steps, timeout/offline categories, HTTP statuses, and native browser network codes, without tokens, email addresses, account IDs, or calendar names.
 
-**Full live Google verification is pending.** Authorized token acquisition and account/calendar endpoint probes have succeeded in the running extension. A Chrome native-fetch receiver bug causing the initial account-connection failure has been reproduced and fixed; the full account flow needs a live retry with the rebuilt extension. Real secondary-account selection, renewal after a full Chrome restart, and revoked-consent recovery must also be exercised. See [the validation matrix](docs/STAGE-1-VALIDATION.md). A successful endpoint probe does not count as full account-flow acceptance.
+**Full live Google verification is pending.** Authorized token acquisition and account/calendar endpoint probes have succeeded in the running extension. A Chrome native-fetch receiver bug causing the initial account-connection failure has been reproduced and fixed; the user has confirmed successful account connection after reloading the rebuilt extension. Real secondary-account selection, renewal after a full Chrome restart, and revoked-consent recovery must also be exercised. See [the validation matrix](docs/STAGE-1-VALIDATION.md). A successful endpoint probe does not count as full account-flow acceptance.
 
 Month/week calendars, event synchronization and editing, notifications, custom sounds, snooze, DND, and dual time zones are recorded in [the full plan](docs/PLAN.md), and are not implemented in this release.
 
