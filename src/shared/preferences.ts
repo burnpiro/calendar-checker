@@ -11,6 +11,7 @@ export function isTimeZone(value: string): boolean {
 }
 
 export const appearanceDefaults = {
+  webOAuthClientId: import.meta.env?.WXT_GOOGLE_WEB_CLIENT_ID?.trim() ?? "",
   syncIntervalMinutes: 5,
   refreshOnOpen: true,
   cachePastMonths: 2,
@@ -28,6 +29,15 @@ export const appearanceDefaults = {
 };
 
 const fields = {
+  webOAuthClientId: z
+    .string()
+    .max(200)
+    .refine(
+      (value) =>
+        value === "" ||
+        /^\d+-[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$/.test(value),
+      "Use the public Web application client ID, not a client secret.",
+    ),
   syncIntervalMinutes: z.number().int().min(1).max(1440),
   refreshOnOpen: z.boolean(),
   cachePastMonths: z.number().int().min(0).max(12),
@@ -55,7 +65,7 @@ const completeSettings = z
     path: ["weekEndHour"],
   });
 
-// Add only new appearance defaults to old records. Existing required auth settings
+// Add new settings defaults to old records. Existing required auth timing settings
 // remain required, and corrupt/unsupported stores are still rejected.
 export const settingsSchema = z.preprocess(
   (value) =>

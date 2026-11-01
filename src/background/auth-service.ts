@@ -35,14 +35,24 @@ export class AuthService {
     this.now = deps.now ?? (() => new Date());
   }
 
-  private requireSetup(): void {
-    if (!this.deps.configuration.oauthConfigured)
+  private requireSetup(store: Store): void {
+    if (
+      !this.deps.configuration.oauthConfigured &&
+      !store.settings.webOAuthClientId
+    )
       throw new AppError("setup-required");
   }
 
   async snapshot(): Promise<Snapshot> {
     const { accounts, settings } = await this.deps.repository.read();
-    return { ...this.deps.configuration, accounts, settings };
+    return {
+      ...this.deps.configuration,
+      oauthConfigured:
+        this.deps.configuration.oauthConfigured ||
+        Boolean(settings.webOAuthClientId),
+      accounts,
+      settings,
+    };
   }
 
   async refreshBadge(): Promise<void> {
@@ -74,10 +84,18 @@ export class AuthService {
     ].slice(-50);
   }
 
-  private async verifiedData(token: string, expectedId?: string) {
+  private async verifiedData(
+    token: string,
+    expectedId?: string,
+    connectedIds?: Set<string>,
+  ) {
     const profile = await this.deps.google.getProfile(token);
     if (expectedId && profile.id !== expectedId)
       throw new AppError("account-mismatch", { stage: "account-details" });
+    if (connectedIds?.has(profile.id))
+      throw new AppError("account-already-connected", {
+        stage: "account-details",
+      });
     // Do not load any calendars until the account identity is verified.
     const calendars = await this.deps.google.listCalendars(token);
     return { profile, calendars };
@@ -87,20 +105,24 @@ export class AuthService {
     accountId: string | undefined,
     interactive: boolean,
     freshToken = false,
+    webClientId?: string,
+    connectedIds?: Set<string>,
   ) {
     let token = await this.deps.identity.getToken({
       interactive,
       ...(accountId ? { accountId } : { chooseAccount: true }),
+      ...(webClientId !== undefined ? { webClientId } : {}),
     });
     if (freshToken) {
       await this.deps.identity.invalidateToken(token);
       token = await this.deps.identity.getToken({
         accountId,
         interactive: false,
+        ...(webClientId !== undefined ? { webClientId } : {}),
       });
     }
     try {
-      return await this.verifiedData(token, accountId);
+      return await this.verifiedData(token, accountId, connectedIds);
     } catch (error) {
       if (!(error instanceof GoogleHttpError) || error.status !== 401)
         throw error;
@@ -111,35 +133,39 @@ export class AuthService {
       const renewed = await this.deps.identity.getToken({
         accountId,
         interactive: false,
+        ...(webClientId !== undefined ? { webClientId } : {}),
       });
       return this.verifiedData(renewed, accountId);
     }
   }
 
   async connect(): Promise<void> {
-    this.requireSetup();
     const store = await this.deps.repository.read();
+    this.requireSetup(store);
     try {
-      const { profile, calendars } = await this.loadAccount(undefined, true);
-      const previous = store.accounts.find(
-        (account) => account.id === profile.id,
+      const { profile, calendars } = await this.loadAccount(
+        undefined,
+        true,
+        false,
+        store.settings.webOAuthClientId || undefined,
+        new Set(store.accounts.map((account) => account.id)),
       );
       const at = this.now().toISOString();
       const account: Account = {
         id: profile.id,
         email: profile.email,
-        enabled: previous?.enabled ?? true,
+        enabled: true,
         status: "connected",
         calendars,
-        connectedAt: previous?.connectedAt ?? at,
+        connectedAt: at,
         lastCheckedAt: at,
         lastSuccessfulAt: at,
         eventsReadGranted: true,
+        ...(store.settings.webOAuthClientId
+          ? { authMethod: "web" as const }
+          : {}),
       };
-      store.accounts = [
-        ...store.accounts.filter((item) => item.id !== profile.id),
-        account,
-      ];
+      store.accounts.push(account);
       this.record(store, "connect");
     } catch (error) {
       const safe = asAppError(error);
@@ -154,8 +180,8 @@ export class AuthService {
     accountId: string,
     options: { interactive?: boolean; freshToken?: boolean } = {},
   ): Promise<void> {
-    this.requireSetup();
     const store = await this.deps.repository.read();
+    this.requireSetup(store);
     const account = store.accounts.find((item) => item.id === accountId);
     if (!account) throw new AppError("unknown-account");
     const action = options.interactive
@@ -169,6 +195,9 @@ export class AuthService {
         accountId,
         options.interactive ?? false,
         options.freshToken,
+        account.authMethod === "web"
+          ? store.settings.webOAuthClientId
+          : undefined,
       );
       account.email = profile.email;
       account.calendars = calendars;
@@ -201,8 +230,9 @@ export class AuthService {
   }
 
   async checkEnabled(): Promise<void> {
-    if (!this.deps.configuration.oauthConfigured) return;
-    const { accounts } = await this.deps.repository.read();
+    const { accounts, settings } = await this.deps.repository.read();
+    if (!this.deps.configuration.oauthConfigured && !settings.webOAuthClientId)
+      return;
     for (const account of accounts.filter((item) => item.enabled)) {
       try {
         await this.check(account.id);
@@ -218,8 +248,8 @@ export class AuthService {
     accountId: string,
     operation: (token: string, account: Account) => Promise<T>,
   ): Promise<T> {
-    this.requireSetup();
     const store = await this.deps.repository.read();
+    this.requireSetup(store);
     const account = store.accounts.find((item) => item.id === accountId);
     if (!account) throw new AppError("unknown-account");
     if (!account.enabled) throw new AppError("invalid-request");
@@ -230,6 +260,9 @@ export class AuthService {
           token = await this.deps.identity.getToken({
             accountId,
             interactive: false,
+            ...(account.authMethod === "web"
+              ? { webClientId: store.settings.webOAuthClientId }
+              : {}),
           });
           const profile = await this.deps.google.getProfile(token);
           if (profile.id !== accountId)
@@ -319,6 +352,9 @@ export class AuthService {
       formatVersion: 1,
       generatedAt: this.now().toISOString(),
       ...this.deps.configuration,
+      oauthConfigured:
+        this.deps.configuration.oauthConfigured ||
+        Boolean(store.settings.webOAuthClientId),
       accounts: {
         total: store.accounts.length,
         enabled: store.accounts.filter((account) => account.enabled).length,

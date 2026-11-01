@@ -42,6 +42,8 @@ At the user's request, the existing Cloud OAuth app also declares `https://www.g
 
 Stage 5 desktop reminders and background audio need Chrome manifest permissions `notifications` and `offscreen`, respectively. Add those with their implementations; they are not Google OAuth Data Access scopes. Scheduling and local preferences already use `alarms` and `storage`. Custom sound imports, snooze, DND, and display time zones require no additional Google scope.
 
+For an explicit chooser when adding a second account, also follow [multi-account setup](MULTI-ACCOUNT-SETUP.md). V0.3.3 supports a separate Web application client for that path; the native client below remains for existing connections.
+
 ## 4. Create a Chrome Extension OAuth client
 
 1. Open **Clients → Create client**.

@@ -1,6 +1,6 @@
 # Authentication design
 
-## Current adapter
+## Native adapter for existing accounts
 
 The native adapter uses `chrome.identity.getAuthToken` with a Chrome Extension OAuth client. Chrome manages token expiration and renewal. No refresh token or client secret is handled by this app.
 
@@ -17,15 +17,17 @@ The OAuth manifest is omitted when no client ID is configured, so the extension 
 
 ## Explicit account onboarding
 
-An Add Google account action resets this extension's remembered native account choice with `clearAllCachedAuthTokens`, then calls interactive `getAuthToken`. This can invalidate other cached tokens belonging to this extension; their durable account metadata remains intact and their next check requests a new token by verified account ID. The operation does not sign the user out of Google's browser sessions.
+With a Web application client configured in Settings (or `WXT_GOOGLE_WEB_CLIENT_ID`), Add Google account uses an explicit Google chooser through `launchWebAuthFlow` with `prompt=select_account`. The user supplied a public client ID on 2026-11-02; it is stored only in this workspace's ignored local build configuration. Follow `MULTI-ACCOUNT-SETUP.md` and ADR 0005 for the exact redirect, security checks, legacy-flow tradeoff, and live acceptance requirements.
 
-The returned token is used to fetch `https://www.googleapis.com/oauth2/v3/userinfo`. Verified `sub` and email are required before loading the calendar list. Re-selecting a previously connected identity updates that record instead of creating a duplicate.
+Existing accounts keep native Chrome-managed tokens. Web-connected accounts persist only an `authMethod: web` marker and use account-pinned silent authorization (`login_hint=sub`, `prompt=none`) after their memory-only token expires or the worker restarts. There is no refresh token or guarantee of silent renewal; a lost Google session requires explicit reconnect. No token enters persistent storage or UI. The public client ID is a locally validated setting and is excluded from diagnostic exports.
 
-Native chooser behavior is a **live feasibility gate**, not a guarantee established by unit tests. Chrome's stable API does not enumerate all Google web sessions. The implementation uses no cookie scraping, private Google endpoints, hard-coded Gmail account indexes, or Dev-channel-only APIs.
+Without a Web client, Add retains the native path: clear this extension's native token/selection cache, then call interactive `getAuthToken`. The user's report establishes that this does not reliably display a chooser. Neither path revokes Google's consent or signs the user out of Google. Duplicate identities now fail before calendar-list loading, preserve existing records, and never show an account-addition success notice.
+
+Stable Chrome does not enumerate all Google web sessions. The implementation uses no cookie scraping, private endpoints, hard-coded Gmail account indexes, or Dev-channel-only APIs.
 
 ## Known-account checks and reconnect
 
-Every subsequent check pins `getAuthToken` to `{ account: { id: savedGoogleSub } }`. It verifies the profile `sub` again before reading calendars. If Google returns a different account, the app preserves the intended account's saved data and requires reconnection.
+Native checks pin `getAuthToken` to `{ account: { id: savedGoogleSub } }`; web checks pin a silent chooser request with the same verified `sub` as `login_hint`. It verifies the profile `sub` again before reading calendars. If Google returns a different account, the app preserves the intended account's saved data and requires reconnection.
 
 - Startup/alarms/manual checks request tokens noninteractively.
 - Reconnect is interactive only after a user action and uses the intended account ID.
@@ -64,7 +66,7 @@ With one registered OAuth client and two real accounts in stable Chrome:
 6. Revoking one account's consent leaves the other usable and raises the correct badge/banner.
 7. Reconnecting the affected account clears only its failure.
 
-Until these pass, stage 1's implementation is ready for testing but the authentication feasibility gate is open. If native behavior fails, investigate a supported `launchWebAuthFlow` alternative with its actual Google client-type/redirect/renewal requirements, record an ADR, and test it before adopting it. Do not ship a speculative OAuth/PKCE flow or embed a web-client secret as a shortcut.
+The native chooser gate failed in the user's second-account attempt on 2026-11-02. The optional chooser is implemented for live validation, not accepted as proven multi-account authentication. Continue these scenarios for native and web connections, especially silent session renewal after a restart. Never embed a client secret or claim a refresh-token/PKCE guarantee; see ADR 0005.
 
 ## References
 

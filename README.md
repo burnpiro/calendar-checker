@@ -2,7 +2,7 @@
 
 A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
 
-## Current release: stage 3 · v0.3.2
+## Current release: stage 3 · v0.3.3
 
 Google event reading and local synchronization are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
 
@@ -47,7 +47,7 @@ npm run build
 npm run extension:id
 ```
 
-Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.3.2. The native-popup sizing correction remains covered by an actual toolbar-popup test.
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.3.3. The native-popup sizing correction remains covered by an actual toolbar-popup test.
 
 Without connected accounts, the calendar shows an empty grid and a prompt to connect an account. Settings displays setup instructions and disables Google sign-in until a client ID is configured. Preserve any existing `.env.local` when updating.
 
@@ -77,7 +77,7 @@ WXT_GOOGLE_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
 
 Then run `npm run build` and reload the extension in `chrome://extensions`. Keep the actual value supplied by Google; the example above is descriptive and is deliberately rejected by build-time validation. Never paste a client secret into this project.
 
-Use **Add Google account** once for each account. Google account selection uses Chrome's native authorization flow. Adding an account explicitly resets this extension's remembered token selection; existing account records remain saved. Whether the native chooser supports all desired secondary accounts is a live stage 1 acceptance gate.
+Use **Add Google account** once for each account. To force an explicit chooser for a second account, configure the optional Web application OAuth client in **Settings → Google account chooser**. See [multi-account setup](docs/MULTI-ACCOUNT-SETUP.md). Existing native connections remain usable; new chooser accounts use short-lived access with session-dependent silent renewal. A lost Google session requires Reconnect. The native chooser failed the user's second-account attempt; the alternative still needs live acceptance. Choosing an existing identity now reports it as already connected.
 
 ## Commands
 
@@ -103,7 +103,7 @@ You can keep the test browser in a temporary location using `PLAYWRIGHT_BROWSERS
 
 ## Storage and permissions
 
-Account identifiers, emails, cached calendar names/permissions, preferences, and sanitized diagnostics are stored in `chrome.storage.local`. Event data uses local Dexie/IndexedDB (`calendar-checker-events`, schema 3): Google `events`, snapshot `ranges`, per-calendar `syncStates`, and reserved `meta`. Upgrading removes the old preview-event table and its seed markers while preserving Google data. OAuth access tokens remain transient in the worker and are Chrome-managed. Provider sync cursors are durable local state and are excluded from UI metadata and diagnostics. There is no `chrome.storage.sync` usage.
+Account identifiers, emails, cached calendar names/permissions, preferences, and sanitized diagnostics are stored in `chrome.storage.local`. Event data uses local Dexie/IndexedDB (`calendar-checker-events`, schema 3): Google `events`, snapshot `ranges`, per-calendar `syncStates`, and reserved `meta`. Upgrading removes the old preview-event table and its seed markers while preserving Google data. Native OAuth tokens are Chrome-managed; chooser tokens use worker memory only and session-dependent silent renewal. Provider sync cursors are durable local state and are excluded from UI metadata and diagnostics. There is no `chrome.storage.sync` usage.
 
 Permissions remain `identity`, `storage`, `alarms`, and direct requests to `https://www.googleapis.com/*`. Google scopes cover OpenID identity, email, calendar-list read access, and event read access. No event write permission is requested.
 
@@ -116,6 +116,7 @@ Removing an account deletes its local metadata, cached events, coverage, and syn
 - [Architecture](docs/ARCHITECTURE.md)
 - [Authentication design and limitations](docs/AUTHENTICATION.md)
 - [Google Cloud walkthrough](docs/GOOGLE-SETUP.md)
+- [Explicit account chooser setup](docs/MULTI-ACCOUNT-SETUP.md)
 - [Stage 1 acceptance matrix](docs/STAGE-1-VALIDATION.md)
 - [Full product plan](docs/PLAN.md)
 - [Current implementation status](docs/STATUS.md)

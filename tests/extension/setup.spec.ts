@@ -604,6 +604,16 @@ test("bundled worker syncs Google fixtures, updates instances and retains them a
     );
     const settings = await context.newPage();
     await settings.goto(`chrome-extension://${id}/options.html`);
+    // This scenario deliberately exercises the legacy native account path.
+    await settings.evaluate(() =>
+      chrome.runtime.sendMessage({
+        namespace: "calendar-checker",
+        command: {
+          type: "UPDATE_SETTINGS",
+          settings: { webOAuthClientId: "" },
+        },
+      }),
+    );
     await settings
       .getByRole("button", { name: "+ Add Google account", exact: true })
       .click();
@@ -786,5 +796,190 @@ test("bundled worker syncs Google fixtures, updates instances and retains them a
   } finally {
     await active?.close();
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("explicit Google chooser adds a second account without replacing the native account or reporting duplicates as success", async () => {
+  const profile = await mkdtemp(join(tmpdir(), "calendar-account-chooser-"));
+  let active: BrowserContext | undefined;
+  try {
+    const { context, id } = await launch(profile);
+    active = context;
+    const worker = context.serviceWorkers()[0]!;
+    await worker.evaluate(() => {
+      const calls: Array<{
+        interactive: boolean;
+        prompt: string | null;
+        hint: string | null;
+      }> = [];
+      (globalThis as unknown as { chooserCalls: typeof calls }).chooserCalls =
+        calls;
+      chrome.identity.getAuthToken = (async (
+        request: chrome.identity.TokenDetails,
+      ) => {
+        if (request.account?.id !== "fixture-native")
+          throw new Error("Unexpected native identity");
+        return { token: "native-fixture-token", grantedScopes: request.scopes };
+      }) as typeof chrome.identity.getAuthToken;
+      chrome.identity.launchWebAuthFlow = (async (
+        request: chrome.identity.WebAuthFlowDetails,
+      ) => {
+        const url = new URL(request.url);
+        calls.push({
+          interactive: request.interactive === true,
+          prompt: url.searchParams.get("prompt"),
+          hint: url.searchParams.get("login_hint"),
+        });
+        return `${chrome.identity.getRedirectURL()}#${new URLSearchParams({ state: url.searchParams.get("state")!, access_token: "web-fixture-token", token_type: "Bearer", expires_in: "3600", scope: url.searchParams.get("scope")! })}`;
+      }) as typeof chrome.identity.launchWebAuthFlow;
+      globalThis.fetch = async (input, init) => {
+        const url = new URL(String(input));
+        const header = (init?.headers as Record<string, string>)?.Authorization;
+        const who =
+          header === "Bearer native-fixture-token"
+            ? "native"
+            : header === "Bearer web-fixture-token"
+              ? "web"
+              : undefined;
+        if (!who || url.hostname !== "www.googleapis.com")
+          throw new Error("Unexpected fixture request");
+        const body =
+          url.pathname === "/oauth2/v3/userinfo"
+            ? {
+                sub: `fixture-${who}`,
+                email: `${who}@example.test`,
+                email_verified: true,
+              }
+            : url.pathname.endsWith("/calendarList")
+              ? {
+                  items: [
+                    {
+                      id: `calendar-${who}`,
+                      summary: `Calendar ${who}`,
+                      accessRole: "owner",
+                      primary: true,
+                      timeZone: "UTC",
+                    },
+                  ],
+                }
+              : { items: [], nextSyncToken: "fixture-cursor", timeZone: "UTC" };
+        return new Response(JSON.stringify(body), {
+          headers: { "Content-Type": "application/json" },
+        });
+      };
+    });
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${id}/options.html`);
+    const store = emptyStore();
+    store.settings.webOAuthClientId = "";
+    const at = new Date().toISOString();
+    store.accounts = [
+      {
+        id: "fixture-native",
+        email: "native@example.test",
+        enabled: true,
+        status: "connected",
+        calendars: [
+          {
+            id: "calendar-native",
+            summary: "Calendar native",
+            primary: true,
+            accessRole: "owner",
+          },
+        ],
+        connectedAt: at,
+        lastCheckedAt: at,
+        lastSuccessfulAt: at,
+      },
+    ];
+    await page.evaluate(
+      async ({ key, store }) => chrome.storage.local.set({ [key]: store }),
+      { key: STORAGE_KEY, store },
+    );
+    await expect(
+      page.locator("article").filter({ hasText: "native@example.test" }),
+    ).toBeVisible();
+    await page
+      .getByRole("textbox", { name: "Web application client ID", exact: true })
+      .fill("123456789-fixture.apps.googleusercontent.com");
+    await page
+      .getByRole("button", { name: "Save account chooser", exact: true })
+      .click();
+    await expect(page.getByRole("status")).toContainText(
+      "Google account chooser saved",
+    );
+    await page
+      .getByRole("button", { name: "+ Add Google account", exact: true })
+      .click();
+    await expect(page.getByRole("status")).toContainText("Account connected");
+    await expect(page.locator("article")).toHaveCount(2);
+    await expect(
+      page.locator("article").filter({ hasText: "web@example.test" }),
+    ).toBeVisible();
+    await expect
+      .poll(async () =>
+        worker.evaluate(() =>
+          (
+            globalThis as unknown as { chooserCalls: Array<{ prompt: string }> }
+          ).chooserCalls.map((call) => call.prompt),
+        ),
+      )
+      .toContain("none");
+    await page
+      .getByRole("button", { name: "Check all enabled accounts", exact: true })
+      .click();
+    await expect(page.getByRole("status")).toContainText(
+      "Enabled accounts checked",
+    );
+    await expect(
+      page.locator("article").filter({ hasText: "native@example.test" }),
+    ).toContainText("Connected");
+    await expect(
+      page.locator("article").filter({ hasText: "web@example.test" }),
+    ).toContainText("Connected");
+    const read = () =>
+      page.evaluate(
+        async (key) => (await chrome.storage.local.get(key))[key],
+        STORAGE_KEY,
+      );
+    const before = storeSchema.parse(await read()).accounts;
+    await page
+      .getByRole("button", { name: "+ Add Google account", exact: true })
+      .click();
+    await expect(page.getByRole("alert")).toContainText("already connected");
+    await expect(page.locator(".banner.success")).toHaveCount(0);
+    expect(storeSchema.parse(await read()).accounts).toEqual(before);
+    const calls = await worker.evaluate(
+      () =>
+        (
+          globalThis as unknown as {
+            chooserCalls: Array<{
+              interactive: boolean;
+              prompt: string;
+              hint: string | null;
+            }>;
+          }
+        ).chooserCalls,
+    );
+    expect(
+      calls
+        .filter((call) => call.interactive)
+        .every((call) => call.prompt === "select_account"),
+    ).toBe(true);
+    expect(
+      calls
+        .filter((call) => !call.interactive)
+        .every((call) => call.prompt === "none" && call.hint === "fixture-web"),
+    ).toBe(true);
+    const saved = JSON.stringify(await read());
+    expect(saved).not.toContain("web-fixture-token");
+    expect(saved).not.toContain("native-fixture-token");
+    await page.screenshot({
+      path: "test-results/account-chooser.png",
+      fullPage: true,
+    });
+  } finally {
+    await active?.close();
+    await rm(profile, { recursive: true, force: true });
   }
 });

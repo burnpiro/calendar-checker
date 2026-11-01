@@ -37,6 +37,8 @@ export const errorCodeSchema = z.enum([
   "reconnect-required",
   "permission-required",
   "account-mismatch",
+  "account-already-connected",
+  "chooser-setup-required",
   "network",
   "rate-limited",
   "api-disabled",
@@ -80,6 +82,7 @@ export const accountSchema = z.object({
   errorCode: errorCodeSchema.optional(),
   errorDetails: failureDetailsSchema.optional(),
   eventsReadGranted: z.boolean().optional(),
+  authMethod: z.literal("web").optional(),
 });
 export type Account = z.infer<typeof accountSchema>;
 

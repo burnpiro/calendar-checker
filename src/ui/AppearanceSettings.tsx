@@ -50,6 +50,7 @@ export function AppearanceSettings({
           onSubmit={(event) => {
             event.preventDefault();
             const {
+              webOAuthClientId: _webClient,
               connectionCheckMinutes: _interval,
               staleAfterMinutes: _stale,
               calendarVisibility: _visibility,

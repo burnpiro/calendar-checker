@@ -89,7 +89,9 @@ describe("account authentication", () => {
       email: "b@example.com",
     });
     await h.service.connect();
-    await h.service.connect();
+    await expect(h.service.connect()).rejects.toMatchObject({
+      code: "account-already-connected",
+    });
     expect(h.stored().accounts.map((account) => account.id)).toEqual([
       "account-a",
       "account-b",
@@ -104,6 +106,112 @@ describe("account authentication", () => {
     );
   });
 
+  it("rejects an already connected identity before calendar loading without modifying existing accounts", async () => {
+    const h = harness(state);
+    await expect(h.service.connect()).rejects.toMatchObject({
+      code: "account-already-connected",
+    });
+    expect(h.google.listCalendars).not.toHaveBeenCalled();
+    expect(h.stored().accounts).toEqual(state.accounts);
+    expect(h.stored().diagnostics.at(-1)).toMatchObject({
+      outcome: "failure",
+      code: "account-already-connected",
+    });
+  });
+  it("uses the configured chooser for new accounts and keeps native accounts pinned to native identity", async () => {
+    state.settings.webOAuthClientId =
+      "123456789-fixture.apps.googleusercontent.com";
+    const h = harness(state);
+    h.google.getProfile.mockResolvedValueOnce({
+      id: "account-b",
+      email: "b@example.com",
+    });
+    await h.service.connect();
+    expect(h.identity.getToken).toHaveBeenLastCalledWith({
+      interactive: true,
+      chooseAccount: true,
+      webClientId: state.settings.webOAuthClientId,
+    });
+    expect(h.stored().accounts[1]).toMatchObject({
+      id: "account-b",
+      authMethod: "web",
+    });
+    await h.service.check("account-a");
+    expect(h.identity.getToken).toHaveBeenLastCalledWith({
+      interactive: false,
+      accountId: "account-a",
+    });
+    h.google.getProfile.mockResolvedValue({
+      id: "account-b",
+      email: "b@example.com",
+    });
+    await h.service.check("account-b");
+    expect(h.identity.getToken).toHaveBeenLastCalledWith({
+      interactive: false,
+      accountId: "account-b",
+      webClientId: state.settings.webOAuthClientId,
+    });
+    await h.service.withVerifiedToken("account-b", async () => undefined);
+    expect(h.identity.getToken).toHaveBeenLastCalledWith({
+      interactive: false,
+      accountId: "account-b",
+      webClientId: state.settings.webOAuthClientId,
+    });
+  });
+  it("can connect with only the chooser configured, without persisting tokens", async () => {
+    const initial = emptyStore();
+    initial.settings.webOAuthClientId =
+      "123456789-fixture.apps.googleusercontent.com";
+    const h = harness(initial, false);
+    expect((await h.service.snapshot()).oauthConfigured).toBe(true);
+    await h.service.connect();
+    expect(h.stored().accounts[0]?.authMethod).toBe("web");
+    expect(JSON.stringify(h.stored())).not.toContain("private-access-token");
+  });
+  it.each(["check", "events"] as const)(
+    "keeps web identity pinned through a rejected-token retry during %s",
+    async (kind) => {
+      state.settings.webOAuthClientId =
+        "123456789-fixture.apps.googleusercontent.com";
+      state.accounts[0]!.authMethod = "web";
+      const h = harness(state);
+      if (kind === "check") {
+        h.google.getProfile.mockRejectedValueOnce(
+          new GoogleHttpError(401, "reconnect-required"),
+        );
+        await h.service.check("account-a");
+      } else {
+        const operation = vi
+          .fn()
+          .mockRejectedValueOnce(new GoogleHttpError(401, "reconnect-required"))
+          .mockResolvedValueOnce(undefined);
+        await h.service.withVerifiedToken("account-a", operation);
+        expect(operation).toHaveBeenCalledTimes(2);
+      }
+      expect(h.identity.invalidateToken).toHaveBeenCalledExactlyOnceWith(
+        "private-access-token",
+      );
+      expect(
+        h.identity.getToken.mock.calls.map(([request]) => request),
+      ).toEqual([
+        {
+          accountId: "account-a",
+          interactive: false,
+          webClientId: state.settings.webOAuthClientId,
+        },
+        {
+          accountId: "account-a",
+          interactive: false,
+          webClientId: state.settings.webOAuthClientId,
+        },
+      ]);
+      expect(h.stored().accounts[0]).toMatchObject({
+        id: "account-a",
+        authMethod: "web",
+        status: "connected",
+      });
+    },
+  );
   it("requires setup before opening a Google authorization flow", async () => {
     const h = harness(state, false);
     await expect(h.service.connect()).rejects.toMatchObject({

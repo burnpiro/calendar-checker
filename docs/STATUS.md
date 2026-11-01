@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: 2026-11-01.
+Last updated: 2026-11-02.
 
 ## Stage 1
 
@@ -24,6 +24,14 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 Stage 4: event creation/editing, writable account/calendar selection, recurrence edit semantics, durable outbox, retry-safe creation, and conflict resolution. Add event-write scope only with that feature and protect pending edits from cache reconciliation/removal.
 
 After reloading the current build, approve the new read-only event scope through Reconnect where required and exercise the live checks in `STAGE-3.md`. Continue the stage 1 two-account/lifecycle matrix before treating multi-account authentication as accepted. First-account connection is user-confirmed; live stage 3 event reads are not yet verified. Custom sounds, notifications, snooze, DND, and secondary zones remain stage 5.
+
+## Explicit Google account chooser · v0.3.3
+
+The native Add flow returned the existing identity without a chooser in the user's real second-account attempt. This fails the original native chooser gate. Add now rejects duplicate identities before calendar-list loading, preserves existing accounts/cache, and displays an accurate error instead of claiming a second addition succeeded.
+
+An optional Web application client enables explicit `prompt=select_account` authorization through Chrome's intercepted redirect. Existing native connections retain their method. New web accounts verify the selected `sub`, use a memory-only token cache and bounded silent authorization with `login_hint=sub`, and require Reconnect when the Google session cannot renew silently. Current read-only scopes only; no server, secret, refresh-token persistence, consent revocation, or extra Chrome permissions. See ADR 0005 for Google's legacy-flow caveat and live acceptance gate.
+
+The user-supplied public Web client ID is configured only in ignored local build settings. The existing native client/key are preserved; redirect registration is not independently verified. Settings exposes the public client ID and exact redirect. Automated validation: **114 unit/adapter tests** and **six isolated Chromium tests**, TypeScript, formatting, and production build pass. The new browser fixture exercises the actual Settings chooser control, native-plus-web accounts, pinned checks, duplicate rejection, and token-free persisted state. These fixtures do not establish live Google success. Next: reload v0.3.3 and add the second real account; continue two-account renewal/restart/revocation acceptance.
 
 ## Preview removal · v0.3.2
 

@@ -2,7 +2,7 @@
 
 ## Start here
 
-Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.md` before changing behavior. For authentication work also read `docs/AUTHENTICATION.md` and `docs/STAGE-1-VALIDATION.md`.
+Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.md` before changing behavior. For authentication work also read `docs/AUTHENTICATION.md`, `docs/STAGE-1-VALIDATION.md`, and ADR 0005.
 
 ## Product contract
 
@@ -30,7 +30,7 @@ Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.
 - Worker globals are temporary. Persist durable state and recreate scheduling from preferences when needed.
 - Serialize state mutations; do not keep storage transactions open across network requests.
 - Interactive sign-in requires an explicit UI action. Background/startup checks must stay noninteractive.
-- Verify returned Google `sub` against the requested account on every account-specific check, before requesting its calendars.
+- Verify returned Google `sub` against the requested account on every account-specific check, before requesting its calendars. Native and web connections retain their own auth method. Web chooser callbacks require exact redirect/state/grant validation, and their tokens remain worker-memory-only. Never downgrade a web account to an unpinned native token or add a client secret/automatic consent revocation.
 - Keep all Google API requests bounded by timeouts. Retry authentication once after an HTTP 401, and never loop indefinitely.
 - Preserve browser API receivers when wrapping native functions: use the global-context fetch wrapper, not a native `fetch` stored and invoked as an object method. Keep real-worker coverage; Node mocks do not enforce Chrome's receiver rules.
 - Request the narrowest scopes needed by the current stage. Add event write scopes with the event-writing feature.

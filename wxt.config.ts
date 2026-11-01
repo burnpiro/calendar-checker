@@ -15,6 +15,14 @@ export default defineConfig({
         "WXT_GOOGLE_CLIENT_ID must be a Google OAuth client ID, not a secret.",
       );
     }
+    const webClientId = import.meta.env.WXT_GOOGLE_WEB_CLIENT_ID?.trim();
+    if (
+      webClientId &&
+      !/^\d+-[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$/.test(webClientId)
+    )
+      throw new Error(
+        "WXT_GOOGLE_WEB_CLIENT_ID must be a public Google OAuth client ID.",
+      );
     return {
       name: "Calendar Checker",
       description: "Your Google calendars, together on your device.",

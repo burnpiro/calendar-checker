@@ -5,6 +5,7 @@ export interface TokenRequest {
   accountId?: string;
   interactive: boolean;
   chooseAccount?: boolean;
+  webClientId?: string;
 }
 export interface IdentityProvider {
   getToken(request: TokenRequest): Promise<string>;

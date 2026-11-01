@@ -35,7 +35,7 @@ Preview sound, test notification, and reset controls belong in the appropriate s
 
 ## Stages
 
-1. **Authentication feasibility:** Native OAuth adapter, multiple account metadata, account-specific identity checks and calendar-list access, enable/disable, token renewal/reconnect checks, restart persistence, reconnect badge/popup, and a reproducible real-account acceptance matrix. Technical prototype implemented; live validation pending.
+1. **Authentication feasibility:** Native OAuth adapter, multiple account metadata, account-specific identity checks and calendar-list access, enable/disable, token renewal/reconnect checks, restart persistence, reconnect badge/popup, and a reproducible real-account acceptance matrix. Technical prototype implemented. Native second-account choice failed in the user's 2026-11-02 attempt; v0.3.3 adds an optional Web client chooser with session-dependent renewal. Live validation remains pending.
 2. **Extension foundation/calendar shell:** Implemented in v0.2.0: shared UI system, popup/full-tab month/week navigation, FullCalendar Standard, Dexie event foundation with isolated samples, details/previews/filters, and broader shared settings. See `STAGE-2.md`.
 3. **Calendar reading and synchronization:** Implemented in v0.3.0: read-only event scope, separate change feed/bounded expanded occurrences, independent cursors/backoff, local filters and shared-calendar selection, bounded coverage, offline/stale/uncached states, manual/background sync, and configurable timing/cache windows. V0.3.2 removes preview mode and its stored sample data; Google is the only calendar source. Automated provider fixtures pass; live new-scope/two-account acceptance is pending. See `STAGE-3.md`.
 4. **Event writing:** Forms, writable account/calendar selection, recurrence edits, offline outbox, retry-safe writes, and conflict resolution. Cloud Data Access already declares `calendar.events` at the user's request; add the runtime write scope and obtain consent with this stage's implementation.
@@ -49,7 +49,7 @@ Implemented: WXT + React + TypeScript, FullCalendar Standard v7 (MIT), Tailwind 
 ## Known constraints
 
 - Stable Chrome's account enumeration method is Dev-channel-only; explicit authorization replaces silent enumeration of Gmail sessions.
-- Native account chooser and account-specific renewal need proof with actual accounts. If this flow fails the live gate, investigate a supported alternative and document an ADR before changing credential types or OAuth flows.
+- Native chooser selection failed the real second-account gate. ADR 0005 records the optional explicit chooser, required Web application client, legacy token-flow tradeoff, and session-dependent renewal. Real two-account and lifecycle acceptance still gate multi-account claims.
 - Google Calendar push updates require an HTTPS webhook. With no app server, sync uses polling, backoff, and jitter.
 - Reminders require Chrome running and can be delayed by sleep or OS notification settings. Durable schedules and missed-reminder recovery are required.
 - Uncached offline periods must be identified, not rendered as falsely empty calendars.

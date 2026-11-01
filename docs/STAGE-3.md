@@ -1,6 +1,6 @@
 # Stage 3: Google event reading and offline synchronization
 
-Release: v0.3.2. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
+Release: v0.3.3. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
 
 ## Use the release
 
@@ -13,6 +13,8 @@ Release: v0.3.2. This stage reads events; event creation/editing and reminder de
 Preview mode and its sample generator have been removed. Existing preview events and seed markers are deleted automatically by the schema 3 migration; saved accounts, Google events, cursors, coverage, and unrelated metadata survive. Older data-source preferences are ignored. With no enabled accounts, show the empty calendar and connection guidance. The manual-sync notice directs users to per-calendar status and does not claim every calendar succeeded.
 
 The additional scope is read-only. No event-writing scope or application backend is introduced. Google Cloud identifies the OAuth client and grants direct access to Google; it does not host the extension's local data.
+
+For second-account selection, v0.3.3 adds the optional Web application client chooser described in `MULTI-ACCOUNT-SETUP.md` and ADR 0005. Existing native connections retain their method; live chooser/session renewal acceptance remains pending.
 
 ## Sync design
 

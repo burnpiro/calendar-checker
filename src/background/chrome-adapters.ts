@@ -13,12 +13,23 @@ import type {
   TokenRequest,
 } from "./ports";
 
+import { GoogleWebIdentity } from "./web-identity";
+
 export class ChromeIdentityProvider implements IdentityProvider {
+  private readonly web = new GoogleWebIdentity();
   async getToken({
     accountId,
     interactive,
     chooseAccount,
+    webClientId,
   }: TokenRequest): Promise<string> {
+    if (webClientId !== undefined)
+      return this.web.getToken({
+        accountId,
+        interactive,
+        chooseAccount,
+        webClientId,
+      });
     try {
       // Explicit "Add account" only. Resets this extension's remembered chooser selection,
       // not Google's browser sessions. Never clear the whole cache during checks/reconnect.
@@ -49,6 +60,7 @@ export class ChromeIdentityProvider implements IdentityProvider {
   }
 
   async invalidateToken(token: string): Promise<void> {
+    if (this.web.invalidate(token)) return;
     try {
       await chrome.identity.removeCachedAuthToken({ token });
     } catch {

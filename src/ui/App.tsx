@@ -10,6 +10,7 @@ import { useExtensionState } from "./use-extension-state";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { useTheme } from "./use-theme";
 import { SyncSettings } from "./SyncSettings";
+import { AccountChooserSettings } from "./AccountChooserSettings";
 import "./styles.css";
 
 function timeLabel(value: string | null): string {
@@ -460,6 +461,13 @@ export function App({ compact = false }: { compact?: boolean }) {
                     run={run}
                   />
                 </section>
+                <AccountChooserSettings
+                  key={`chooser-${state.settings.webOAuthClientId}`}
+                  settings={state.settings}
+                  extensionId={state.extensionId}
+                  busy={busy}
+                  run={run}
+                />
                 <AppearanceSettings
                   key={JSON.stringify(state.settings)}
                   settings={state.settings}
