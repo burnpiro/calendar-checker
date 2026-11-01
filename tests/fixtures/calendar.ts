@@ -4,33 +4,33 @@ import {
   eventSchema,
   type CalendarEvent,
   type EventType,
-} from "./model";
+} from "../../src/calendar/model";
 
-export const DEMO_CALENDARS = [
+export const FIXTURE_CALENDARS = [
   {
-    id: "demo-work",
-    accountId: "demo-work-account",
+    id: "fixture-work",
+    accountId: "fixture-work-account",
     name: "Work",
     color: "#7765d8",
-    accountName: "Work · sample account",
+    accountName: "Work · fixture account",
   },
   {
-    id: "demo-personal",
-    accountId: "demo-personal-account",
+    id: "fixture-personal",
+    accountId: "fixture-personal-account",
     name: "Personal",
     color: "#348e81",
-    accountName: "Personal · sample account",
+    accountName: "Personal · fixture account",
   },
   {
-    id: "demo-birthdays",
-    accountId: "demo-personal-account",
+    id: "fixture-birthdays",
+    accountId: "fixture-personal-account",
     name: "Birthdays",
     color: "#c58a35",
-    accountName: "Personal · sample account",
+    accountName: "Personal · fixture account",
   },
 ] as const;
 
-export function makeDemoMonth(
+export function makeFixtureMonth(
   month: string,
   timeZone: string,
 ): CalendarEvent[] {
@@ -39,7 +39,7 @@ export function makeDemoMonth(
   function add(
     day: Temporal.PlainDate,
     title: string,
-    calendar: (typeof DEMO_CALENDARS)[number],
+    calendar: (typeof FIXTURE_CALENDARS)[number],
     hour: number,
     duration: number,
     eventType: EventType = "default",
@@ -54,7 +54,7 @@ export function makeDemoMonth(
     rows.push(
       eventSchema.parse({
         key: eventKey(calendar.accountId, calendar.id, eventId),
-        source: "demo",
+        source: "google",
         accountId: calendar.accountId,
         calendarId: calendar.id,
         eventId,
@@ -65,8 +65,7 @@ export function makeDemoMonth(
         eventType,
         allDay,
         location,
-        description:
-          "This is a sample event for exploring your calendar. It is stored only on this device and is never sent to Google.",
+        description: "Fictional provider event used only by automated tests.",
         start: allDay ? day.toString() : start.toInstant().toString(),
         end: allDay
           ? day.add({ days: Math.ceil(duration / 24) }).toString()
@@ -85,35 +84,35 @@ export function makeDemoMonth(
       add(
         day,
         "Weekly planning",
-        DEMO_CALENDARS[0],
+        FIXTURE_CALENDARS[0],
         9,
         1,
         "default",
         false,
         "Studio / video call",
       );
-      add(day, "Deep work", DEMO_CALENDARS[0], 11, 2, "focusTime");
+      add(day, "Deep work", FIXTURE_CALENDARS[0], 11, 2, "focusTime");
     }
     if (day.dayOfWeek === 2) {
       add(
         day,
         "Design review",
-        DEMO_CALENDARS[0],
+        FIXTURE_CALENDARS[0],
         10,
         1.5,
         "default",
         false,
         "Meeting room 02",
       );
-      add(day, "Evening run", DEMO_CALENDARS[1], 18, 1);
+      add(day, "Evening run", FIXTURE_CALENDARS[1], 18, 1);
     }
     if (day.dayOfWeek === 3) {
-      add(day, "Project catch-up", DEMO_CALENDARS[0], 14, 1);
+      add(day, "Project catch-up", FIXTURE_CALENDARS[0], 14, 1);
       if (day.day < 15)
         add(
           day,
           "Working from home",
-          DEMO_CALENDARS[0],
+          FIXTURE_CALENDARS[0],
           0,
           24,
           "workingLocation",
@@ -124,22 +123,22 @@ export function makeDemoMonth(
       add(
         day,
         "Team lunch",
-        DEMO_CALENDARS[0],
+        FIXTURE_CALENDARS[0],
         12,
         1,
         "default",
         false,
         "The corner café",
       );
-      add(day, "Read & recharge", DEMO_CALENDARS[1], 19, 1);
+      add(day, "Read & recharge", FIXTURE_CALENDARS[1], 19, 1);
     }
     if (day.dayOfWeek === 5)
-      add(day, "Wrap-up & next steps", DEMO_CALENDARS[0], 15, 1);
+      add(day, "Wrap-up & next steps", FIXTURE_CALENDARS[0], 15, 1);
     if (day.dayOfWeek === 6 && day.day < 22)
       add(
         day,
         "Coffee with friends",
-        DEMO_CALENDARS[1],
+        FIXTURE_CALENDARS[1],
         11,
         1.5,
         "default",
@@ -147,12 +146,20 @@ export function makeDemoMonth(
         "Neighbourhood café",
       );
     if (day.day === 5)
-      add(day, "Maya’s birthday", DEMO_CALENDARS[2], 0, 24, "birthday", true);
+      add(
+        day,
+        "Maya’s birthday",
+        FIXTURE_CALENDARS[2],
+        0,
+        24,
+        "birthday",
+        true,
+      );
     if (day.day === 12)
       add(
         day,
         "Train to Kraków",
-        DEMO_CALENDARS[1],
+        FIXTURE_CALENDARS[1],
         8,
         2,
         "fromGmail",
@@ -163,7 +170,7 @@ export function makeDemoMonth(
       add(
         day,
         "A day to unplug",
-        DEMO_CALENDARS[1],
+        FIXTURE_CALENDARS[1],
         0,
         24,
         "outOfOffice",

@@ -1,9 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  CalendarDatabase,
-  LocalCalendarRepository,
-} from "../calendar/database";
+import { CalendarDatabase } from "../calendar/database";
 import { EventRepository } from "../calendar/event-repository";
 import {
   normalizeGoogleEvent,
@@ -183,8 +180,6 @@ describe("Google event synchronization", () => {
   });
   it("normalizes recurring instances with provenance, creates coverage, and never persists OAuth tokens", async () => {
     const h = harness();
-    await new LocalCalendarRepository(h.db).prepareDemo("2026-11-01", "UTC");
-    const demoCount = await h.db.demoEvents.count();
     await h.sync.run({ reason: "manual" });
     expect(await h.db.events.toArray()).toMatchObject([
       {
@@ -210,7 +205,6 @@ describe("Google event synchronization", () => {
       "2026-08-30T00:00:00Z",
       "2027-06-03T00:00:00Z",
     );
-    expect(await h.db.demoEvents.count()).toBe(demoCount);
     expect(
       JSON.stringify([
         h.stored(),
@@ -403,10 +397,9 @@ describe("Google event synchronization", () => {
     ]);
     expect(h.google.getInstances).toHaveBeenCalledTimes(3);
   });
-  it("recovers interrupted work and removes disconnected account data without touching samples", async () => {
+  it("recovers interrupted work and removes disconnected account data while preserving other accounts", async () => {
     const h = harness([account("a"), account("b")]);
     await h.sync.run();
-    await new LocalCalendarRepository(h.db).prepareDemo("2026-11-01", "UTC");
     const state = await h.cache.state("a", "a-calendar");
     await h.cache.putState({ ...state, running: true });
     await h.cache.recover();
@@ -419,12 +412,11 @@ describe("Google event synchronization", () => {
     expect((await h.db.events.toArray()).map((e) => e.accountId)).toEqual([
       "b",
     ]);
-    expect(await h.db.demoEvents.count()).toBeGreaterThan(0);
   });
   it("distinguishes uncached dates, stale coverage and offline use, preferring a fresher shared-calendar copy", async () => {
     const h = harness([account("a"), account("b")]);
     await h.sync.run();
-    const settings = { ...h.stored().settings, dataSource: "google" as const };
+    const settings = h.stored().settings;
     const view = { start: "2026-11-01", end: "2026-12-01" };
     const metadata = {
       states: await h.db.syncStates.toArray(),

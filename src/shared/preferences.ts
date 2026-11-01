@@ -25,7 +25,6 @@ export const appearanceDefaults = {
   weekEndHour: 22,
   primaryTimeZone: "device",
   calendarVisibility: {} as Record<string, boolean>,
-  dataSource: "demo" as const,
 };
 
 const fields = {
@@ -48,7 +47,6 @@ const fields = {
     .max(100)
     .refine(isTimeZone, "Choose a valid IANA time zone."),
   calendarVisibility: z.record(z.string().max(1000), z.boolean()),
-  dataSource: z.enum(["google", "demo"]),
 };
 const completeSettings = z
   .object(fields)

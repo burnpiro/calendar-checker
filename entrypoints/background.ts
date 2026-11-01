@@ -15,14 +15,12 @@ import {
 } from "../src/background/scheduler";
 import { SerialQueue } from "../src/background/serial-queue";
 import { AUTH_ALARM, SYNC_ALARM } from "../src/shared/model";
-import { LocalCalendarRepository } from "../src/calendar/database";
 import { EventSyncService } from "../src/background/event-sync";
 import { EventRepository } from "../src/calendar/event-repository";
 import { AppError } from "../src/shared/errors";
 
 export default defineBackground(() => {
   const repository = new ChromeRepository();
-  const localCalendar = new LocalCalendarRepository();
   const google = new GoogleCalendarGateway();
   const service = new AuthService({
     identity: new ChromeIdentityProvider(),
@@ -60,17 +58,11 @@ export default defineBackground(() => {
       const reading =
         (command as { type?: unknown } | null)?.type === "GET_STATE";
       const result = reading
-        ? routeCommand(command, service, reschedule, localCalendar, eventSync)
+        ? routeCommand(command, service, reschedule, eventSync)
         : queue
             .run(async () => {
               await ready;
-              return routeCommand(
-                command,
-                service,
-                reschedule,
-                localCalendar,
-                eventSync,
-              );
+              return routeCommand(command, service, reschedule, eventSync);
             })
             .catch(() => ({
               ok: false as const,

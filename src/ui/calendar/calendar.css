@@ -394,12 +394,6 @@
   font-size: 10px;
   color: var(--muted);
 }
-.data-mode.demo-mode {
-  border-radius: 5px;
-  padding: 4px 7px;
-  background: var(--accent-light);
-  color: var(--accent);
-}
 .zone-label {
   display: flex;
   align-items: center;
@@ -419,16 +413,6 @@
 }
 .small-link:hover {
   text-decoration: underline;
-}
-.preview-note {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-  font-size: 10px;
-  padding: 9px 28px;
-  background: var(--surface);
-  border-block: 1px solid var(--line);
 }
 .calendar-notice {
   margin: 0 28px 12px;
@@ -656,14 +640,6 @@
   white-space: pre-wrap;
   margin-top: 23px;
 }
-.demo-detail-note {
-  font-size: 10px;
-  color: var(--accent);
-  background: var(--accent-light);
-  padding: 9px 11px;
-  border-radius: 6px;
-  margin: 17px 0 0;
-}
 .calendar-loading {
   display: grid;
   place-items: center;
@@ -739,6 +715,10 @@
 .calendar-popup .calendar-more-text {
   font-size: 10px;
   line-height: 14px;
+}
+/* Keep the current-time marker inside the visible week, including at midnight. */
+.calendar-popup .calendar-week-day {
+  overflow: clip;
 }
 .calendar-popup .calendar-slot-header {
   padding-block: 0;

@@ -31,7 +31,7 @@ const dateOnly = z
   });
 const identity = {
   key: z.string(),
-  source: z.enum(["google", "demo"]),
+  source: z.literal("google"),
   accountId: z.string().min(1),
   calendarId: z.string().min(1),
   eventId: z.string().min(1),

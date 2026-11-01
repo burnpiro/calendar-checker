@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
-import { CalendarDatabase, LocalCalendarRepository } from "./database";
-import { makeDemoMonth } from "./demo";
+import { CalendarDatabase } from "./database";
+import { makeFixtureMonth } from "../../tests/fixtures/calendar";
 import { eventSchema } from "./model";
 import { Dexie } from "dexie";
 
@@ -16,96 +16,76 @@ afterEach(async () => {
 });
 
 describe("local event storage", () => {
-  it("upgrades the stage 2 database without clearing samples or reserved Google rows", async () => {
-    const name = `migration-${crypto.randomUUID()}`;
-    const old = new Dexie(name);
-    old.version(1).stores({
-      events: "&key, [accountId+calendarId], start, end, eventType",
-      demoEvents: "&key, [accountId+calendarId], start, end, eventType",
-      meta: "&key",
-    });
-    const event = makeDemoMonth("2026-11-01", "UTC")[0]!;
-    await old.table("demoEvents").put(event);
-    await old.table("events").put({ ...event, source: "google" });
-    old.close();
-    const upgraded = database(name);
-    expect(await upgraded.demoEvents.count()).toBe(1);
-    expect(await upgraded.events.count()).toBe(1);
-    expect(await upgraded.ranges.count()).toBe(0);
-    expect(await upgraded.syncStates.count()).toBe(0);
-  });
-  it("keeps demo generation separate from Google records and de-duplicates repeated preparation", async () => {
-    const db = database();
-    const repository = new LocalCalendarRepository(db);
-    const google = {
-      ...makeDemoMonth("2026-11-01", "Europe/Warsaw")[0]!,
-      key: "google-key",
-      source: "google" as const,
-      accountId: "real-account",
-      calendarId: "real-calendar",
-    };
-    await db.events.put(google);
-    await Promise.all([
-      repository.prepareDemo("2026-11-01", "Europe/Warsaw"),
-      repository.prepareDemo("2026-11-01", "Europe/Warsaw"),
-    ]);
-    const before = await db.demoEvents.count();
-    await repository.prepareDemo("2026-11-01", "America/New_York");
-    expect(await db.demoEvents.count()).toBe(before);
-    expect(before).toBeGreaterThan(100);
-    expect(await db.events.toArray()).toEqual([google]);
-    expect(
-      (await db.demoEvents.toArray()).every((event) => event.source === "demo"),
-    ).toBe(true);
-  });
-
-  it("clearing samples preserves Google events and unrelated sync metadata", async () => {
-    const db = database();
-    const repository = new LocalCalendarRepository(db);
-    const google = {
-      ...makeDemoMonth("2026-11-01", "UTC")[0]!,
-      key: "google-key",
-      source: "google" as const,
-    };
-    await db.events.put(google);
-    await db.meta.put({ key: "google-cursor", value: "keep-me" });
-    await repository.prepareDemo("2026-11-01", "UTC");
-    await repository.resetDemo();
-    expect(await db.demoEvents.count()).toBe(0);
-    expect(await db.events.get("google-key")).toEqual(google);
-    expect(await db.meta.toArray()).toEqual([
-      { key: "google-cursor", value: "keep-me" },
-    ]);
-    await repository.prepareDemo("2026-11-01", "UTC");
-    expect(await db.demoEvents.count()).toBeGreaterThan(0);
-  });
-
-  it("retains events after closing and reopening the database", async () => {
-    const db = database();
-    await new LocalCalendarRepository(db).prepareDemo("2026-11-01", "UTC");
-    const count = await db.demoEvents.count();
-    db.close();
-    await db.open();
-    expect(await db.demoEvents.count()).toBe(count);
-  });
-
-  it.each([
-    ["2026-99-01", "UTC"],
-    ["2026-11-02", "UTC"],
-    ["2026-11-01", "Invalid/Zone"],
-  ])(
-    "rejects invalid preparation inputs without writing data",
-    async (month, zone) => {
-      const db = database();
-      await expect(
-        new LocalCalendarRepository(db).prepareDemo(month, zone),
-      ).rejects.toMatchObject({ code: "invalid-request" });
-      expect(await db.demoEvents.count()).toBe(0);
+  it.each([1, 2])(
+    "removes legacy preview data from schema %s while preserving Google data",
+    async (version) => {
+      const name = `migration-${crypto.randomUUID()}`;
+      const old = new Dexie(name);
+      old.version(1).stores({
+        events: "&key, [accountId+calendarId], start, end, eventType",
+        demoEvents: "&key, [accountId+calendarId], start, end, eventType",
+        meta: "&key",
+      });
+      if (version === 2)
+        old.version(2).stores({
+          syncStates: "&key, accountId, [accountId+calendarId]",
+          ranges: "&key, accountId, [accountId+calendarId]",
+        });
+      const event = makeFixtureMonth("2026-11-01", "UTC")[0]!;
+      await old.table("demoEvents").put({ ...event, source: "demo" });
+      await old.table("events").put(event);
+      await old.table("meta").bulkPut([
+        { key: "demo-v1:2026-11-01", value: "UTC" },
+        { key: "unrelated-metadata", value: "keep-me" },
+      ]);
+      const sync = {
+        key: "calendar",
+        accountId: event.accountId,
+        calendarId: event.calendarId,
+        syncToken: "saved-cursor",
+        running: false,
+        invalidated: false,
+        failures: 0,
+      };
+      const range = {
+        key: "home",
+        accountId: event.accountId,
+        calendarId: event.calendarId,
+        kind: "home",
+        start: "2026-11-01",
+        end: "2026-12-01",
+        eventKeys: [event.key],
+        fetchedAt: event.updatedAt,
+        validatedAt: event.updatedAt,
+      };
+      if (version === 2) {
+        await old.table("syncStates").put(sync);
+        await old.table("ranges").put(range);
+      }
+      old.close();
+      const upgraded = database(name);
+      await upgraded.open();
+      expect(upgraded.tables.map((table) => table.name)).not.toContain(
+        "demoEvents",
+      );
+      expect(await upgraded.events.toArray()).toEqual([event]);
+      expect(await upgraded.meta.toArray()).toEqual([
+        { key: "unrelated-metadata", value: "keep-me" },
+      ]);
+      expect(await upgraded.syncStates.toArray()).toEqual(
+        version === 2 ? [sync] : [],
+      );
+      expect(await upgraded.ranges.toArray()).toEqual(
+        version === 2 ? [range] : [],
+      );
+      upgraded.close();
+      await upgraded.open();
+      expect(await upgraded.events.toArray()).toEqual([event]);
     },
   );
 
   it("compares actual instants with fractional seconds and rejects invalid times or zones", () => {
-    const event = makeDemoMonth("2026-11-01", "UTC").find(
+    const event = makeFixtureMonth("2026-11-01", "UTC").find(
       (event) => !event.allDay,
     )!;
     expect(
@@ -124,7 +104,7 @@ describe("local event storage", () => {
   });
 
   it("models all-day dates with exclusive ends and valid calendar dates", () => {
-    const event = makeDemoMonth("2026-11-01", "UTC").find(
+    const event = makeFixtureMonth("2026-11-01", "UTC").find(
       (event) => event.allDay,
     )!;
     expect(eventSchema.safeParse({ ...event, end: event.start }).success).toBe(

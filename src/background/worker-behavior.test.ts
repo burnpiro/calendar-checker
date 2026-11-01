@@ -8,13 +8,12 @@ import type { EventSyncService } from "./event-sync";
 import { AppError } from "../shared/errors";
 
 describe("worker lifecycle and messages", () => {
-  function syncHarness(source: "demo" | "google" = "demo") {
+  function syncHarness() {
     const state = {
       ...emptyStore(),
       extensionId: "test-extension",
       oauthConfigured: true,
     };
-    state.settings.dataSource = source;
     state.settings.theme = "dark";
     state.settings.syncIntervalMinutes = 9;
     const service = {
@@ -29,43 +28,29 @@ describe("worker lifecycle and messages", () => {
         { type: "SYNC_EVENTS", reason },
         service as unknown as AuthService,
         async () => undefined,
-        undefined,
         sync as unknown as EventSyncService,
       );
     return { state, service, sync, route };
   }
   it.each(["manual", "open", "view"] as const)(
-    "applies the correct display source for %s sync",
+    "syncs Google events for %s without changing preferences",
     async (reason) => {
       const h = syncHarness();
-      h.sync.run.mockImplementation(async () => {
-        expect(h.state.settings.dataSource).toBe(
-          reason === "manual" ? "google" : "demo",
-        );
-      });
-      const reply = await h.route(reason);
-      expect(reply.ok).toBe(true);
-      expect(h.service.updateSettings).toHaveBeenCalledTimes(
-        reason === "manual" ? 1 : 0,
-      );
+      expect((await h.route(reason)).ok).toBe(true);
+      expect(h.sync.run).toHaveBeenCalledWith({ type: "SYNC_EVENTS", reason });
+      expect(h.service.updateSettings).not.toHaveBeenCalled();
       expect(h.state.settings.theme).toBe("dark");
       expect(h.state.settings.syncIntervalMinutes).toBe(9);
     },
   );
-  it("keeps Google selected after a manual sync fails, without falling back to samples", async () => {
+  it("reports a failed sync without rewriting preferences", async () => {
     const h = syncHarness();
     h.sync.run.mockRejectedValue(new AppError("network"));
     expect(await h.route("manual")).toMatchObject({
       ok: false,
       error: { code: "network" },
     });
-    expect(h.state.settings.dataSource).toBe("google");
-  });
-  it("does not rewrite an already selected Google source on manual refresh", async () => {
-    const h = syncHarness("google");
-    expect((await h.route("manual")).ok).toBe(true);
     expect(h.service.updateSettings).not.toHaveBeenCalled();
-    expect(h.sync.run).toHaveBeenCalledTimes(1);
   });
   it("restores missing alarms and applies changed intervals without postponing existing alarms", async () => {
     const alarms = {

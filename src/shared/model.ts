@@ -172,12 +172,6 @@ export const commandSchema = z.discriminatedUnion("type", [
     settings: settingsPatchSchema,
   }),
   z.object({
-    type: z.literal("PREPARE_DEMO"),
-    month: z.string().regex(/^\d{4}-\d{2}-01$/),
-    timeZone: z.string().max(100),
-  }),
-  z.object({ type: z.literal("RESET_DEMO") }),
-  z.object({
     type: z.literal("SYNC_EVENTS"),
     month: z
       .string()

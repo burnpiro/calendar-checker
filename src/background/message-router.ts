@@ -1,7 +1,6 @@
 import { AppError, asAppError } from "../shared/errors";
 import { commandSchema, type Reply } from "../shared/model";
 import type { AuthService } from "./auth-service";
-import type { LocalCalendarPort } from "../calendar/database";
 import type { EventSyncService } from "./event-sync";
 
 export function isTrustedSender(
@@ -18,7 +17,6 @@ export async function routeCommand(
   raw: unknown,
   service: AuthService,
   reschedule: () => Promise<void>,
-  localCalendar?: LocalCalendarPort,
   eventSync?: EventSyncService,
 ): Promise<Reply> {
   try {
@@ -56,24 +54,8 @@ export async function routeCommand(
         await service.updateSettings(command.settings);
         await reschedule();
         break;
-      case "PREPARE_DEMO":
-        if (!localCalendar) throw new AppError("unexpected");
-        await localCalendar.prepareDemo(command.month, command.timeZone);
-        break;
-      case "RESET_DEMO":
-        if (!localCalendar) throw new AppError("unexpected");
-        await localCalendar.resetDemo();
-        break;
       case "SYNC_EVENTS":
         if (!eventSync) throw new AppError("unexpected");
-        // A user's explicit Google sync selects its data source before fetching.
-        // Automatic/background refreshes leave an intentional demo preview alone.
-        if (
-          command.reason === "manual" &&
-          (await service.snapshot()).settings.dataSource !== "google"
-        ) {
-          await service.updateSettings({ dataSource: "google" });
-        }
         await eventSync.run(command);
         break;
       case "GET_DIAGNOSTICS":

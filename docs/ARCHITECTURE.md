@@ -12,7 +12,7 @@ MV3 background worker -- native Chrome Identity
         |             -- toolbar badge / connection alarm / per-calendar sync scheduler
         |
 chrome.storage.local (metadata + preferences + safe diagnostics)
-IndexedDB via Dexie (Google events, ranges, sync state, isolated samples)
+IndexedDB via Dexie (Google events, ranges, sync state)
 
 Later: event writing / durable outbox; offscreen audio / reminders.
 ```
@@ -29,15 +29,15 @@ Later: event writing / durable outbox; offscreen audio / reminders.
 
 `src/ui/use-extension-state.ts` shares worker commands and storage-change snapshot reads across the popup, calendar tab, and options page. FullCalendar v7 renders month/week views through its native React package. Radix supplies dialogs/tooltips; local design tokens and Tailwind provide styling. Theme changes propagate across surfaces, including changes to the device theme.
 
-`src/calendar/` defines normalized records, Google response normalization, sample generation, coverage/filter helpers, and the Dexie repositories. The UI reads the selected table with `useLiveQuery`, plus cursor-free metadata queries. All writes go through worker commands and its existing queue. Demo and Google records are never combined. See `STAGE-3.md` and ADRs 0003/0004.
+`src/calendar/` defines normalized records, Google response normalization, coverage/filter helpers, and the Dexie repositories. The UI reads the Google event table with `useLiveQuery`, plus cursor-free metadata queries. All writes go through worker commands and its existing queue. There is no preview mode or bundled sample generator. See `STAGE-3.md` and ADRs 0003/0004.
 
 ## State and ownership
 
 - Store key: `calendar-checker.state.v1`.
 - Account key: verified Google `sub` (not email, which can change).
 - Account record: email, enabled state, authorization/check status, calendar summaries/permissions/colors, event-read grant marker, timestamps, safe error code.
-- Settings: connection interval, event sync interval (both 1–1440 minutes, default 5), stale threshold (1–10080 minutes, default 15), refresh on open, home cache months (0–12 past/future, default 2/6), appearance, primary zone, visibility, and explicit demo/Google source. Additive defaults preserve old records; worker patches merge individual visibility keys and validate the full result.
-- Event database: `calendar-checker-events`, version 2, upgrading in place. `events` stores normalized Google instances, `ranges` records bounded snapshot membership/coverage, and `syncStates` stores per-calendar cursors/retries. `demoEvents`/`meta` remain isolated samples. All-day ends are exclusive; timed records store instants and an original zone. Removing account/calendar metadata reconciles its Google cache; pausing preserves it.
+- Settings: connection interval, event sync interval (both 1–1440 minutes, default 5), stale threshold (1–10080 minutes, default 15), refresh on open, home cache months (0–12 past/future, default 2/6), appearance, primary zone, and visibility. Retired data-source preferences are ignored on read. Additive defaults preserve old records; worker patches merge individual visibility keys and validate the full result.
+- Event database: `calendar-checker-events`, version 3, upgrading in place. `events` stores normalized Google instances, `ranges` records bounded snapshot membership/coverage, and `syncStates` stores per-calendar cursors/retries. The migration drops the legacy `demoEvents` table and deletes `demo-v1:` seed markers; unrelated `meta` records survive. All-day ends are exclusive; timed records store instants and an original zone. Removing account/calendar metadata reconciles its Google cache; pausing preserves it.
 - Diagnostics: most recent 50 action/time/outcome/code entries, with optional fixed failure step/category, HTTP status, and bounded browser network code. No raw provider messages, tokens, account identifiers, email, or calendar contents.
 - OAuth access tokens: Chrome-managed; transient worker operation variables only. Provider sync cursors are distinct local sync state and never enter UI metadata or diagnostics. Reports include aggregate sync counts and safe settings only.
 

@@ -1,16 +1,16 @@
 # Stage 3: Google event reading and offline synchronization
 
-Release: v0.3.1. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
+Release: v0.3.2. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
 
 ## Use the release
 
 1. Build and reload the unpacked extension at `chrome://extensions`. Preserve `.env.local` and the registered extension key/client ID.
 2. In the existing Google Cloud project's **Google Auth Platform → Data Access**, include `https://www.googleapis.com/auth/calendar.events.readonly` alongside the existing identity and calendar-list scopes. See `GOOGLE-SETUP.md`.
 3. Open Settings. Existing accounts may require **Reconnect** to approve event reading. Background work never opens consent prompts. Accounts and saved data survive a permission failure.
-4. Choose **Show my calendars** if the preserved preference is Demo preview. Newly authorized/enabled accounts start a background sync; the calendar also requests its visible dates.
-5. Use the circular-arrow **Sync events** control or Settings → **Sync and show Google calendars**. The Settings action selects Google data in all open calendar surfaces before fetching. Settings shows each calendar's last successful check, errors, retry time, and cache coverage.
+4. The popup and full calendar always show cached Google data. Newly authorized/enabled accounts start a background sync; the calendar also requests its visible dates.
+5. Use the circular-arrow **Sync events** control or Settings → **Sync Google calendars**. Settings shows each calendar's last successful check, errors, retry time, and cache coverage.
 
-Manual `SYNC_EVENTS` commands select Google mode through the worker's shared preference patch before network work starts. This includes failures: cached Google data or its error/coverage state stays visible rather than falling back to samples. Automatic open/view/background refreshes preserve an intentional demo preview. The success notice confirms the selected source and directs users to per-calendar status; it does not claim every calendar synced successfully.
+Preview mode and its sample generator have been removed. Existing preview events and seed markers are deleted automatically by the schema 3 migration; saved accounts, Google events, cursors, coverage, and unrelated metadata survive. Older data-source preferences are ignored. With no enabled accounts, show the empty calendar and connection guidance. The manual-sync notice directs users to per-calendar status and does not claim every calendar succeeded.
 
 The additional scope is read-only. No event-writing scope or application backend is introduced. Google Cloud identifies the OAuth client and grants direct access to Google; it does not host the extension's local data.
 
@@ -27,18 +27,18 @@ Google forbids date filters, sorting, and text queries with incremental cursors.
 
 No-change deltas advance the cursor and validate existing coverage without re-downloading occurrences. Any change conservatively refreshes the retained occurrence windows. This uses more bandwidth on changed calendars than applying individual instance deltas, while keeping recurrence and deletion behavior on Google's authoritative expansion path.
 
-On HTTP 410, clear the affected cursor, mark its snapshots invalidated, and establish a new baseline. Old events remain explicitly stale while rebuilding. Advance the cursor and replace all retained snapshots only after all required pages/ranges have succeeded. A failed page, invalid event, or storage transaction cannot commit a partial fresh range or advance its cursor. Other calendars/accounts and samples remain untouched.
+On HTTP 410, clear the affected cursor, mark its snapshots invalidated, and establish a new baseline. Old events remain explicitly stale while rebuilding. Advance the cursor and replace all retained snapshots only after all required pages/ranges have succeeded. A failed page, invalid event, or storage transaction cannot commit a partial fresh range or advance its cursor. Other calendars/accounts remain untouched.
 
 ## Local cache and settings
 
-The Dexie database upgrades in place from version 1 to version 2, retaining stage 2 rows:
+The Dexie database upgrades in place from versions 1 or 2 to version 3, preserving Google data and removing legacy preview data:
 
-| Table                | Purpose                                                                                                                   |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `events`             | Normalized Google one-off events and expanded recurring instances, keyed by account/calendar/Google event ID.             |
-| `ranges`             | Home/browse snapshot membership and nominal date coverage, with fetched/validated timestamps.                             |
-| `syncStates`         | Per-account/calendar cursor, running/invalidated flags, successful check time, safe error, retry time, and failure count. |
-| `demoEvents`, `meta` | Existing isolated sample data and seed markers.                                                                           |
+| Table        | Purpose                                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `events`     | Normalized Google one-off events and expanded recurring instances, keyed by account/calendar/Google event ID.             |
+| `ranges`     | Home/browse snapshot membership and nominal date coverage, with fetched/validated timestamps.                             |
+| `syncStates` | Per-account/calendar cursor, running/invalidated flags, successful check time, safe error, retry time, and failure count. |
+| `meta`       | Reserved metadata. Legacy preview seed markers are removed; unrelated records survive.                                    |
 
 The default home window spans two months before the current UTC month, the current month, and six months after it. Past/future counts are separately configurable from 0 to 12. When a requested month needs coverage outside that window, retain one separate three-month browsing window around it. Browsing another outside period replaces that slot; orphaned events are removed transactionally, while home events and events referenced by both slots survive. Two days of query padding on either side cover civil-zone and all-day boundaries; coverage labels use nominal exclusive-end dates.
 
@@ -48,7 +48,7 @@ Display filters stay local: account enablement, individual calendar visibility, 
 
 Settings add event sync interval (1–1440 minutes, default 5), refresh on open (default enabled), and the home cache window. A durable one-minute alarm checks each calendar's due time; Chrome can delay delivery. Repeated opens within a minute reuse a recent check. Manual sync bypasses normal cadence but respects persisted failure backoff. Backoff uses exponential delay with jitter, starting around 30 seconds for transport failures and 60 seconds for other failures, capped around 30 minutes unless Google's `Retry-After` requires longer. Startup clears interrupted running flags and invalidates their coverage for retry.
 
-Removing an account or a calendar from a successfully refreshed calendar list removes its event snapshots and cursors. Pausing an account preserves them while stopping sync and hiding its events. Sample reset remains sample-only. Stage 4 must extend cleanup deliberately to protect pending writes before introducing an outbox.
+Removing an account or a calendar from a successfully refreshed calendar list removes its event snapshots and cursors. Pausing an account preserves them while stopping sync and hiding its events. Stage 4 must extend cleanup deliberately to protect pending writes before introducing an outbox.
 
 Event details preserve original zone, recurring-instance provenance, ETag, location, organizer, participant count/own response when available, and HTTPS links. Descriptions render as plain text, including any markup supplied by Google. Diagnostics contain safe timing settings, fixed failure categories, and aggregate sync counts; they exclude event bodies, emails, account/calendar IDs, visibility keys, OAuth tokens, and sync cursors. UI metadata queries omit cursors.
 

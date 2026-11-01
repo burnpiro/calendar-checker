@@ -25,13 +25,11 @@ import {
   Search,
   Settings2,
   ShieldCheck,
-  Sparkles,
   X,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Temporal } from "temporal-polyfill";
 import { getCalendarDatabase } from "../../calendar/database";
-import { DEMO_CALENDARS } from "../../calendar/demo";
 import {
   EVENT_TYPES,
   EVENT_TYPE_NAMES,
@@ -129,14 +127,12 @@ function CalendarBody({
   const clock = useConnectionClock();
   const preferred = useMemo(
     () =>
-      settings.dataSource === "demo"
-        ? undefined
-        : preferredCalendarAccounts(
-            state.accounts,
-            settings,
-            metadata,
-            visibleRange,
-          ),
+      preferredCalendarAccounts(
+        state.accounts,
+        settings,
+        metadata,
+        visibleRange,
+      ),
     [state.accounts, settings, metadata, visibleRange],
   );
   const syncStatus = coverageStatus(
@@ -167,37 +163,16 @@ function CalendarBody({
     try {
       const db = getCalendarDatabase();
       return {
-        events: await (
-          settings.dataSource === "demo" ? db.demoEvents : db.events
-        ).toArray(),
+        events: await db.events.toArray(),
         failed: false,
       };
     } catch {
       return { events: [] as CalendarEvent[], failed: true };
     }
-  }, [settings.dataSource]);
+  }, []);
 
   useEffect(() => {
-    if (settings.dataSource !== "demo") return;
-    let active = true;
-    void sendCommand({ type: "PREPARE_DEMO", month, timeZone: zone })
-      .then(() => {
-        if (active) setStorageError("");
-      })
-      .catch((cause: unknown) => {
-        if (active)
-          setStorageError(
-            cause instanceof Error
-              ? cause.message
-              : "Sample data could not be loaded.",
-          );
-      });
-    return () => {
-      active = false;
-    };
-  }, [month, zone, settings.dataSource]);
-  useEffect(() => {
-    if (settings.dataSource !== "google" || !clock.online) return;
+    if (!clock.online) return;
     const reason =
       previousSync.current && previousSync.current !== month ? "view" : "open";
     previousSync.current = month;
@@ -217,16 +192,11 @@ function CalendarBody({
     return () => {
       active = false;
     };
-  }, [month, settings.dataSource, accountSignature, clock.online]);
+  }, [month, accountSignature, clock.online]);
   useEffect(() => {
     if (calendar.current?.getApi().view.type !== viewName(settings.defaultView))
       calendar.current?.getApi().changeView(viewName(settings.defaultView));
   }, [settings.defaultView]);
-  useEffect(() => {
-    setSelected(null);
-    setTooltip(null);
-    setQuery("");
-  }, [settings.dataSource]);
   useEffect(() => () => clearTimeout(hoverTimer.current), []);
 
   const filtered = useMemo(
@@ -365,28 +335,17 @@ function CalendarBody({
     [settings.timeFormat],
   );
   const reconnectCount = state.accounts.filter(needsReconnect).length;
-  const demo = settings.dataSource === "demo";
-  const sourceCalendars = demo
-    ? DEMO_CALENDARS.map((item) => ({
-        accountId: item.accountId,
-        calendarId: item.id,
-        name: item.name,
-        accountName: item.accountName,
-        color: item.color,
-        enabled: true,
-      }))
-    : state.accounts.flatMap((account, index) =>
-        account.calendars.map((item) => ({
-          accountId: account.id,
-          calendarId: item.id,
-          name: item.summary,
-          accountName: account.email,
-          color:
-            item.backgroundColor ??
-            ["#7765d8", "#348e81", "#c58a35"][index % 3]!,
-          enabled: account.enabled,
-        })),
-      );
+  const sourceCalendars = state.accounts.flatMap((account, index) =>
+    account.calendars.map((item) => ({
+      accountId: account.id,
+      calendarId: item.id,
+      name: item.summary,
+      accountName: account.email,
+      color:
+        item.backgroundColor ?? ["#7765d8", "#348e81", "#c58a35"][index % 3]!,
+      enabled: account.enabled,
+    })),
+  );
   return (
     <Tooltip.Provider delayDuration={500}>
       <div
@@ -414,7 +373,7 @@ function CalendarBody({
               onSelect={(value) => calendar.current?.getApi().gotoDate(value)}
             />
             <div className="sidebar-section-title">
-              {demo ? "DEMO CALENDARS" : "YOUR CALENDARS"}
+              YOUR CALENDARS
               <span>{sourceCalendars.length}</span>
             </div>
             <div className="calendar-list">
@@ -491,9 +450,7 @@ function CalendarBody({
                 )}
               </button>
               <p>
-                {demo
-                  ? "Explore with sample events. Your Google accounts stay connected."
-                  : `${state.accounts.length} connected account${state.accounts.length === 1 ? "" : "s"}`}
+                {`${state.accounts.length} connected account${state.accounts.length === 1 ? "" : "s"}`}
               </p>
             </div>
           </aside>
@@ -570,22 +527,20 @@ function CalendarBody({
                   Week
                 </button>
               </div>
-              {!demo && (
-                <IconButton
-                  label="Sync events"
-                  disabled={
-                    busy ||
-                    syncRunning ||
-                    !clock.online ||
-                    !state.accounts.some((account) => account.enabled)
-                  }
-                  onClick={() =>
-                    void run({ type: "SYNC_EVENTS", month, reason: "manual" })
-                  }
-                >
-                  <RefreshCw size={16} />
-                </IconButton>
-              )}
+              <IconButton
+                label="Sync events"
+                disabled={
+                  busy ||
+                  syncRunning ||
+                  !clock.online ||
+                  !state.accounts.some((account) => account.enabled)
+                }
+                onClick={() =>
+                  void run({ type: "SYNC_EVENTS", month, reason: "manual" })
+                }
+              >
+                <RefreshCw size={16} />
+              </IconButton>
               {compact && (
                 <IconButton
                   label="Open full calendar"
@@ -608,26 +563,18 @@ function CalendarBody({
           </header>
           <div className="calendar-context">
             <div>
-              <span className={`data-mode ${demo ? "demo-mode" : ""}`}>
-                {demo ? <Sparkles size={13} /> : <CalendarDays size={13} />}
-                {demo ? "Demo preview" : "My calendars"}
+              <span className="data-mode">
+                <CalendarDays size={13} />
+                My calendars
               </span>
               <span className="zone-label">
                 <Globe2 size={12} />
                 {zone.replaceAll("_", " ")}
               </span>
               {compact && (
-                <span className="compact-data-note">
-                  {demo ? "Local sample events" : syncStatus.short}
-                </span>
+                <span className="compact-data-note">{syncStatus.short}</span>
               )}
             </div>
-            <button
-              className="small-link"
-              onClick={() => patch({ dataSource: demo ? "google" : "demo" })}
-            >
-              {demo ? "Show my calendars" : "Try demo preview"}
-            </button>
           </div>
           {reconnectCount > 0 && (
             <div className="calendar-notice reconnect-notice" role="alert">
@@ -649,18 +596,9 @@ function CalendarBody({
                 "Local event data could not be opened. Your account settings are still available."}
             </div>
           )}
-          {!demo && syncStatus.warning && (
+          {syncStatus.warning && (
             <div className="calendar-sync-notice" role="status">
               {syncStatus.message}
-            </div>
-          )}
-          {!compact && demo && (
-            <div className="preview-note">
-              <Sparkles size={14} />
-              <span>
-                Sample events, just for exploring. Nothing here is sent to
-                Google.
-              </span>
             </div>
           )}
           <div className="calendar-viewport" data-testid="calendar-grid">
@@ -689,6 +627,7 @@ function CalendarBody({
               slotHeaderFormat={timeFormat}
               slotDuration={compact ? "01:00:00" : "00:30:00"}
               slotMinHeight={compact ? 0 : undefined}
+              dayLaneClass="calendar-week-day"
               slotHeaderClass="calendar-slot-header"
               slotHeaderInnerClass="calendar-slot-label"
               eventClass={eventClasses}
@@ -723,7 +662,7 @@ function CalendarBody({
           <footer className="calendar-footer">
             <span>
               <span className="status-dot" />
-              {demo ? "Local sample data" : syncStatus.short}
+              {syncStatus.short}
             </span>
             <span>
               {filtered.length} event{filtered.length === 1 ? "" : "s"}

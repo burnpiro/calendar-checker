@@ -18,7 +18,6 @@ export function AppearanceSettings({
       const db = getCalendarDatabase();
       return {
         google: await db.events.count(),
-        demo: await db.demoEvents.count(),
       };
     } catch {
       return null;
@@ -218,21 +217,6 @@ export function AppearanceSettings({
             />
             Show weekends
           </label>
-          <label>
-            Calendar data
-            <select
-              value={draft.dataSource}
-              onChange={(event) =>
-                setDraft({
-                  ...draft,
-                  dataSource: event.target.value as Settings["dataSource"],
-                })
-              }
-            >
-              <option value="demo">Demo preview · sample events</option>
-              <option value="google">My Google calendars</option>
-            </select>
-          </label>
           <button className="button primary" disabled={busy}>
             Save calendar preferences
           </button>
@@ -243,23 +227,13 @@ export function AppearanceSettings({
         <h2>Local calendar storage</h2>
         <p className="muted">
           {counts
-            ? `${counts.google} cached Google events · ${counts.demo} sample events`
+            ? `${counts.google} cached Google events`
             : "Local storage is unavailable."}
         </p>
         <p className="muted">
-          Sample data has its own database table. Clearing it leaves Google data
-          and account connections intact. It is generated again when you next
-          open the demo calendar.
+          Google events are saved on this device for offline access. Configure
+          the cache window and synchronization frequency in the sync settings.
         </p>
-        <button
-          className="button subtle"
-          disabled={busy || !counts?.demo}
-          onClick={() =>
-            void run({ type: "RESET_DEMO" }, "Sample cache cleared.")
-          }
-        >
-          Clear sample cache
-        </button>
       </section>
     </>
   );

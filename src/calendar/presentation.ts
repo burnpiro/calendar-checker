@@ -52,11 +52,9 @@ export function visibleEvents(
   const needle = query.trim().toLocaleLowerCase();
   return events.filter(
     (event) =>
-      event.source === settings.dataSource &&
-      (event.source === "demo" ||
-        (enabled.has(event.accountId) &&
-          (!preferred ||
-            preferred.get(event.calendarId) === event.accountId))) &&
+      event.source === "google" &&
+      enabled.has(event.accountId) &&
+      (!preferred || preferred.get(event.calendarId) === event.accountId) &&
       settings.calendarVisibility[
         calendarKey(event.accountId, event.calendarId)
       ] !== false &&

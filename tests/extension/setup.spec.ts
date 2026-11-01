@@ -217,6 +217,18 @@ test("setup, local settings and background alarms survive a browser restart", as
         exact: true,
       }),
     ).toHaveValue("7");
+    // Keep the current-time marker near the end of the day, where it must not
+    // create a scrollbar when the entire 24-hour week is visible.
+    await reopened.clock.setFixedTime(new Date("2026-11-01T23:59:00Z"));
+    await reopened.evaluate(() =>
+      chrome.runtime.sendMessage({
+        namespace: "calendar-checker",
+        command: {
+          type: "UPDATE_SETTINGS",
+          settings: { primaryTimeZone: "UTC" },
+        },
+      }),
+    );
     await reopened.setViewportSize({ width: 800, height: 600 });
     await reopened.goto(`chrome-extension://${second.id}/popup.html`);
     await expect(reopened.getByTestId("calendar-grid")).toBeVisible();
@@ -227,24 +239,10 @@ test("setup, local settings and background alarms survive a browser restart", as
     const lastRow = reopened.locator(".calendar-day-row").last();
     await expect(lastRow).toBeInViewport({ ratio: 1 });
     await expectCalendarFits(reopened);
-    const more = reopened.locator(".calendar-more-link").first();
-    await expect(more).toBeVisible();
-    // Compact cells must fit both the visible event and its overflow control.
-    await expect
-      .poll(() =>
-        more.evaluate((el) => {
-          const cell = el.closest(".calendar-day-cell")!;
-          const event = cell.querySelector(".calendar-event")!;
-          return (
-            el.getBoundingClientRect().top >=
-            event.getBoundingClientRect().bottom - 1
-          );
-        }),
-      )
-      .toBe(true);
-    await more.click();
-    await expect(reopened.getByRole("dialog")).toBeVisible();
-    await reopened.keyboard.press("Escape");
+    await expect(reopened.locator(".calendar-event")).toHaveCount(0);
+    await expect(
+      reopened.getByRole("button", { name: "Try demo preview" }),
+    ).toHaveCount(0);
     await reopened.getByRole("heading", { level: 1 }).click();
     await reopened
       .locator(".calendar-app")
@@ -285,6 +283,32 @@ test("popup identifies only the affected account and pausing it clears the real 
     const { context, id } = await launch(profile);
     active = context;
     const page = await context.newPage();
+    await context.serviceWorkers()[0]!.evaluate(() => {
+      chrome.identity.getAuthToken = (async (
+        details: chrome.identity.TokenDetails,
+      ) => ({
+        token: "badge-fixture-token",
+        grantedScopes: details.scopes,
+      })) as typeof chrome.identity.getAuthToken;
+      globalThis.fetch = async (input) => {
+        const url = new URL(String(input));
+        const data =
+          url.pathname === "/oauth2/v3/userinfo"
+            ? {
+                sub: "fixture-b",
+                email: "account-b@example.test",
+                email_verified: true,
+              }
+            : {
+                items: [],
+                nextSyncToken: "badge-fixture-cursor",
+                timeZone: "UTC",
+              };
+        return new Response(JSON.stringify(data), {
+          headers: { "Content-Type": "application/json" },
+        });
+      };
+    });
     await page.goto(`chrome-extension://${id}/options.html`);
     const store = emptyStore();
     const at = new Date().toISOString();
@@ -346,8 +370,7 @@ test("popup identifies only the affected account and pausing it clears the real 
     await expect(page.getByRole("alert")).not.toContainText(
       "account-b@example.test",
     );
-    // Automatic month overflow can move the first stored event behind “more”.
-    await expect(page.locator(".calendar-event:visible").first()).toBeVisible();
+    await expect(page.locator(".calendar-day-row")).toHaveCount(6);
     await expectCalendarFits(page);
     await expect(page.locator(".calendar-day-row").last()).toBeInViewport({
       ratio: 1,
@@ -388,68 +411,24 @@ test("popup identifies only the affected account and pausing it clears the real 
   }
 });
 
-test("calendar navigation, demo isolation, event details, shared preferences and offline persistence", async () => {
-  test.setTimeout(60_000);
-  const profile = await mkdtemp(join(tmpdir(), "calendar-checker-calendar-"));
+test("fresh calendar has no preview mode and shares preferences across an offline restart", async () => {
+  const profile = await mkdtemp(join(tmpdir(), "calendar-empty-test-"));
   let active: BrowserContext | undefined;
   try {
     const { context, id } = await launch(profile);
     active = context;
     const page = await context.newPage();
-    await page.setViewportSize({ width: 1440, height: 960 });
-    const errors: string[] = [];
-    page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(`chrome-extension://${id}/calendar.html`);
+    await expect(page.locator(".data-mode")).toHaveText("My calendars");
+    await expect(page.locator(".calendar-event")).toHaveCount(0);
     await expect(
-      page.getByText("Sample events, just for exploring.", { exact: false }),
-    ).toBeVisible();
-    const design = page
-      .locator(".calendar-event")
-      .filter({ hasText: "Design review" })
-      .first();
-    await expect(design).toBeVisible();
-    await design.hover();
-    await expect(page.locator(".event-hover-card")).not.toBeVisible();
-    await expect(page.locator(".event-hover-card")).toBeVisible({
-      timeout: 2500,
-    });
-    await design.click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(
-      page.getByRole("dialog").getByRole("heading", { name: "Design review" }),
-    ).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).not.toBeVisible();
-    await design.focus();
-    await page.keyboard.press("Enter");
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await page.keyboard.press("Escape");
-    await page.getByRole("searchbox", { name: "Search events" }).fill("Maya");
-    await expect(
-      page.locator(".calendar-event").filter({ hasText: "Maya" }).first(),
+      page.getByText("Connect or enable a Google account in Settings", {
+        exact: false,
+      }),
     ).toBeVisible();
     await expect(
-      page.locator(".calendar-event").filter({ hasNotText: "Maya" }),
+      page.getByRole("button", { name: /demo preview|Show my calendars/i }),
     ).toHaveCount(0);
-    await page
-      .getByRole("button", { name: "Clear search", exact: true })
-      .click();
-    await page.getByRole("button", { name: "Week", exact: true }).click();
-    await expect(
-      page.getByRole("button", { name: "Week", exact: true }),
-    ).toHaveAttribute("aria-pressed", "true");
-    await page
-      .locator(".calendar-app")
-      .screenshot({ path: "test-results/calendar-week.png" });
-    const work = page.getByRole("checkbox", { name: /^Work Work/ });
-    await work.click();
-    await expect(work).not.toBeChecked();
-    await expect(
-      page.locator(".calendar-event").filter({ hasText: "Design review" }),
-    ).toHaveCount(0);
-    await work.click();
-    await expect(work).toBeChecked();
-    await page.getByRole("button", { name: "Month", exact: true }).click();
     const previousTitle = await page
       .getByRole("heading", { level: 1 })
       .textContent();
@@ -460,60 +439,31 @@ test("calendar navigation, demo isolation, event details, shared preferences and
       previousTitle!,
     );
     await page.getByRole("button", { name: "Today", exact: true }).click();
-    await page
-      .locator(".calendar-app")
-      .screenshot({ path: "test-results/calendar-month.png" });
-    await page
-      .getByRole("button", { name: "Show my calendars", exact: true })
-      .click();
-    await expect(
-      page.getByText("Connect or enable a Google account in Settings", {
-        exact: false,
-      }),
-    ).toBeVisible();
-    await expect(page.locator(".calendar-event")).toHaveCount(0);
-    await page
-      .getByRole("button", { name: "Try demo preview", exact: true })
-      .click();
     const settings = await context.newPage();
     await settings.goto(`chrome-extension://${id}/options.html`);
+    await expect(
+      settings.getByRole("combobox", { name: "Calendar data", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      settings.getByRole("button", { name: "Clear sample cache" }),
+    ).toHaveCount(0);
     await settings
       .getByRole("combobox", { name: "Theme", exact: true })
       .selectOption("dark");
     await settings
       .getByRole("button", { name: "Save calendar preferences", exact: true })
       .click();
-    await expect(settings.getByRole("status")).toContainText(
-      "Calendar preferences saved",
-    );
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    await expect(
-      page
-        .locator(".calendar-event")
-        .filter({ hasText: "Design review" })
-        .first(),
-    ).toBeVisible();
-    await page
-      .locator(".calendar-app")
-      .screenshot({ path: "test-results/calendar-dark.png" });
-    expect(errors).toEqual([]);
     await context.close();
     active = undefined;
     const reopened = await launch(profile);
     active = reopened.context;
-    const offlinePage = await reopened.context.newPage();
-    await reopened.context.setOffline(true);
-    await offlinePage.goto(`chrome-extension://${id}/calendar.html`);
-    await expect(offlinePage.locator("html")).toHaveAttribute(
-      "data-theme",
-      "dark",
-    );
-    await expect(
-      offlinePage
-        .locator(".calendar-event")
-        .filter({ hasText: "Design review" })
-        .first(),
-    ).toBeVisible();
+    await active.setOffline(true);
+    const offline = await active.newPage();
+    await offline.goto(`chrome-extension://${id}/calendar.html`);
+    await expect(offline.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(offline.locator(".data-mode")).toHaveText("My calendars");
+    await expect(offline.locator(".calendar-event")).toHaveCount(0);
   } finally {
     await active?.close();
     await rm(profile, { recursive: true, force: true });
@@ -677,16 +627,14 @@ test("bundled worker syncs Google fixtures, updates instances and retains them a
     const popup = await context.newPage();
     await popup.setViewportSize({ width: 800, height: 600 });
     await popup.goto(`chrome-extension://${id}/popup.html`);
-    await expect(page.locator(".data-mode")).toHaveText("Demo preview");
-    await expect(popup.locator(".data-mode")).toHaveText("Demo preview");
+    await expect(
+      page.getByRole("button", { name: "Try demo preview" }),
+    ).toHaveCount(0);
     await settings
-      .getByRole("button", {
-        name: "Sync and show Google calendars",
-        exact: true,
-      })
+      .getByRole("button", { name: "Sync Google calendars", exact: true })
       .click();
     await expect(settings.getByRole("status")).toContainText(
-      "Google calendars selected",
+      "See each calendar for its status",
     );
     await expect(page.locator(".data-mode")).toHaveText("My calendars");
     await expect(popup.locator(".data-mode")).toHaveText("My calendars");
@@ -700,6 +648,26 @@ test("bundled worker syncs Google fixtures, updates instances and retains them a
       page.locator(".calendar-event").filter({ hasText: "Fixture standup" }),
     ).toBeVisible();
     await expect(page.locator(".calendar-footer")).toContainText("Last synced");
+    const standup = page
+      .locator(".calendar-event")
+      .filter({ hasText: "Fixture standup" });
+    await standup.hover();
+    await expect(page.locator(".event-hover-card")).not.toBeVisible();
+    await expect(page.locator(".event-hover-card")).toBeVisible({
+      timeout: 2500,
+    });
+    await standup.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("searchbox", { name: "Search events" })
+      .fill("no matching event");
+    await expect(page.locator(".calendar-event")).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Clear search", exact: true })
+      .click();
+    await expect(standup).toBeVisible();
     await page
       .locator(".calendar-event")
       .filter({ hasText: "Fixture standup" })

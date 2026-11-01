@@ -35,7 +35,7 @@ Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.
 - Preserve browser API receivers when wrapping native functions: use the global-context fetch wrapper, not a native `fetch` stored and invoked as an object method. Keep real-worker coverage; Node mocks do not enforce Chrome's receiver rules.
 - Request the narrowest scopes needed by the current stage. Add event write scopes with the event-writing feature.
 - Treat Google event text and all API responses as untrusted. Do not render raw HTML.
-- Preserve demo/Google table isolation and worker-owned writes. Never use samples to stand in for an unsynced Google calendar. Sample-only reset must not touch Google rows or future pending writes.
+- The application displays Google data only. Keep fictional provider fixtures in test code, outside the extension bundle. Never substitute samples for unsynced Google calendars. Schema 3 removes the legacy preview table/seed markers; migrations must preserve Google rows, coverage, cursors, and future pending writes.
 - Change-feed cursors and bounded expanded occurrence queries are separate. Never add timeMin/timeMax/orderBy/q to cursor requests. Do not advance cursors or mark coverage fresh until all required pages/ranges commit atomically. Preserve stale snapshots on errors/410; clean only the affected calendar/account.
 - Settings commands are partial patches. Merge and validate in the worker; never reset unrelated preferences. Diagnostic exports must not include account/calendar visibility keys.
 - FullCalendar v7 differs from v6: use installed package types and documented render hooks/theme variables. Do not depend on hashed internal CSS class names.

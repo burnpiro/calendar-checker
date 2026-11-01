@@ -123,11 +123,6 @@ export function EventDetails({
                   )}
                 </div>
               )}
-              {event.source === "demo" && (
-                <p className="demo-detail-note">
-                  Sample event · stored only on this device
-                </p>
-              )}
             </>
           )}
         </Dialog.Content>

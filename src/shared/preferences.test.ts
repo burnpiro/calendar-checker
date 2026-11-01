@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { storeSchema } from "./model";
+import { storeSchema, type Account } from "./model";
 import {
   DEFAULT_SETTINGS,
   calendarKey,
   settingsPatchSchema,
   settingsSchema,
 } from "./preferences";
-import { makeDemoMonth } from "../calendar/demo";
+import { makeFixtureMonth } from "../../tests/fixtures/calendar";
 import { dateKey, eventWhen, visibleEvents } from "../calendar/presentation";
+
+const accounts = ["fixture-work-account", "fixture-personal-account"].map(
+  (id) => ({ id, enabled: true }) as Account,
+);
 
 describe("preference compatibility and event presentation", () => {
   it("upgrades stage 1 settings in memory without losing auth timing or accounts", () => {
@@ -25,6 +29,20 @@ describe("preference compatibility and event presentation", () => {
     });
     expect(settingsSchema.safeParse({}).success).toBe(false);
   });
+  it.each(["demo", "google"])(
+    "ignores the retired %s preference while preserving existing settings",
+    (dataSource) => {
+      const settings = settingsSchema.parse({
+        ...DEFAULT_SETTINGS,
+        dataSource,
+        theme: "dark",
+        syncIntervalMinutes: 9,
+      });
+      expect(settings).not.toHaveProperty("dataSource");
+      expect(settings).toMatchObject({ theme: "dark", syncIntervalMinutes: 9 });
+      expect(settingsPatchSchema.safeParse({ dataSource }).success).toBe(false);
+    },
+  );
   it("partial updates contain only requested keys, without injecting unrelated defaults", () => {
     expect(settingsPatchSchema.parse({ theme: "dark" })).toEqual({
       theme: "dark",
@@ -48,47 +66,43 @@ describe("preference compatibility and event presentation", () => {
       }).success,
     ).toBe(false);
   });
-  it("does not mix samples into a real account calendar", () => {
-    const events = makeDemoMonth("2026-11-01", "UTC");
-    expect(
-      visibleEvents(
-        events,
-        { ...DEFAULT_SETTINGS, dataSource: "google" },
-        [],
-        "",
-        [],
-      ),
-    ).toEqual([]);
+  it("hides disconnected accounts and independently hidden calendars", () => {
+    const events = makeFixtureMonth("2026-11-01", "UTC");
+    expect(visibleEvents(events, DEFAULT_SETTINGS, [], "", [])).toEqual([]);
     const hidden = {
       ...DEFAULT_SETTINGS,
       calendarVisibility: {
-        [calendarKey("demo-work-account", "demo-work")]: false,
+        [calendarKey("fixture-work-account", "fixture-work")]: false,
       },
     };
     expect(
-      visibleEvents(events, hidden, [], "", []).every(
-        (event) => event.calendarId !== "demo-work",
+      visibleEvents(events, hidden, accounts, "", []).every(
+        (event) => event.calendarId !== "fixture-work",
       ),
     ).toBe(true);
-    expect(events.some((event) => event.calendarId === "demo-work")).toBe(true);
+    expect(events.some((event) => event.calendarId === "fixture-work")).toBe(
+      true,
+    );
   });
   it("filters independently by text and Google event type without modifying stored events", () => {
-    const events = makeDemoMonth("2026-11-01", "UTC");
+    const events = makeFixtureMonth("2026-11-01", "UTC");
     const birthday = visibleEvents(
       events,
       DEFAULT_SETTINGS,
-      [],
+      accounts,
       "birthday",
       [],
     );
     expect(birthday.length).toBe(1);
     expect(
-      visibleEvents(events, DEFAULT_SETTINGS, [], "birthday", ["birthday"]),
+      visibleEvents(events, DEFAULT_SETTINGS, accounts, "birthday", [
+        "birthday",
+      ]),
     ).toEqual([]);
     expect(events.some((event) => event.eventType === "birthday")).toBe(true);
   });
-  it("keeps sample wall times stable across DST and labels overnight event dates", () => {
-    const month = makeDemoMonth("2026-03-01", "Europe/Warsaw");
+  it("keeps fixture wall times stable across DST and labels overnight event dates", () => {
+    const month = makeFixtureMonth("2026-03-01", "Europe/Warsaw");
     expect(
       month.find((event) => event.title === "Weekly planning")?.start,
     ).toBe("2026-03-02T08:00:00Z");
@@ -110,7 +124,7 @@ describe("preference compatibility and event presentation", () => {
     expect(dateKey(new Date("2026-11-01T23:30:00Z"), "Europe/Warsaw")).toBe(
       "2026-11-02",
     );
-    const birthday = makeDemoMonth("2026-11-01", "Europe/Warsaw").find(
+    const birthday = makeFixtureMonth("2026-11-01", "Europe/Warsaw").find(
       (event) => event.eventType === "birthday",
     )!;
     expect(eventWhen(birthday, "America/Los_Angeles", "12h")).toBe(
