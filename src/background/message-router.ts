@@ -66,6 +66,14 @@ export async function routeCommand(
         break;
       case "SYNC_EVENTS":
         if (!eventSync) throw new AppError("unexpected");
+        // A user's explicit Google sync selects its data source before fetching.
+        // Automatic/background refreshes leave an intentional demo preview alone.
+        if (
+          command.reason === "manual" &&
+          (await service.snapshot()).settings.dataSource !== "google"
+        ) {
+          await service.updateSettings({ dataSource: "google" });
+        }
         await eventSync.run(command);
         break;
       case "GET_DIAGNOSTICS":

@@ -113,12 +113,18 @@ export function SyncSettings({
         onClick={() =>
           void run(
             { type: "SYNC_EVENTS", reason: "manual" },
-            "Sync finished. See each calendar for its status.",
+            "Google calendars selected. Review sync status below.",
           )
         }
       >
-        Sync all enabled accounts
+        Sync and show Google calendars
       </button>
+      {settings.dataSource === "demo" && (
+        <p className="muted">
+          The calendar is displaying sample events. This action switches the
+          popup and calendar tab to your enabled Google accounts.
+        </p>
+      )}
       <p className="muted">
         {clock.online
           ? "Connected to the network"

@@ -49,7 +49,9 @@ export function useExtensionState() {
           ? "Waiting for Google sign-in…"
           : command.type === "CHECK" || command.type === "CHECK_ALL"
             ? "Checking Google access…"
-            : "Updating local settings…",
+            : command.type === "SYNC_EVENTS"
+              ? "Syncing Google calendar events…"
+              : "Updating local settings…",
       );
       setBusy(true);
       setError("");

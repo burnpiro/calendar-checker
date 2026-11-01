@@ -2,7 +2,7 @@
 
 A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
 
-## Current release: stage 3 · v0.3.0
+## Current release: stage 3 · v0.3.1
 
 Google event reading and local synchronization are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
 
@@ -30,7 +30,7 @@ The stage 1 account features remain available in Settings:
 
 **Full live Google verification is pending.** Authorized token acquisition and account/calendar endpoint probes have succeeded in the running extension. A Chrome native-fetch receiver bug causing the initial account-connection failure has been reproduced and fixed; the user has confirmed successful account connection after reloading the rebuilt extension. Real secondary-account selection, renewal after a full Chrome restart, and revoked-consent recovery must also be exercised. See [the validation matrix](docs/STAGE-1-VALIDATION.md). A successful endpoint probe does not count as full account-flow acceptance.
 
-**Upgrading existing accounts:** stage 3 adds `calendar.events.readonly`. Include it in the Google project's OAuth Data Access settings, reload the extension, and use **Reconnect** where required to approve read-only event access. Choose **Show my calendars** if your preserved setting is Demo preview. No new OAuth client or application server is needed. See [the stage 3 guide](docs/STAGE-3.md).
+**Upgrading existing accounts:** stage 3 adds `calendar.events.readonly`. Include it in the Google project's OAuth Data Access settings, reload the extension, and use **Reconnect** where required to approve read-only event access. In Settings, **Sync and show Google calendars** switches the popup and full calendar from demo to Google data and starts a manual sync. **Show my calendars** remains a direct view toggle. No new OAuth client or application server is needed. See [the stage 3 guide](docs/STAGE-3.md).
 
 Google event access is covered by synthetic API/identity tests; live event-scope and multi-account acceptance remain pending. Event editing, notifications, custom sounds, snooze, DND, and dual time zones remain in [the full plan](docs/PLAN.md).
 
@@ -48,7 +48,7 @@ npm run build
 npm run extension:id
 ```
 
-Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.3.0. The native-popup sizing correction remains covered by an actual toolbar-popup test.
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.3.1. The native-popup sizing correction remains covered by an actual toolbar-popup test.
 
 The demo calendar works without OAuth credentials. Settings displays setup instructions and disables Google sign-in until a client ID is configured. Preserve any existing `.env.local` when updating.
 

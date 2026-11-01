@@ -674,9 +674,28 @@ test("bundled worker syncs Google fixtures, updates instances and retains them a
     page.on("pageerror", (error) => errors.push(error.message));
     await page.setViewportSize({ width: 1440, height: 960 });
     await page.goto(`chrome-extension://${id}/calendar.html`);
-    await page
-      .getByRole("button", { name: "Show my calendars", exact: true })
+    const popup = await context.newPage();
+    await popup.setViewportSize({ width: 800, height: 600 });
+    await popup.goto(`chrome-extension://${id}/popup.html`);
+    await expect(page.locator(".data-mode")).toHaveText("Demo preview");
+    await expect(popup.locator(".data-mode")).toHaveText("Demo preview");
+    await settings
+      .getByRole("button", {
+        name: "Sync and show Google calendars",
+        exact: true,
+      })
       .click();
+    await expect(settings.getByRole("status")).toContainText(
+      "Google calendars selected",
+    );
+    await expect(page.locator(".data-mode")).toHaveText("My calendars");
+    await expect(popup.locator(".data-mode")).toHaveText("My calendars");
+    await expect(
+      popup.locator(".calendar-event").filter({ hasText: "Fixture standup" }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".calendar-event").filter({ hasText: "Weekly planning" }),
+    ).toHaveCount(0);
     await expect(
       page.locator(".calendar-event").filter({ hasText: "Fixture standup" }),
     ).toBeVisible();
@@ -749,9 +768,6 @@ test("bundled worker syncs Google fixtures, updates instances and retains them a
       requests.some((request) => request.kind === "feed" && request.hasBounds),
     ).toBe(false);
     await page.screenshot({ path: "test-results/google-calendar.png" });
-    const popup = await context.newPage();
-    await popup.setViewportSize({ width: 800, height: 600 });
-    await popup.goto(`chrome-extension://${id}/popup.html`);
     await expect(
       popup
         .locator(".calendar-event")

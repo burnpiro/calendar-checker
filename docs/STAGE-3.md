@@ -1,6 +1,6 @@
 # Stage 3: Google event reading and offline synchronization
 
-Release: v0.3.0. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
+Release: v0.3.1. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
 
 ## Use the release
 
@@ -8,7 +8,9 @@ Release: v0.3.0. This stage reads events; event creation/editing and reminder de
 2. In the existing Google Cloud project's **Google Auth Platform → Data Access**, include `https://www.googleapis.com/auth/calendar.events.readonly` alongside the existing identity and calendar-list scopes. See `GOOGLE-SETUP.md`.
 3. Open Settings. Existing accounts may require **Reconnect** to approve event reading. Background work never opens consent prompts. Accounts and saved data survive a permission failure.
 4. Choose **Show my calendars** if the preserved preference is Demo preview. Newly authorized/enabled accounts start a background sync; the calendar also requests its visible dates.
-5. Use the circular-arrow **Sync events** control or Settings → **Sync all enabled accounts**. Settings shows each calendar's last successful check, errors, retry time, and cache coverage.
+5. Use the circular-arrow **Sync events** control or Settings → **Sync and show Google calendars**. The Settings action selects Google data in all open calendar surfaces before fetching. Settings shows each calendar's last successful check, errors, retry time, and cache coverage.
+
+Manual `SYNC_EVENTS` commands select Google mode through the worker's shared preference patch before network work starts. This includes failures: cached Google data or its error/coverage state stays visible rather than falling back to samples. Automatic open/view/background refreshes preserve an intentional demo preview. The success notice confirms the selected source and directs users to per-calendar status; it does not claim every calendar synced successfully.
 
 The additional scope is read-only. No event-writing scope or application backend is introduced. Google Cloud identifies the OAuth client and grants direct access to Google; it does not host the extension's local data.
 

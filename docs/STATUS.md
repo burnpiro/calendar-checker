@@ -23,7 +23,13 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 Stage 4: event creation/editing, writable account/calendar selection, recurrence edit semantics, durable outbox, retry-safe creation, and conflict resolution. Add event-write scope only with that feature and protect pending edits from cache reconciliation/removal.
 
-After reloading v0.3.0, approve the new read-only event scope through Reconnect where required and exercise the live checks in `STAGE-3.md`. Continue the stage 1 two-account/lifecycle matrix before treating multi-account authentication as accepted. First-account connection is user-confirmed; live stage 3 event reads are not yet verified. Custom sounds, notifications, snooze, DND, and secondary zones remain stage 5.
+After reloading the current build, approve the new read-only event scope through Reconnect where required and exercise the live checks in `STAGE-3.md`. Continue the stage 1 two-account/lifecycle matrix before treating multi-account authentication as accepted. First-account connection is user-confirmed; live stage 3 event reads are not yet verified. Custom sounds, notifications, snooze, DND, and secondary zones remain stage 5.
+
+## Manual sync display correction · v0.3.1
+
+The user reported a sync-completion notice while the popup still displayed samples. Explicit manual sync now persists Google as the shared data source before fetching; automatic refreshes preserve demo mode. Settings labels the action **Sync and show Google calendars**, explains its effect while samples are selected, and reports source selection rather than implying all calendars succeeded. Network/storage errors cannot silently substitute demo events.
+
+Validation: **97 unit/adapter tests**, TypeScript, formatting, production build, and **five Chromium tests** pass. The synthetic Google flow now opens both calendar surfaces in demo mode, clicks the actual Settings sync action, verifies both switch to Google events, and retains the existing offline/restart checks. The production bundle is v0.3.1; live user-account event acceptance remains pending.
 
 ## Stage 3 · v0.3.0
 
@@ -53,7 +59,7 @@ Verified locally:
 - `npm run check`: strict TypeScript, **67 unit/adapter tests**, formatting, and production build pass. New cases cover legacy preferences, independent patches, diagnostic privacy, database isolation/reset/reopening, valid event instants, exclusive all-day ends, DST, overnight date labels, and filters.
 - **Four isolated Chromium extension tests pass**: actual toolbar-popup sizing/reopening; native transport and settings/alarm restart persistence; affected-account reconnect popup/badge behavior; calendar navigation, filters, click/keyboard details, shared theme changes, demo/Google separation, and offline browser-restart persistence. Popup page checks verify all six month rows fit and overflow controls do not overlap events.
 - Month, week, compact popup, options, and dark-theme screenshots were inspected using fictional test data. The browser tests use disposable profiles, with no live Google authorization or personal Chrome profile.
-- Stage 2 was verified with v0.2.2; the current bundle is stage 3 v0.3.0. Generated output and screenshots remain ignored.
+- Stage 2 was verified with v0.2.2; the current bundle is stage 3 v0.3.1. Generated output and screenshots remain ignored.
 
 Google event sync is **not implemented** in this release. Demo preview is explicitly labelled; My calendars explains that sync has not started. Sample-only cache reset cannot touch reserved Google rows. See `STAGE-2.md` and ADR 0003.
 
