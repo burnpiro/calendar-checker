@@ -40,6 +40,8 @@ Verification:
 
 The existing OAuth app's Data Access scopes were configured through Google Cloud Console and save-confirmed on 2026-11-01: OpenID, email, calendar-list read, and event read. Its scope list had been empty. The local gcloud SDK still fails with an OS-level “Operation not permitted”; no CLI configuration change or Cloud log read is claimed. Users must still reconnect to grant the additional event scope. Live event/multi-account/recurrence/lifecycle acceptance remains pending; saving the app's scope declarations does not prove those flows. See `STAGE-3.md` and ADR 0004.
 
+The user subsequently requested future-stage permissions. `calendar.events` was added to the same Cloud Data Access list and save-confirmed, preparing stage 4 event creation/editing. The five Cloud declarations now include both event read and write scopes; v0.3.0 runtime authorization remains read-only. Stage 5's `notifications` and `offscreen` are Chrome manifest permissions to add with their features, not Cloud OAuth scopes. No application code or active grant was broadened by this Cloud declaration.
+
 ## Stage 2 · v0.2.2
 
 Implemented: modern popup/full-tab month and week calendar, date navigation and sidebar, calendar visibility and text/type filters, event dialog and one-second hover previews, keyboard event access, reactive Dexie storage, isolated local sample data, and a shared appearance/settings page. Preferences include primary time zone, visible week hours, week start/weekends, clock format, theme, density, default view, and explicit demo/Google mode.

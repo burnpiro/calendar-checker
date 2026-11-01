@@ -36,6 +36,12 @@ These identify the authorized account, list its calendars, and read their events
 
 Manage this Chrome Extension app's Data Access scopes through the Cloud Console. The similarly named `gcloud iam oauth-clients` commands manage Workforce Identity Federation clients, a different resource; see [Google's distinction](https://docs.cloud.google.com/iam/docs/workforce-manage-oauth-app). [Data Access documentation](https://support.google.com/cloud/answer/15549135) describes selecting scopes, updating the selection, and saving it.
 
+### Permissions prepared for later stages
+
+At the user's request, the existing Cloud OAuth app also declares `https://www.googleapis.com/auth/calendar.events` for stage 4 event creation/editing on writable calendars. This scope is saved in Data Access; v0.3.0 still requests only its four current read/identity scopes. Add the write scope to runtime authorization and obtain user consent when event-writing functionality is implemented. No calendar administration/sharing or Gmail-content permission is needed for the planned features. See [Calendar scope definitions](https://developers.google.com/workspace/calendar/api/auth).
+
+Stage 5 desktop reminders and background audio need Chrome manifest permissions `notifications` and `offscreen`, respectively. Add those with their implementations; they are not Google OAuth Data Access scopes. Scheduling and local preferences already use `alarms` and `storage`. Custom sound imports, snooze, DND, and display time zones require no additional Google scope.
+
 ## 4. Create a Chrome Extension OAuth client
 
 1. Open **Clients → Create client**.
