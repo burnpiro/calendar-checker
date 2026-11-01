@@ -38,7 +38,7 @@ Verification:
 - Fixture Google/full-calendar/popup/offline screenshots were inspected. No personal Chrome profile or live Google credentials were used for stage 3 tests. The fixture uses a disposable copied extension with a synthetic public client; the final build preserves `.env.local`.
 - Local application storage only; no backend, remote scripts, telemetry, new Chrome host permissions, or event-writing scope. The production bundle is `.output/chrome-mv3`.
 
-Live acceptance remains pending for the additional event scope and real multi-account/recurrence/lifecycle behavior. See `STAGE-3.md` and ADR 0004. No new Google Cloud project/client is needed; update the existing OAuth Data Access scopes and reconnect accounts as necessary.
+The existing OAuth app's Data Access scopes were configured through Google Cloud Console and save-confirmed on 2026-11-01: OpenID, email, calendar-list read, and event read. Its scope list had been empty. The local gcloud SDK still fails with an OS-level “Operation not permitted”; no CLI configuration change or Cloud log read is claimed. Users must still reconnect to grant the additional event scope. Live event/multi-account/recurrence/lifecycle acceptance remains pending; saving the app's scope declarations does not prove those flows. See `STAGE-3.md` and ADR 0004.
 
 ## Stage 2 · v0.2.2
 

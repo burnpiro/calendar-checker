@@ -34,6 +34,8 @@ https://www.googleapis.com/auth/calendar.events.readonly
 
 These identify the authorized account, list its calendars, and read their events. The event scope was added in stage 3; existing accounts may need **Reconnect** to approve it. Keep the same OAuth client and registered extension ID when upgrading. No event-writing permission or application server is needed. Broader write scopes belong to stage 4.
 
+Manage this Chrome Extension app's Data Access scopes through the Cloud Console. The similarly named `gcloud iam oauth-clients` commands manage Workforce Identity Federation clients, a different resource; see [Google's distinction](https://docs.cloud.google.com/iam/docs/workforce-manage-oauth-app). [Data Access documentation](https://support.google.com/cloud/answer/15549135) describes selecting scopes, updating the selection, and saving it.
+
 ## 4. Create a Chrome Extension OAuth client
 
 1. Open **Clients → Create client**.
