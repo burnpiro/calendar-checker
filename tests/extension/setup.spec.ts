@@ -1071,7 +1071,7 @@ test("week view scrolls at a readable hour height by default and shares the opti
       }),
     ).toHaveValue("48");
     await settings
-      .getByRole("textbox", { name: /^Primary time zone/ })
+      .getByRole("combobox", { name: /^Primary time zone/ })
       .fill("UTC");
     await settings
       .getByRole("combobox", { name: "Default view", exact: true })
