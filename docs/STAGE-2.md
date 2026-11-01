@@ -1,10 +1,12 @@
 # Stage 2: calendar shell and local storage
 
-Version: 0.2.0. Scope: calendar UI, local event storage, and shared preferences. Google event synchronization remains stage 3.
+Version: 0.2.1. Scope: calendar UI, local event storage, and shared preferences. Google event synchronization remains stage 3.
 
 ## Open the calendar
 
 Build with `npm run build`, then reload Calendar Checker at `chrome://extensions`. The toolbar popup now opens an 800×600 calendar. **Open full calendar** opens `calendar.html` in a tab; **Settings** opens account and calendar preferences. Existing Google OAuth configuration and connected accounts are preserved.
+
+The popup uses [Chrome's maximum toolbar-popup size, 800×600 pixels](https://developer.chrome.com/docs/extensions/reference/api/action#popup), and adapts to a narrower available viewport. The grid spans the full popup width. A compact toolbar holds navigation, search, view switches, and labelled full-calendar/settings icons; a short second row identifies the data source and time zone. Month rows fit automatically, with overflow events accessible through “more” controls. Week view uses hourly slots and compact time labels to fit the configured hours, including 00:00–24:00, without scrolling the calendar. Event start/end times retain their original precision.
 
 The calendar supports:
 

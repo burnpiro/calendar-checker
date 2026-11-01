@@ -1,7 +1,13 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
-import { chromium, expect, test, type BrowserContext } from "@playwright/test";
+import {
+  chromium,
+  expect,
+  test,
+  type BrowserContext,
+  type Page,
+} from "@playwright/test";
 import { emptyStore, STORAGE_KEY, storeSchema } from "../../src/shared/model";
 import { browserFetch } from "../../src/background/google";
 
@@ -23,6 +29,37 @@ async function launch(
     (await context.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
   return { context, id };
+}
+
+async function expectCalendarFits(page: Page) {
+  await expect
+    .poll(() =>
+      page.getByTestId("calendar-grid").evaluate((root) => {
+        const { left, right } = root.getBoundingClientRect();
+        const scrollAreas = [...root.querySelectorAll<HTMLElement>("*")].filter(
+          (el) => {
+            const style = getComputedStyle(el);
+            const rect = el.getBoundingClientRect();
+            return (
+              rect.width > 0 &&
+              rect.height > 0 &&
+              ((/auto|scroll/.test(style.overflowY) &&
+                el.scrollHeight > el.clientHeight + 1) ||
+                (/auto|scroll/.test(style.overflowX) &&
+                  el.scrollWidth > el.clientWidth + 1))
+            );
+          },
+        );
+        return {
+          fullWidth: left === 0 && right === window.innerWidth,
+          scrollAreas: scrollAreas.length,
+          pageOverflow:
+            document.documentElement.scrollHeight > window.innerHeight ||
+            document.documentElement.scrollWidth > window.innerWidth,
+        };
+      }),
+    )
+    .toEqual({ fullWidth: true, scrollAreas: 0, pageOverflow: false });
 }
 
 test("setup, local settings and background alarms survive a browser restart", async () => {
@@ -96,6 +133,7 @@ test("setup, local settings and background alarms survive a browser restart", as
         name: "Warn when data is older than",
       }),
     ).toHaveValue("27");
+    await reopened.setViewportSize({ width: 800, height: 600 });
     await reopened.goto(`chrome-extension://${second.id}/popup.html`);
     await expect(reopened.getByTestId("calendar-grid")).toBeVisible();
     await expect(
@@ -104,6 +142,7 @@ test("setup, local settings and background alarms survive a browser restart", as
     await expect(reopened.locator(".calendar-day-row")).toHaveCount(6);
     const lastRow = reopened.locator(".calendar-day-row").last();
     await expect(lastRow).toBeInViewport({ ratio: 1 });
+    await expectCalendarFits(reopened);
     const more = reopened.locator(".calendar-more-link").first();
     await expect(more).toBeVisible();
     // Compact cells must fit both the visible event and its overflow control.
@@ -122,9 +161,33 @@ test("setup, local settings and background alarms survive a browser restart", as
     await more.click();
     await expect(reopened.getByRole("dialog")).toBeVisible();
     await reopened.keyboard.press("Escape");
+    await reopened.getByRole("heading", { level: 1 }).click();
     await reopened
       .locator(".calendar-app")
       .screenshot({ path: "test-results/popup.png" });
+    await reopened.getByRole("button", { name: "Week", exact: true }).click();
+    await expect(
+      reopened.locator(".calendar-slot-header").first(),
+    ).toBeVisible();
+    await expectCalendarFits(reopened);
+    await reopened.screenshot({ path: "test-results/popup-week.png" });
+    // Even the widest allowed hour range must remain visible inside Chrome's cap.
+    await reopened.evaluate(() =>
+      chrome.runtime.sendMessage({
+        namespace: "calendar-checker",
+        command: {
+          type: "UPDATE_SETTINGS",
+          settings: { weekStartHour: 0, weekEndHour: 24, timeFormat: "12h" },
+        },
+      }),
+    );
+    await expect(reopened.locator(".calendar-slot-header")).toHaveCount(24);
+    await expectCalendarFits(reopened);
+    await expect(
+      reopened.locator(".calendar-slot-header").last(),
+    ).toBeInViewport({ ratio: 1 });
+    await reopened.setViewportSize({ width: 760, height: 600 });
+    await expectCalendarFits(reopened);
   } finally {
     await active?.close();
     await rm(profile, { recursive: true, force: true });
@@ -188,6 +251,7 @@ test("popup identifies only the affected account and pausing it clears the real 
     await expect
       .poll(() => page.evaluate(() => chrome.action.getBadgeText({})))
       .toBe("!");
+    await page.setViewportSize({ width: 800, height: 600 });
     await page.goto(`chrome-extension://${id}/popup.html`);
     await expect(page.getByRole("alert")).toContainText(
       "1 account needs reconnecting",
@@ -198,6 +262,12 @@ test("popup identifies only the affected account and pausing it clears the real 
     await expect(page.getByRole("alert")).not.toContainText(
       "account-b@example.test",
     );
+    // Automatic month overflow can move the first stored event behind “more”.
+    await expect(page.locator(".calendar-event:visible").first()).toBeVisible();
+    await expectCalendarFits(page);
+    await expect(page.locator(".calendar-day-row").last()).toBeInViewport({
+      ratio: 1,
+    });
     await page.goto(`chrome-extension://${id}/options.html`);
     const affected = page
       .locator("article")

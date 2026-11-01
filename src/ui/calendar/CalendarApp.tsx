@@ -295,31 +295,6 @@ function CalendarBody({
       <div
         className={`calendar-app ${compact ? "calendar-popup" : "calendar-page"} density-${settings.density} ${sidebar ? "sidebar-open" : "sidebar-closed"}`}
       >
-        {compact && (
-          <div className="popup-top">
-            <span className="compact-brand">
-              <CalendarDays size={17} /> Calendar Checker
-            </span>
-            <span className="popup-top-actions">
-              <button
-                className="small-link"
-                onClick={() =>
-                  void chrome.tabs.create({
-                    url: chrome.runtime.getURL("/calendar.html"),
-                  })
-                }
-              >
-                Open full calendar <ExternalLink size={12} />
-              </button>
-              <IconButton
-                label="Settings"
-                onClick={() => void chrome.runtime.openOptionsPage()}
-              >
-                <Settings2 size={16} />
-              </IconButton>
-            </span>
-          </div>
-        )}
         {sidebar && (
           <aside className="calendar-sidebar" aria-label="Calendar sidebar">
             <div className="sidebar-brand">
@@ -498,14 +473,24 @@ function CalendarBody({
                   Week
                 </button>
               </div>
-              {!compact && (
+              {compact && (
                 <IconButton
-                  label="Accounts and settings"
-                  onClick={() => void chrome.runtime.openOptionsPage()}
+                  label="Open full calendar"
+                  onClick={() =>
+                    void chrome.tabs.create({
+                      url: chrome.runtime.getURL("/calendar.html"),
+                    })
+                  }
                 >
-                  <Settings2 size={18} />
+                  <ExternalLink size={16} />
                 </IconButton>
               )}
+              <IconButton
+                label={compact ? "Settings" : "Accounts and settings"}
+                onClick={() => void chrome.runtime.openOptionsPage()}
+              >
+                <Settings2 size={18} />
+              </IconButton>
             </div>
           </header>
           <div className="calendar-context">
@@ -518,6 +503,11 @@ function CalendarBody({
                 <Globe2 size={12} />
                 {zone.replaceAll("_", " ")}
               </span>
+              {compact && (
+                <span className="compact-data-note">
+                  {demo ? "Local sample events" : "Event sync coming next"}
+                </span>
+              )}
             </div>
             <button
               className="small-link"
@@ -546,25 +536,27 @@ function CalendarBody({
                 "Local event data could not be opened. Your account settings are still available."}
             </div>
           )}
-          <div className="preview-note">
-            {demo ? (
-              <>
-                <Sparkles size={14} />
-                <span>
-                  Sample events, just for exploring. Nothing here is sent to
-                  Google.
-                </span>
-              </>
-            ) : (
-              <>
-                <CircleHelp size={14} />
-                <span>
-                  Google event syncing is coming next. Your account connections
-                  are saved.
-                </span>
-              </>
-            )}
-          </div>
+          {!compact && (
+            <div className="preview-note">
+              {demo ? (
+                <>
+                  <Sparkles size={14} />
+                  <span>
+                    Sample events, just for exploring. Nothing here is sent to
+                    Google.
+                  </span>
+                </>
+              ) : (
+                <>
+                  <CircleHelp size={14} />
+                  <span>
+                    Google event syncing is coming next. Your account
+                    connections are saved.
+                  </span>
+                </>
+              )}
+            </div>
+          )}
           <div className="calendar-viewport" data-testid="calendar-grid">
             <FullCalendar
               ref={calendar}
@@ -579,7 +571,7 @@ function CalendarBody({
               events={inputs}
               editable={false}
               eventInteractive
-              dayMaxEvents={compact ? 1 : 3}
+              dayMaxEvents={compact ? true : 3}
               fixedWeekCount
               expandRows
               nowIndicator
@@ -589,6 +581,10 @@ function CalendarBody({
               scrollTime={`${String(settings.weekStartHour).padStart(2, "0")}:00:00`}
               eventTimeFormat={timeFormat}
               slotHeaderFormat={timeFormat}
+              slotDuration={compact ? "01:00:00" : "00:30:00"}
+              slotMinHeight={compact ? 0 : undefined}
+              slotHeaderClass="calendar-slot-header"
+              slotHeaderInnerClass="calendar-slot-label"
               eventClass={eventClasses}
               eventTitleClass="calendar-event-title"
               eventTimeClass="calendar-event-time"

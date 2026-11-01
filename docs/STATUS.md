@@ -25,7 +25,7 @@ Stage 3: add event read permissions and direct Google event synchronization, rec
 
 Continue the stage 1 two-account/lifecycle validation with the configured client before treating multi-account authentication as accepted. First-account connection is user-confirmed. Event writing, custom sounds, notifications, snooze, DND, and secondary time zones remain stages 4–5.
 
-## Stage 2 · v0.2.0
+## Stage 2 · v0.2.1
 
 Implemented: modern popup/full-tab month and week calendar, date navigation and sidebar, calendar visibility and text/type filters, event dialog and one-second hover previews, keyboard event access, reactive Dexie storage, isolated local sample data, and a shared appearance/settings page. Preferences include primary time zone, visible week hours, week start/weekends, clock format, theme, density, default view, and explicit demo/Google mode.
 
@@ -36,6 +36,8 @@ Verified locally:
 - `npm run check`: strict TypeScript, **67 unit/adapter tests**, formatting, and production build pass. New cases cover legacy preferences, independent patches, diagnostic privacy, database isolation/reset/reopening, valid event instants, exclusive all-day ends, DST, overnight date labels, and filters.
 - **Three isolated Chromium extension tests pass**: native transport and settings/alarm restart persistence; affected-account reconnect popup/badge behavior; calendar navigation, filters, click/keyboard details, shared theme changes, demo/Google separation, and offline browser-restart persistence. Popup checks verify all six month rows fit and overflow controls do not overlap events.
 - Month, week, compact popup, options, and dark-theme screenshots were inspected using fictional test data. The browser tests use disposable profiles, with no live Google authorization or personal Chrome profile.
-- Version 0.2.0 production bundle is available in `.output/chrome-mv3`; reload the unpacked extension to use it. Generated output and screenshots remain ignored.
+- Version 0.2.1 production bundle is available in `.output/chrome-mv3`; reload the unpacked extension to use it. Generated output and screenshots remain ignored.
 
 Google event sync is **not implemented** in this release. Demo preview is explicitly labelled; My calendars explains that sync has not started. Sample-only cache reset cannot touch reserved Google rows. See `STAGE-2.md` and ADR 0003.
+
+Popup layout refinement (v0.2.1): grid spans the available width, toolbar/context replace the taller header stack, and month overflow adapts to available height. Week view uses hourly slots with compact labels, fitting the selected hours without scrolling. Browser coverage now checks full width and absence of page/calendar scroll overflow at 800×600 and 760×600, all 24 hours with a 12-hour clock, and the month layout with a reconnect warning.
