@@ -69,7 +69,7 @@ export class AuthService {
         at: this.now().toISOString(),
         action,
         outcome: error ? ("failure" as const) : ("success" as const),
-        ...(error ? { code: error.code } : {}),
+        ...(error ? { code: error.code, details: error.details } : {}),
       },
     ].slice(-50);
   }
@@ -77,7 +77,7 @@ export class AuthService {
   private async verifiedData(token: string, expectedId?: string) {
     const profile = await this.deps.google.getProfile(token);
     if (expectedId && profile.id !== expectedId)
-      throw new AppError("account-mismatch");
+      throw new AppError("account-mismatch", { stage: "account-details" });
     // Do not load any calendars until the account identity is verified.
     const calendars = await this.deps.google.listCalendars(token);
     return { profile, calendars };
@@ -107,7 +107,7 @@ export class AuthService {
       await this.deps.identity.invalidateToken(token);
       // Exactly one silent retry, always for the same selected account.
       // New-account onboarding has no verified ID yet, so it must not retry an unpinned chooser.
-      if (!accountId) throw new AppError("reconnect-required");
+      if (!accountId) throw new AppError("reconnect-required", error.details);
       const renewed = await this.deps.identity.getToken({
         accountId,
         interactive: false,
@@ -174,11 +174,13 @@ export class AuthService {
       account.status = "connected";
       account.lastSuccessfulAt = this.now().toISOString();
       delete account.errorCode;
+      delete account.errorDetails;
       this.record(store, action);
     } catch (error) {
       const safe = asAppError(error);
       if (safe.code !== "auth-cancelled") {
         account.errorCode = safe.code;
+        account.errorDetails = safe.details;
         account.status = isReconnectError(safe.code)
           ? "reconnect"
           : account.status === "reconnect"

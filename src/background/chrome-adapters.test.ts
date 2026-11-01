@@ -82,6 +82,30 @@ describe("Chrome-managed identity", () => {
       new ChromeIdentityProvider().getToken({ interactive: false }),
     ).rejects.toMatchObject({ code: "network" });
   });
+
+  it("retains only the safe native network code and authorization step", async () => {
+    const identity = mockIdentity();
+    identity.getAuthToken.mockRejectedValue(
+      new Error(
+        "OAuth2 request failed: Connection failed (-2). private-token=user-secret",
+      ),
+    );
+    try {
+      await new ChromeIdentityProvider().getToken({ interactive: true });
+      expect.fail("Expected a connection failure");
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: "network",
+        details: {
+          stage: "authorization",
+          networkFailure: "request-failed",
+          browserNetworkCode: -2,
+        },
+      });
+      expect(String(error)).not.toContain("user-secret");
+      expect(JSON.stringify(error)).not.toContain("user-secret");
+    }
+  });
 });
 
 describe("local persistence", () => {

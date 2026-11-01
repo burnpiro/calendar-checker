@@ -75,6 +75,8 @@ Open the popup, choose **Add Google account**, select a test account, and grant 
 
 ## Common issues
 
+For a connection failure after consent, generate a report in Settings → Connection diagnostics. The last failure identifies authorization, account details, or calendar list, and distinguishes timeouts from explicitly reported offline use. Share the safe report if troubleshooting is needed; do not share tokens or raw request headers.
+
 | Symptom                                     | Check                                                                                                                                                                                                   |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Setup card remains visible                  | `.env.local` has a real client ID, and the extension was rebuilt and reloaded.                                                                                                                          |

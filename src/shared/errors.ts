@@ -1,4 +1,4 @@
-import type { ErrorCode } from "./model";
+import type { ErrorCode, FailureDetails } from "./model";
 
 const MESSAGES: Record<ErrorCode, string> = {
   "setup-required":
@@ -11,7 +11,7 @@ const MESSAGES: Record<ErrorCode, string> = {
   "account-mismatch":
     "Google returned a different account. No calendar data was loaded or replaced. Reconnect the intended account.",
   network:
-    "Google could not be reached. Saved calendar information is still available; try again when connected.",
+    "A Google connection failed. Any saved calendar information has been kept. Try again; if it continues, generate a report in Settings → Connection diagnostics.",
   "rate-limited": "Google is limiting requests. Please try again later.",
   "api-disabled":
     "Enable Google Calendar API in the OAuth client's Google Cloud project, then try again.",
@@ -29,10 +29,39 @@ const MESSAGES: Record<ErrorCode, string> = {
 };
 
 export class AppError extends Error {
-  constructor(public readonly code: ErrorCode) {
-    super(MESSAGES[code]);
+  constructor(
+    public readonly code: ErrorCode,
+    public readonly details: FailureDetails = {},
+  ) {
+    super(code === "network" ? networkMessage(details) : MESSAGES[code]);
     this.name = "AppError";
   }
+}
+
+function networkMessage(details: FailureDetails): string {
+  const step =
+    details.stage === "authorization"
+      ? "Chrome could not complete Google sign-in."
+      : details.stage === "account-details"
+        ? "The connection failed while loading your Google account details."
+        : details.stage === "calendar-list"
+          ? "The connection failed while loading your Google calendar list."
+          : "A Google connection failed.";
+  const reason =
+    details.networkFailure === "timeout"
+      ? "The request timed out."
+      : details.networkFailure === "offline"
+        ? "Chrome reports that this device is offline."
+        : details.browserNetworkCode !== undefined
+          ? `Chrome reported network error ${details.browserNetworkCode}.`
+          : "";
+  return [
+    step,
+    reason,
+    "Any saved calendar information has been kept. Try again; if it continues, generate a report in Settings → Connection diagnostics.",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function asAppError(error: unknown): AppError {
@@ -49,11 +78,23 @@ export function isReconnectError(code: ErrorCode): boolean {
 
 export function classifyIdentityError(error: unknown): AppError {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
-  if (/network|connection|offline|timeout/.test(message))
-    return new AppError("network");
+  const details: FailureDetails = { stage: "authorization" };
+  if (/network|connection|offline|timeout|timed out/.test(message)) {
+    const match = message.match(/connection failed \((-?\d{1,3})\)/);
+    const code = match ? Number(match[1]) : undefined;
+    return new AppError("network", {
+      ...details,
+      networkFailure: /timeout|timed out/.test(message)
+        ? "timeout"
+        : /offline/.test(message)
+          ? "offline"
+          : "request-failed",
+      ...(code !== undefined && code < 0 ? { browserNetworkCode: code } : {}),
+    });
+  }
   if (/cancel|did not approve|rejected|denied/.test(message))
-    return new AppError("auth-cancelled");
+    return new AppError("auth-cancelled", details);
   if (/invalid client|bad client|client id|not registered/.test(message))
-    return new AppError("setup-required");
-  return new AppError("reconnect-required");
+    return new AppError("setup-required", details);
+  return new AppError("reconnect-required", details);
 }

@@ -39,7 +39,9 @@ function AccountCard({
     : account.status === "reconnect"
       ? "Reconnect needed"
       : account.status === "offline"
-        ? "Offline"
+        ? account.errorDetails?.networkFailure === "offline"
+          ? "Offline"
+          : "Connection issue"
         : account.status === "error"
           ? "Check failed"
           : stale
@@ -81,7 +83,7 @@ function AccountCard({
       </div>
       {account.errorCode && account.enabled && (
         <p className="inline-warning">
-          {new AppError(account.errorCode).message}
+          {new AppError(account.errorCode, account.errorDetails).message}
         </p>
       )}
       <p className="account-summary">

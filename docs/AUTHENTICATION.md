@@ -32,7 +32,21 @@ Every subsequent check pins `getAuthToken` to `{ account: { id: savedGoogleSub }
 - Test token renewal explicitly evicts a single token and obtains another. This checks re-acquisition, not natural expiration or refresh-token behavior.
 - Calendar-list access is read-only in stage 1. Do not claim event read/write verification from a successful list request.
 
-Every outgoing request uses an Authorization header, never a token query parameter; no credentials/cookies are attached. Requests reject redirects and time out after 15 seconds. Token strings and raw provider error details never cross the worker/UI boundary or enter logs, diagnostics, or persistence.
+Every outgoing request uses an Authorization header, never a token query parameter; no credentials/cookies are attached. Requests reject redirects and time out after 15 seconds, including body consumption. A failed read-only GET is retried at most once after 500 ms for transport failures/timeouts. If Chrome reports the device offline, the app skips that retry. HTTP authorization/permission errors and malformed JSON do not use this transport retry path; token renewal after HTTP 401 remains separate.
+
+Diagnostics identify `authorization`, `account-details`, or `calendar-list`. Optional details are fixed network categories, bounded numeric browser network codes, and HTTP statuses. Raw native/remote error messages, headers, tokens, callback URLs, and account data are not retained. Account records keep these safe failure details for consistent UI after reopening the popup, and a successful check clears them.
+
+## Investigating a connection failure
+
+A generic fetch failure does not prove that the device is offline or that the OAuth client is misconfigured. Generate a report in Settings → Connection diagnostics and inspect the last failure's `details.stage` and `details.networkFailure`.
+
+- `authorization`: Chrome's native token acquisition failed. `browserNetworkCode`, when present, is the native connection error number only.
+- `account-details`: a token was obtained, but loading or validating the Google identity failed.
+- `calendar-list`: identity was verified, but the calendar-list request failed.
+- `timeout`: either headers or body did not arrive before the deadline.
+- `offline`: Chrome explicitly reported an offline device. Other transport errors display as a connection issue rather than assuming offline use.
+
+On 2026-11-01 direct checks in the configured extension succeeded: native token acquisition worked, authorized userinfo/Calendar API endpoints returned HTTP 200, and host access was present. No tokens or account contents were exposed. The gateway itself was then found to call a stored native `fetch` with the gateway as its receiver. Chrome rejected this with `Illegal invocation` before sending a request; Node mocks did not reproduce the browser's receiver requirement. The production transport now calls `globalThis.fetch` through an arrow wrapper, with unit and real-worker regression coverage. See ADR 0002. A full live CONNECT retry with the corrected bundle remains part of acceptance. The gcloud SDK could not be executed from the coding session; no Cloud logs were read.
 
 ## What remains to be proven
 

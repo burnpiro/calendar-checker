@@ -28,13 +28,14 @@ export class ChromeIdentityProvider implements IdentityProvider {
         scopes: [...SCOPES],
         ...(accountId ? { account: { id: accountId } } : {}),
       });
-      if (!result.token) throw new AppError("reconnect-required");
+      if (!result.token)
+        throw new AppError("reconnect-required", { stage: "authorization" });
       if (
         result.grantedScopes &&
         SCOPES.some((scope) => !result.grantedScopes?.includes(scope))
       ) {
         await chrome.identity.removeCachedAuthToken({ token: result.token });
-        throw new AppError("permission-required");
+        throw new AppError("permission-required", { stage: "authorization" });
       }
       return result.token;
     } catch (error) {
@@ -42,7 +43,7 @@ export class ChromeIdentityProvider implements IdentityProvider {
       const classified = classifyIdentityError(error);
       // Background consent failures are actionable reconnects, never cancelled UI operations.
       if (!interactive && classified.code === "auth-cancelled")
-        throw new AppError("reconnect-required");
+        throw new AppError("reconnect-required", classified.details);
       throw classified;
     }
   }
@@ -51,7 +52,7 @@ export class ChromeIdentityProvider implements IdentityProvider {
     try {
       await chrome.identity.removeCachedAuthToken({ token });
     } catch {
-      throw new AppError("reconnect-required");
+      throw new AppError("reconnect-required", { stage: "authorization" });
     }
   }
 }

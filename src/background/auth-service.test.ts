@@ -232,6 +232,10 @@ describe("account authentication", () => {
   it("successful reconnect clears only that account's error and updates the badge", async () => {
     state.accounts[0]!.status = "reconnect";
     state.accounts[0]!.errorCode = "reconnect-required";
+    state.accounts[0]!.errorDetails = {
+      stage: "authorization",
+      networkFailure: "request-failed",
+    };
     state.accounts.push({ ...savedAccount("account-b"), status: "reconnect" });
     const h = harness(state);
     await h.service.check("account-a", { interactive: true });
@@ -240,8 +244,34 @@ describe("account authentication", () => {
       interactive: true,
     });
     expect(h.stored().accounts[0]?.errorCode).toBeUndefined();
+    expect(h.stored().accounts[0]?.errorDetails).toBeUndefined();
     expect(h.stored().accounts[1]?.status).toBe("reconnect");
     expect(h.badge.update).toHaveBeenLastCalledWith(1);
+  });
+
+  it("keeps safe failure-step diagnostics and cached data when an API request fails", async () => {
+    const h = harness(state);
+    h.google.listCalendars.mockRejectedValue(
+      new AppError("network", {
+        stage: "calendar-list",
+        networkFailure: "timeout",
+      }),
+    );
+    await expect(h.service.check("account-a")).rejects.toMatchObject({
+      code: "network",
+    });
+    expect(h.stored().accounts[0]).toMatchObject({
+      status: "offline",
+      errorDetails: { stage: "calendar-list", networkFailure: "timeout" },
+      calendars: state.accounts[0]!.calendars,
+    });
+    const report = await h.service.diagnostics();
+    expect(report.checks.at(-1)?.details).toEqual({
+      stage: "calendar-list",
+      networkFailure: "timeout",
+    });
+    expect(JSON.stringify(report)).not.toContain("private-access-token");
+    expect(JSON.stringify(report)).not.toContain("account-a");
   });
 
   it("reconstructs account state and badges after a service worker restart", async () => {

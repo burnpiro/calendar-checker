@@ -32,22 +32,22 @@ Later: Dexie/IndexedDB events + outbox; offscreen audio; calendar UI.
 - Account key: verified Google `sub` (not email, which can change).
 - Account record: email, enabled state, authorization/check status, calendar summaries/permissions, timestamps, safe error code.
 - Settings: connection check interval 1–1440 minutes, stale threshold 1–10080 minutes; defaults 5 and 15 minutes.
-- Diagnostics: most recent 50 action/time/outcome/code entries. No tokens, account identifiers, email, or calendar contents.
+- Diagnostics: most recent 50 action/time/outcome/code entries, with optional fixed failure step/category, HTTP status, and bounded browser network code. No raw provider messages, tokens, account identifiers, email, or calendar contents.
 - OAuth tokens: Chrome-managed; transient local variables in worker operations only.
 
 All app state writes go through the worker's serial queue. UI reads can run while an authorization prompt is pending. Do not introduce a second writer without accounting for read/modify/write races. No IndexedDB transaction should ever remain open while waiting for network calls in later stages.
 
 ## Failure behavior
 
-| Failure                                   | Behavior                                                                                                       |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| HTTP 401                                  | Evict that cached token, retry silently once for the same known account. Continued failure requires reconnect. |
-| Partial consent / insufficient permission | Require reconnect; preserve calendar cache.                                                                    |
-| Wrong Google identity                     | Abort before calendar request; require reconnect without replacing the intended account.                       |
-| Network / timeout                         | Preserve cache, mark offline, keep last success. Do not request sign-in.                                       |
-| Rate limit / API service error            | Preserve cache and show a specific safe error. Event-sync backoff is stage 3.                                  |
-| User cancels reconnect                    | Preserve previous account state and cache.                                                                     |
-| Unknown or corrupt storage schema         | Report storage failure; never reset the store automatically.                                                   |
+| Failure                                   | Behavior                                                                                                                                                                                                                        |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTTP 401                                  | Evict that cached token, retry silently once for the same known account. Continued failure requires reconnect.                                                                                                                  |
+| Partial consent / insufficient permission | Require reconnect; preserve calendar cache.                                                                                                                                                                                     |
+| Wrong Google identity                     | Abort before calendar request; require reconnect without replacing the intended account.                                                                                                                                        |
+| Network / timeout                         | Retry an idempotent GET once after 500 ms unless Chrome reports offline; preserve cache and last success if both attempts fail. Show the failed step and distinguish timeout from reported offline use. Do not request sign-in. |
+| Rate limit / API service error            | Preserve cache and show a specific safe error. Event-sync backoff is stage 3.                                                                                                                                                   |
+| User cancels reconnect                    | Preserve previous account state and cache.                                                                                                                                                                                      |
+| Unknown or corrupt storage schema         | Report storage failure; never reset the store automatically.                                                                                                                                                                    |
 
 Only enabled accounts that require reconnection contribute to the toolbar `!` badge. Startup reconstructs the badge and ensures the periodic alarm exists. Updating timing settings reschedules the alarm; normal worker wake-ups do not postpone it.
 

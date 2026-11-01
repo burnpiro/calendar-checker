@@ -32,6 +32,7 @@ Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.
 - Interactive sign-in requires an explicit UI action. Background/startup checks must stay noninteractive.
 - Verify returned Google `sub` against the requested account on every account-specific check, before requesting its calendars.
 - Keep all Google API requests bounded by timeouts. Retry authentication once after an HTTP 401, and never loop indefinitely.
+- Preserve browser API receivers when wrapping native functions: use the global-context fetch wrapper, not a native `fetch` stored and invoked as an object method. Keep real-worker coverage; Node mocks do not enforce Chrome's receiver rules.
 - Request the narrowest scopes needed by the current stage. Add event write scopes with the event-writing feature.
 - Treat Google event text and all API responses as untrusted. Do not render raw HTML.
 - Keep production CSP restrictive and dependencies bundled. Prefer system fonts and local assets.

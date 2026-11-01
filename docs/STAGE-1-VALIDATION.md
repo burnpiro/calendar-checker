@@ -2,7 +2,7 @@
 
 ## Acceptance status
 
-**Live OAuth feasibility: pending.** No OAuth client or real Google-account authorization was available when the prototype was created. Automated checks are recorded separately in `STATUS.md`.
+**Full live OAuth feasibility: pending.** An OAuth client is configured locally. Native token acquisition and direct authorized userinfo/Calendar API requests succeeded (HTTP 200). The initial CONNECT failure was traced to an invalid native-fetch receiver in the gateway, reproduced in Chrome, and fixed. The first-account flow must be retried after loading the corrected bundle; multi-account and lifecycle flows remain unaccepted. Automated checks are recorded separately in `STATUS.md`.
 
 Do not mark stage 1 fully accepted until every required live scenario below has evidence. A locally built extension and mocked tests are not proof of Google multi-account support.
 

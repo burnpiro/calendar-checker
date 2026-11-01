@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { chromium, expect, test, type BrowserContext } from "@playwright/test";
 import { emptyStore, STORAGE_KEY, storeSchema } from "../../src/shared/model";
+import { browserFetch } from "../../src/background/google";
 
 const extensionPath = resolve(".output/chrome-mv3");
 
@@ -30,6 +31,20 @@ test("setup, local settings and background alarms survive a browser restart", as
   try {
     const first = await launch(profile);
     active = first.context;
+    // Exercise the production transport against Chrome's real native WorkerGlobalScope
+    // binding rules. Node's fetch and injected mocks do not enforce the same receiver.
+    const worker = first.context.serviceWorkers()[0]!;
+    const response = await worker.evaluateHandle(
+      browserFetch,
+      "data:application/json,%7B%7D",
+    );
+    expect(
+      await response.evaluate(async (value) => ({
+        status: value.status,
+        body: await value.json(),
+      })),
+    ).toEqual({ status: 200, body: {} });
+    await response.dispose();
     const page = await first.context.newPage();
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));

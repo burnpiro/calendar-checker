@@ -45,6 +45,17 @@ export const errorCodeSchema = z.enum([
 ]);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 
+// Safe, fixed diagnostic fields only. Never store raw provider messages or request headers.
+export const failureDetailsSchema = z.object({
+  stage: z
+    .enum(["authorization", "account-details", "calendar-list"])
+    .optional(),
+  networkFailure: z.enum(["timeout", "offline", "request-failed"]).optional(),
+  browserNetworkCode: z.number().int().min(-999).max(-1).optional(),
+  httpStatus: z.number().int().min(100).max(599).optional(),
+});
+export type FailureDetails = z.infer<typeof failureDetailsSchema>;
+
 export const accountSchema = z.object({
   id: z.string().min(1),
   email: z.email(),
@@ -55,6 +66,7 @@ export const accountSchema = z.object({
   lastCheckedAt: z.string().nullable(),
   lastSuccessfulAt: z.string().nullable(),
   errorCode: errorCodeSchema.optional(),
+  errorDetails: failureDetailsSchema.optional(),
 });
 export type Account = z.infer<typeof accountSchema>;
 
@@ -71,6 +83,7 @@ export const diagnosticSchema = z.object({
   ]),
   outcome: z.enum(["success", "failure"]),
   code: errorCodeSchema.optional(),
+  details: failureDetailsSchema.optional(),
 });
 export type Diagnostic = z.infer<typeof diagnosticSchema>;
 

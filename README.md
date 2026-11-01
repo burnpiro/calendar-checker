@@ -13,9 +13,9 @@ This is the account-connection feasibility build. It includes:
 - Per-account cached calendar lists, successful-check timestamps, and distinct offline/reconnect/API failure states.
 - An extension icon badge and popup warning when an enabled account needs reconnecting.
 - A settings page with check interval and stale-data threshold controls.
-- A local diagnostic report containing no tokens, email addresses, account IDs, or calendar names.
+- A local diagnostic report containing safe failure steps, timeout/offline categories, HTTP statuses, and native browser network codes, without tokens, email addresses, account IDs, or calendar names.
 
-**Live Google verification is pending.** Automated tests verify the implementation, but real secondary-account selection, renewal after a full Chrome restart, and revoked-consent recovery must be exercised with your OAuth client and two real accounts. See [the validation matrix](docs/STAGE-1-VALIDATION.md). No successful live OAuth test is claimed.
+**Full live Google verification is pending.** Authorized token acquisition and account/calendar endpoint probes have succeeded in the running extension. A Chrome native-fetch receiver bug causing the initial account-connection failure has been reproduced and fixed; the full account flow needs a live retry with the rebuilt extension. Real secondary-account selection, renewal after a full Chrome restart, and revoked-consent recovery must also be exercised. See [the validation matrix](docs/STAGE-1-VALIDATION.md). A successful endpoint probe does not count as full account-flow acceptance.
 
 Month/week calendars, event synchronization and editing, notifications, custom sounds, snooze, DND, and dual time zones are recorded in [the full plan](docs/PLAN.md), and are not implemented in this release.
 
