@@ -134,6 +134,7 @@ export class AuthService {
         connectedAt: previous?.connectedAt ?? at,
         lastCheckedAt: at,
         lastSuccessfulAt: at,
+        eventsReadGranted: true,
       };
       store.accounts = [
         ...store.accounts.filter((item) => item.id !== profile.id),
@@ -173,6 +174,7 @@ export class AuthService {
       account.calendars = calendars;
       account.status = "connected";
       account.lastSuccessfulAt = this.now().toISOString();
+      account.eventsReadGranted = true;
       delete account.errorCode;
       delete account.errorDetails;
       this.record(store, action);
@@ -181,6 +183,8 @@ export class AuthService {
       if (safe.code !== "auth-cancelled") {
         account.errorCode = safe.code;
         account.errorDetails = safe.details;
+        if (safe.code === "permission-required")
+          account.eventsReadGranted = false;
         account.status = isReconnectError(safe.code)
           ? "reconnect"
           : account.status === "reconnect"
@@ -206,6 +210,70 @@ export class AuthService {
         // Account-specific failures must not prevent the remaining accounts from being checked.
         if (asAppError(error).code === "storage-error") throw error;
       }
+    }
+  }
+
+  /** A token never leaves worker-owned operations. Every attempt verifies the pinned identity. */
+  async withVerifiedToken<T>(
+    accountId: string,
+    operation: (token: string, account: Account) => Promise<T>,
+  ): Promise<T> {
+    this.requireSetup();
+    const store = await this.deps.repository.read();
+    const account = store.accounts.find((item) => item.id === accountId);
+    if (!account) throw new AppError("unknown-account");
+    if (!account.enabled) throw new AppError("invalid-request");
+    let token: string | undefined;
+    try {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          token = await this.deps.identity.getToken({
+            accountId,
+            interactive: false,
+          });
+          const profile = await this.deps.google.getProfile(token);
+          if (profile.id !== accountId)
+            throw new AppError("account-mismatch", {
+              stage: "account-details",
+            });
+          const result = await operation(token, account);
+          account.eventsReadGranted = true;
+          account.status = "connected";
+          account.lastCheckedAt = this.now().toISOString();
+          account.lastSuccessfulAt = account.lastCheckedAt;
+          delete account.errorCode;
+          delete account.errorDetails;
+          await this.save(store);
+          return result;
+        } catch (error) {
+          if (
+            attempt === 0 &&
+            token &&
+            error instanceof GoogleHttpError &&
+            error.status === 401
+          ) {
+            await this.deps.identity.invalidateToken(token);
+            continue;
+          }
+          throw error;
+        }
+      }
+    } catch (error) {
+      const safe = asAppError(error);
+      account.errorCode = safe.code;
+      account.errorDetails = safe.details;
+      account.status = isReconnectError(safe.code)
+        ? "reconnect"
+        : account.status === "reconnect"
+          ? "reconnect"
+          : safe.code === "network"
+            ? "offline"
+            : "error";
+      if (safe.code === "permission-required")
+        account.eventsReadGranted = false;
+      this.record(store, "event-sync", safe);
+      await this.save(store);
+      throw safe;
     }
   }
 
@@ -259,6 +327,10 @@ export class AuthService {
       settings: {
         connectionCheckMinutes: store.settings.connectionCheckMinutes,
         staleAfterMinutes: store.settings.staleAfterMinutes,
+        syncIntervalMinutes: store.settings.syncIntervalMinutes,
+        cachePastMonths: store.settings.cachePastMonths,
+        cacheFutureMonths: store.settings.cacheFutureMonths,
+        refreshOnOpen: store.settings.refreshOnOpen,
       },
       checks: store.diagnostics,
       liveMultiAccountVerification: "requires-manual-validation",

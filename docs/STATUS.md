@@ -21,9 +21,24 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 ## Next work
 
-Stage 3: add event read permissions and direct Google event synchronization, recurrence handling, coverage/cursors, stale/offline states, manual sync, and configurable event-sync timing. Extend the reserved Google cache deliberately; never populate it with samples or present an uncovered interval as an empty synced calendar.
+Stage 4: event creation/editing, writable account/calendar selection, recurrence edit semantics, durable outbox, retry-safe creation, and conflict resolution. Add event-write scope only with that feature and protect pending edits from cache reconciliation/removal.
 
-Continue the stage 1 two-account/lifecycle validation with the configured client before treating multi-account authentication as accepted. First-account connection is user-confirmed. Event writing, custom sounds, notifications, snooze, DND, and secondary time zones remain stages 4–5.
+After reloading v0.3.0, approve the new read-only event scope through Reconnect where required and exercise the live checks in `STAGE-3.md`. Continue the stage 1 two-account/lifecycle matrix before treating multi-account authentication as accepted. First-account connection is user-confirmed; live stage 3 event reads are not yet verified. Custom sounds, notifications, snooze, DND, and secondary zones remain stage 5.
+
+## Stage 3 · v0.3.0
+
+Implemented: read-only Google event scope; identity-verified event operations; paginated unexpanded change feed and separate bounded expanded instances; independent calendar cursors and durable backoff; atomic cache/coverage/cursor replacement; 410 rebuild with stale-cache preservation; orphan/account/calendar cleanup; schema 1→2 migration; interrupted-worker recovery; and one-minute background scheduling of the configurable per-calendar cadence.
+
+The UI now reads real cached Google events, distinguishes offline/stale/uncovered dates from successful empty results, selects the best cached copy of shared calendars, and exposes event/recurrence details and safe HTTPS links. Settings adds sync interval, refresh on open, cache months, and per-calendar checks/errors/retry/coverage information. Diagnostics include only aggregate sync counts and safe settings; no content, OAuth tokens, cursor values, or identifiers.
+
+Verification:
+
+- `npm run check`: TypeScript, **92 unit/adapter tests**, formatting, and the v0.3.0 production build pass.
+- **Five isolated Chromium tests** cover the native popup and previous regressions, independent sync-setting restart persistence, and the production worker's complete synthetic Google flow: account connect, scoped reads, occurrence updates, unchanged-feed optimization, safe details, diagnostic redaction, cache display, offline preservation, and Google-cache survival through a full offline browser restart. Uncached future dates are explicitly labelled.
+- Fixture Google/full-calendar/popup/offline screenshots were inspected. No personal Chrome profile or live Google credentials were used for stage 3 tests. The fixture uses a disposable copied extension with a synthetic public client; the final build preserves `.env.local`.
+- Local application storage only; no backend, remote scripts, telemetry, new Chrome host permissions, or event-writing scope. The production bundle is `.output/chrome-mv3`.
+
+Live acceptance remains pending for the additional event scope and real multi-account/recurrence/lifecycle behavior. See `STAGE-3.md` and ADR 0004. No new Google Cloud project/client is needed; update the existing OAuth Data Access scopes and reconnect accounts as necessary.
 
 ## Stage 2 · v0.2.2
 
@@ -36,7 +51,7 @@ Verified locally:
 - `npm run check`: strict TypeScript, **67 unit/adapter tests**, formatting, and production build pass. New cases cover legacy preferences, independent patches, diagnostic privacy, database isolation/reset/reopening, valid event instants, exclusive all-day ends, DST, overnight date labels, and filters.
 - **Four isolated Chromium extension tests pass**: actual toolbar-popup sizing/reopening; native transport and settings/alarm restart persistence; affected-account reconnect popup/badge behavior; calendar navigation, filters, click/keyboard details, shared theme changes, demo/Google separation, and offline browser-restart persistence. Popup page checks verify all six month rows fit and overflow controls do not overlap events.
 - Month, week, compact popup, options, and dark-theme screenshots were inspected using fictional test data. The browser tests use disposable profiles, with no live Google authorization or personal Chrome profile.
-- Version 0.2.2 production bundle is available in `.output/chrome-mv3`; reload the unpacked extension to use it. Generated output and screenshots remain ignored.
+- Stage 2 was verified with v0.2.2; the current bundle is stage 3 v0.3.0. Generated output and screenshots remain ignored.
 
 Google event sync is **not implemented** in this release. Demo preview is explicitly labelled; My calendars explains that sync has not started. Sample-only cache reset cannot touch reserved Google rows. See `STAGE-2.md` and ADR 0003.
 

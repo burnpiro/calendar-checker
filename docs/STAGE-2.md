@@ -1,6 +1,6 @@
 # Stage 2: calendar shell and local storage
 
-Version: 0.2.2. Scope: calendar UI, local event storage, and shared preferences. Google event synchronization remains stage 3.
+Historical release: 0.2.2. Scope: calendar UI, local event storage, and shared preferences. The current release implements synchronization in [stage 3](STAGE-3.md); this page records the stage 2 boundaries and the native-popup sizing correction.
 
 ## Open the calendar
 

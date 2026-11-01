@@ -4,6 +4,7 @@ import { AppError } from "../shared/errors";
 import { isTimeZone } from "../shared/preferences";
 import { eventSchema, type CalendarEvent } from "./model";
 import { makeDemoMonth } from "./demo";
+import type { CalendarSyncState, CachedRange } from "./sync-model";
 
 interface Meta {
   key: string;
@@ -13,12 +14,18 @@ export class CalendarDatabase extends Dexie {
   events!: EntityTable<CalendarEvent, "key">;
   demoEvents!: EntityTable<CalendarEvent, "key">;
   meta!: EntityTable<Meta, "key">;
+  syncStates!: EntityTable<CalendarSyncState, "key">;
+  ranges!: EntityTable<CachedRange, "key">;
   constructor(name = "calendar-checker-events") {
     super(name);
     this.version(1).stores({
       events: "&key, [accountId+calendarId], start, end, eventType",
       demoEvents: "&key, [accountId+calendarId], start, end, eventType",
       meta: "&key",
+    });
+    this.version(2).stores({
+      syncStates: "&key, accountId, [accountId+calendarId]",
+      ranges: "&key, accountId, [accountId+calendarId]",
     });
   }
 }

@@ -44,6 +44,14 @@ const identity = {
   accountName: z.string(),
   timeZone: z.string().refine((zone) => zone !== "device" && isTimeZone(zone)),
   etag: z.string().optional(),
+  recurringEventId: z.string().optional(),
+  originalStart: z.string().optional(),
+  iCalUID: z.string().optional(),
+  htmlLink: z.url({ protocol: /^https$/ }).optional(),
+  meetingLink: z.url({ protocol: /^https$/ }).optional(),
+  organizer: z.string().optional(),
+  attendeeCount: z.number().int().nonnegative().optional(),
+  responseStatus: z.string().optional(),
   updatedAt: z.iso.datetime(),
 };
 export const eventSchema = z.discriminatedUnion("allDay", [

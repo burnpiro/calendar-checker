@@ -449,6 +449,28 @@
   background: #fff0f3;
   color: #983c4e;
 }
+.calendar-sync-notice {
+  padding: 8px 28px;
+  color: var(--text);
+  background: var(--accent-light);
+  border-block: 1px solid var(--line);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.calendar-popup .calendar-sync-notice {
+  padding: 6px 12px;
+  font-size: 10px;
+}
+.event-links {
+  display: flex;
+  gap: 16px;
+  margin-top: 18px;
+  font-size: 12px;
+}
+.event-links a {
+  color: var(--accent);
+  text-decoration: underline;
+}
 .calendar-viewport {
   flex: 1;
   min-height: 0;

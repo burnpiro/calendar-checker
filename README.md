@@ -2,9 +2,9 @@
 
 A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
 
-## Current release: stage 2 · v0.2.2
+## Current release: stage 3 · v0.3.0
 
-The calendar shell and local storage foundation are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
+Google event reading and local synchronization are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
 
 - FullCalendar Standard month and week views, Today/previous/next navigation, and a mini date navigator.
 - A collapsible calendar sidebar, independent calendar visibility, local text/type filters, and account reconnect warnings.
@@ -13,6 +13,9 @@ The calendar shell and local storage foundation are implemented. The toolbar pop
 - Dexie-backed event storage with reactive cross-window queries, persistence across restarts, and offline demo use.
 - Shared settings for the default view, week start/weekends, 12/24-hour clock, visible week hours, primary time zone, theme, density, and data source.
 - Light, dark, and follow-device themes; local cache counts and a sample-only cache clear action.
+- Direct Google event reading for enabled accounts, with server-expanded recurring instances, cancellations, original zones, and event details.
+- Independent change cursors and bounded caches, explicit offline/stale/uncached states, durable retry backoff, and manual/background sync.
+- Settings for sync frequency, refresh on open, and past/future cache months; per-calendar success/error/coverage information.
 
 The stage 1 account features remain available in Settings:
 
@@ -27,7 +30,9 @@ The stage 1 account features remain available in Settings:
 
 **Full live Google verification is pending.** Authorized token acquisition and account/calendar endpoint probes have succeeded in the running extension. A Chrome native-fetch receiver bug causing the initial account-connection failure has been reproduced and fixed; the user has confirmed successful account connection after reloading the rebuilt extension. Real secondary-account selection, renewal after a full Chrome restart, and revoked-consent recovery must also be exercised. See [the validation matrix](docs/STAGE-1-VALIDATION.md). A successful endpoint probe does not count as full account-flow acceptance.
 
-**Google event synchronization is stage 3 and is not implemented yet.** Connecting an account still loads its calendar list, not its events. Use “Demo preview” to explore the UI; “My calendars” explicitly identifies that syncing is not started. Event editing, notifications, custom sounds, snooze, DND, and dual time zones remain in [the full plan](docs/PLAN.md).
+**Upgrading existing accounts:** stage 3 adds `calendar.events.readonly`. Include it in the Google project's OAuth Data Access settings, reload the extension, and use **Reconnect** where required to approve read-only event access. Choose **Show my calendars** if your preserved setting is Demo preview. No new OAuth client or application server is needed. See [the stage 3 guide](docs/STAGE-3.md).
+
+Google event access is covered by synthetic API/identity tests; live event-scope and multi-account acceptance remain pending. Event editing, notifications, custom sounds, snooze, DND, and dual time zones remain in [the full plan](docs/PLAN.md).
 
 ## Requirements
 
@@ -43,7 +48,7 @@ npm run build
 npm run extension:id
 ```
 
-Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.2.2. This release fixes native toolbar popups collapsing to 25×25 pixels during initial sizing.
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.3.0. The native-popup sizing correction remains covered by an actual toolbar-popup test.
 
 The demo calendar works without OAuth credentials. Settings displays setup instructions and disables Google sign-in until a client ID is configured. Preserve any existing `.env.local` when updating.
 
@@ -99,11 +104,11 @@ You can keep the test browser in a temporary location using `PLAYWRIGHT_BROWSERS
 
 ## Storage and permissions
 
-Account identifiers, emails, cached calendar names/permissions, preferences, and sanitized diagnostics are stored in `chrome.storage.local`. Event data uses a local Dexie/IndexedDB database named `calendar-checker-events`, with separate `events`, `demoEvents`, and `meta` tables. Sample generation and reset never write or clear the Google event table. OAuth tokens are managed by Chrome and used transiently in the service worker. They are never sent to the UI or saved to application storage. There is no `chrome.storage.sync` usage.
+Account identifiers, emails, cached calendar names/permissions, preferences, and sanitized diagnostics are stored in `chrome.storage.local`. Event data uses local Dexie/IndexedDB (`calendar-checker-events`, schema 2): Google `events`, snapshot `ranges`, per-calendar `syncStates`, and isolated `demoEvents`/`meta`. Sample generation/reset never write or clear Google tables. OAuth access tokens remain transient in the worker and are Chrome-managed. Provider sync cursors are durable local state and are excluded from UI metadata and diagnostics. There is no `chrome.storage.sync` usage.
 
-Permissions are limited to `identity`, `storage`, `alarms`, and direct requests to `https://www.googleapis.com/*`. Stage 1 requests OpenID identity, email, and calendar-list read access. Event read/write scopes will be added with their corresponding features.
+Permissions remain `identity`, `storage`, `alarms`, and direct requests to `https://www.googleapis.com/*`. Google scopes cover OpenID identity, email, calendar-list read access, and event read access. No event write permission is requested.
 
-Removing an account deletes its local record and calendar list. It does not sign you out of Gmail or revoke Google's app consent. You can separately revoke access in your Google Account's third-party connections settings. Local extension storage is cleared when the extension is uninstalled; Chrome alarm delivery can be delayed by sleep or browser suspension.
+Removing an account deletes its local metadata, cached events, coverage, and sync cursors. Pausing preserves that data while stopping sync and hiding events. Removal does not sign you out of Gmail or revoke Google's app consent. Local extension storage is cleared on uninstall; Chrome background work can be delayed by sleep or suspension.
 
 ## Development documentation
 
@@ -116,6 +121,7 @@ Removing an account deletes its local record and calendar list. It does not sign
 - [Full product plan](docs/PLAN.md)
 - [Current implementation status](docs/STATUS.md)
 - [Stage 2 interface and storage guide](docs/STAGE-2.md)
+- [Stage 3 synchronization and upgrade guide](docs/STAGE-3.md)
 - [Durable notes for future agents](docs/agents/LEARNINGS.md)
 
 This repository is developed in local Git. No remote, publication, hosting, or deployment is required.

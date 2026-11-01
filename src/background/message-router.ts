@@ -2,6 +2,7 @@ import { AppError, asAppError } from "../shared/errors";
 import { commandSchema, type Reply } from "../shared/model";
 import type { AuthService } from "./auth-service";
 import type { LocalCalendarPort } from "../calendar/database";
+import type { EventSyncService } from "./event-sync";
 
 export function isTrustedSender(
   sender: { id?: string; url?: string },
@@ -18,6 +19,7 @@ export async function routeCommand(
   service: AuthService,
   reschedule: () => Promise<void>,
   localCalendar?: LocalCalendarPort,
+  eventSync?: EventSyncService,
 ): Promise<Reply> {
   try {
     const parsed = commandSchema.safeParse(raw);
@@ -31,6 +33,7 @@ export async function routeCommand(
         break;
       case "RECONNECT":
         await service.check(command.accountId, { interactive: true });
+        await eventSync?.repository.resumeAccount(command.accountId);
         break;
       case "CHECK":
         await service.check(command.accountId, {
@@ -45,6 +48,9 @@ export async function routeCommand(
         break;
       case "REMOVE":
         await service.remove(command.accountId);
+        await eventSync?.repository.reconcile(
+          (await service.snapshot()).accounts,
+        );
         break;
       case "UPDATE_SETTINGS":
         await service.updateSettings(command.settings);
@@ -58,11 +64,20 @@ export async function routeCommand(
         if (!localCalendar) throw new AppError("unexpected");
         await localCalendar.resetDemo();
         break;
+      case "SYNC_EVENTS":
+        if (!eventSync) throw new AppError("unexpected");
+        await eventSync.run(command);
+        break;
       case "GET_DIAGNOSTICS":
         return {
           ok: true,
           state: await service.snapshot(),
-          diagnostics: await service.diagnostics(),
+          diagnostics: {
+            ...(await service.diagnostics()),
+            ...(eventSync
+              ? { eventSync: await eventSync.repository.summary() }
+              : {}),
+          },
         };
     }
     return { ok: true, state: await service.snapshot() };

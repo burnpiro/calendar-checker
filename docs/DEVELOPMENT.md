@@ -21,13 +21,15 @@ Use feature branches after the initial implementation. Keep changes focused and 
 
 Register service-worker listeners synchronously. Persist durable state. Rebuild scheduling after worker/browser restarts, and never assume a timer or worker global will stay alive. Keep interactive sign-in behind an explicit user action. Treat alarms as approximate, and implement missed-reminder handling when reminders are introduced.
 
-Use `chrome.storage.local` for settings and metadata. Stage 2 introduces Dexie/IndexedDB for event records and isolated samples; later stages extend it with sync and outbox data. Migrate schemas deliberately; reject unsupported versions without erasing data. Settings updates are partial patches merged by the worker. See `STAGE-2.md`.
+Use `chrome.storage.local` for settings and metadata. Dexie schema 2 stores event records, bounded coverage/membership, per-calendar sync state, and isolated samples. Stage 4 extends it with outbox/conflicts. Migrate deliberately; reject unsupported versions without erasing data. Settings updates are worker-merged patches. Read `STAGE-3.md` and ADR 0004 before changing sync. Keep cursor queries separate from bounded range queries; only advance cursors with complete atomic cache replacement.
 
 ## Tests and checks
 
 `npm run check` runs TypeScript, domain/adapter tests, formatting, and a production build. `npm run test:extension` exercises the real bundled worker, options page, popup, and local state in an isolated Chromium profile. Install Playwright Chromium first. A Chromium process launch may need sandbox approval in restricted coding environments; it must never use the user's existing profile.
 
 Run those commands sequentially: both build `.output/chrome-mv3`, so parallel builds can race a browser loading the unpacked extension.
+
+The stage 3 browser fixture copies the unpacked build to a disposable directory, installs a synthetic public OAuth client in that copy, and overrides worker identity/HTTP APIs with fictional data. It exercises the production transport/orchestrator/database/UI without live credentials. Never overwrite `.env.local` or the final loaded build to run fixtures. Native popup sizing tests use `chrome.action.openPopup`, not a page viewport; see the popup sizing notes in `STAGE-2.md`.
 
 Important test areas are account isolation, token retry limits, no credential leakage, offline state, durable writes, stale coverage, conflict handling, recurrence, DST, and scheduling recovery. Prefer observable outcomes and meaningful invariants over markup snapshots and tests that duplicate implementation.
 

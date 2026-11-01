@@ -11,6 +11,10 @@ export function isTimeZone(value: string): boolean {
 }
 
 export const appearanceDefaults = {
+  syncIntervalMinutes: 5,
+  refreshOnOpen: true,
+  cachePastMonths: 2,
+  cacheFutureMonths: 6,
   defaultView: "month" as const,
   weekStartsOn: 1,
   showWeekends: true,
@@ -25,6 +29,10 @@ export const appearanceDefaults = {
 };
 
 const fields = {
+  syncIntervalMinutes: z.number().int().min(1).max(1440),
+  refreshOnOpen: z.boolean(),
+  cachePastMonths: z.number().int().min(0).max(12),
+  cacheFutureMonths: z.number().int().min(0).max(12),
   connectionCheckMinutes: z.number().int().min(1).max(1440),
   staleAfterMinutes: z.number().int().min(1).max(10080),
   defaultView: z.enum(["month", "week"]),

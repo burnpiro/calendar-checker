@@ -17,7 +17,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  CircleHelp,
   ExternalLink,
   Globe2,
   Menu,
@@ -56,6 +55,12 @@ import { useTheme } from "../use-theme";
 import { IconButton } from "./controls";
 import { MiniCalendar } from "./MiniCalendar";
 import { EventDetails } from "./EventDetails";
+import { useSyncMetadata, useConnectionClock } from "../use-sync-metadata";
+import {
+  coverageStatus,
+  preferredCalendarAccounts,
+} from "../../calendar/coverage";
+import { monthRange } from "../../calendar/sync-model";
 import "@fullcalendar/react/skeleton.css";
 import "@fullcalendar/react/themes/forma/theme.css";
 import "@fullcalendar/react/themes/forma/palettes/purple.css";
@@ -117,6 +122,47 @@ function CalendarBody({
   const focusCleanup = useRef(new WeakMap<HTMLElement, () => void>());
   const [storageError, setStorageError] = useState("");
   const month = date.slice(0, 7) + "-01";
+  const [visibleRange, setVisibleRange] = useState(() =>
+    monthRange(month, 0, 0),
+  );
+  const metadata = useSyncMetadata();
+  const clock = useConnectionClock();
+  const preferred = useMemo(
+    () =>
+      settings.dataSource === "demo"
+        ? undefined
+        : preferredCalendarAccounts(
+            state.accounts,
+            settings,
+            metadata,
+            visibleRange,
+          ),
+    [state.accounts, settings, metadata, visibleRange],
+  );
+  const syncStatus = coverageStatus(
+    state.accounts,
+    settings,
+    metadata,
+    visibleRange,
+    clock.online,
+    clock.now,
+  );
+  const syncRunning =
+    metadata?.states.some(
+      (item) =>
+        item.running &&
+        state.accounts.some(
+          (account) => account.enabled && account.id === item.accountId,
+        ),
+    ) ?? false;
+  const previousSync = useRef<string | undefined>(undefined);
+  const accountSignature = JSON.stringify(
+    state.accounts.map((account) => [
+      account.id,
+      account.enabled,
+      account.calendars.map((item) => item.id),
+    ]),
+  );
   const rows = useLiveQuery(async () => {
     try {
       const db = getCalendarDatabase();
@@ -151,6 +197,28 @@ function CalendarBody({
     };
   }, [month, zone, settings.dataSource]);
   useEffect(() => {
+    if (settings.dataSource !== "google" || !clock.online) return;
+    const reason =
+      previousSync.current && previousSync.current !== month ? "view" : "open";
+    previousSync.current = month;
+    let active = true;
+    void sendCommand({ type: "SYNC_EVENTS", month, reason })
+      .then(() => {
+        if (active) setStorageError("");
+      })
+      .catch((cause: unknown) => {
+        if (active)
+          setStorageError(
+            cause instanceof Error
+              ? cause.message
+              : "Event synchronization could not be started.",
+          );
+      });
+    return () => {
+      active = false;
+    };
+  }, [month, settings.dataSource, accountSignature, clock.online]);
+  useEffect(() => {
     if (calendar.current?.getApi().view.type !== viewName(settings.defaultView))
       calendar.current?.getApi().changeView(viewName(settings.defaultView));
   }, [settings.defaultView]);
@@ -169,13 +237,32 @@ function CalendarBody({
         state.accounts,
         query,
         hiddenTypes,
+        preferred,
       ),
-    [rows?.events, settings, state.accounts, query, hiddenTypes],
+    [rows?.events, settings, state.accounts, query, hiddenTypes, preferred],
   );
   const eventMap = useMemo(
     () => new Map(filtered.map((event) => [event.key, event])),
     [filtered],
   );
+  const liveEvents = useRef(eventMap);
+  liveEvents.current = eventMap;
+  const mountedEvents = useRef(new Map<HTMLElement, string>());
+  useEffect(() => {
+    setSelected((current) =>
+      current ? (eventMap.get(current.key) ?? null) : null,
+    );
+    clearTimeout(hoverTimer.current);
+    setTooltip(null);
+    for (const [el, id] of mountedEvents.current) {
+      const event = eventMap.get(id);
+      if (event)
+        el.setAttribute(
+          "aria-label",
+          `${event.title}, ${eventWhen(event, zone, settings.timeFormat)}, ${event.calendarName}`,
+        );
+    }
+  }, [eventMap, zone, settings.timeFormat]);
   const inputs = useMemo(
     () =>
       filtered.map((event) => ({
@@ -235,7 +322,11 @@ function CalendarBody({
         "aria-label",
         `${event.title}, ${eventWhen(event, zone, settings.timeFormat)}, ${event.calendarName}`,
       );
-      const show = () => preview(event, el, 0);
+      mountedEvents.current.set(el, event.key);
+      const show = () => {
+        const latest = liveEvents.current.get(event.key);
+        if (latest) preview(latest, el, 0);
+      };
       el.addEventListener("focus", show);
       el.addEventListener("blur", hidePreview);
       focusCleanup.current.set(el, () => {
@@ -257,6 +348,10 @@ function CalendarBody({
       setTitle(info.view.title);
       setView(info.view.type === "timeGridWeek" ? "week" : "month");
       setDate(dateKey(info.view.calendar.getDate(), zone));
+      setVisibleRange({
+        start: dateKey(info.start, zone),
+        end: dateKey(info.end, zone),
+      });
       hidePreview();
     },
     [zone, hidePreview],
@@ -286,7 +381,9 @@ function CalendarBody({
           calendarId: item.id,
           name: item.summary,
           accountName: account.email,
-          color: ["#7765d8", "#348e81", "#c58a35"][index % 3]!,
+          color:
+            item.backgroundColor ??
+            ["#7765d8", "#348e81", "#c58a35"][index % 3]!,
           enabled: account.enabled,
         })),
       );
@@ -473,6 +570,22 @@ function CalendarBody({
                   Week
                 </button>
               </div>
+              {!demo && (
+                <IconButton
+                  label="Sync events"
+                  disabled={
+                    busy ||
+                    syncRunning ||
+                    !clock.online ||
+                    !state.accounts.some((account) => account.enabled)
+                  }
+                  onClick={() =>
+                    void run({ type: "SYNC_EVENTS", month, reason: "manual" })
+                  }
+                >
+                  <RefreshCw size={16} />
+                </IconButton>
+              )}
               {compact && (
                 <IconButton
                   label="Open full calendar"
@@ -505,7 +618,7 @@ function CalendarBody({
               </span>
               {compact && (
                 <span className="compact-data-note">
-                  {demo ? "Local sample events" : "Event sync coming next"}
+                  {demo ? "Local sample events" : syncStatus.short}
                 </span>
               )}
             </div>
@@ -536,25 +649,18 @@ function CalendarBody({
                 "Local event data could not be opened. Your account settings are still available."}
             </div>
           )}
-          {!compact && (
+          {!demo && syncStatus.warning && (
+            <div className="calendar-sync-notice" role="status">
+              {syncStatus.message}
+            </div>
+          )}
+          {!compact && demo && (
             <div className="preview-note">
-              {demo ? (
-                <>
-                  <Sparkles size={14} />
-                  <span>
-                    Sample events, just for exploring. Nothing here is sent to
-                    Google.
-                  </span>
-                </>
-              ) : (
-                <>
-                  <CircleHelp size={14} />
-                  <span>
-                    Google event syncing is coming next. Your account
-                    connections are saved.
-                  </span>
-                </>
-              )}
+              <Sparkles size={14} />
+              <span>
+                Sample events, just for exploring. Nothing here is sent to
+                Google.
+              </span>
             </div>
           )}
           <div className="calendar-viewport" data-testid="calendar-grid">
@@ -607,14 +713,17 @@ function CalendarBody({
               eventMouseEnter={handleEnter}
               eventMouseLeave={hidePreview}
               eventDidMount={handleMount}
-              eventWillUnmount={(info) => focusCleanup.current.get(info.el)?.()}
+              eventWillUnmount={(info) => {
+                focusCleanup.current.get(info.el)?.();
+                mountedEvents.current.delete(info.el);
+              }}
               datesSet={handleDates}
             />
           </div>
           <footer className="calendar-footer">
             <span>
               <span className="status-dot" />
-              {demo ? "Local sample data" : "Event sync not started"}
+              {demo ? "Local sample data" : syncStatus.short}
             </span>
             <span>
               {filtered.length} event{filtered.length === 1 ? "" : "s"}

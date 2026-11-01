@@ -69,6 +69,31 @@ export function EventDetails({
                     <span>{event.location}</span>
                   </p>
                 )}
+                {event.organizer && (
+                  <p>
+                    <UserRound size={17} />
+                    <span>
+                      Organizer: {event.organizer}
+                      {event.attendeeCount !== undefined && (
+                        <small>
+                          {event.attendeeCount} attendees
+                          {event.responseStatus
+                            ? ` · Your response: ${event.responseStatus}`
+                            : ""}
+                        </small>
+                      )}
+                    </span>
+                  </p>
+                )}
+                {event.recurringEventId && (
+                  <p>
+                    <CalendarDays size={17} />
+                    <span>
+                      Recurring event instance
+                      <small>Original time zone: {event.timeZone}</small>
+                    </span>
+                  </p>
+                )}
               </div>
               <Dialog.Description
                 id="event-description"
@@ -76,6 +101,28 @@ export function EventDetails({
               >
                 {event.description || "No description."}
               </Dialog.Description>
+              {(event.htmlLink || event.meetingLink) && (
+                <div className="event-links">
+                  {event.htmlLink && (
+                    <a
+                      href={event.htmlLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open in Google Calendar ↗
+                    </a>
+                  )}
+                  {event.meetingLink && (
+                    <a
+                      href={event.meetingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Join meeting ↗
+                    </a>
+                  )}
+                </div>
+              )}
               {event.source === "demo" && (
                 <p className="demo-detail-note">
                   Sample event · stored only on this device

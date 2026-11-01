@@ -65,6 +65,32 @@ select {
 .settings-section > .button {
   margin-top: 15px;
 }
+.sync-account {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.sync-account summary {
+  cursor: pointer;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.sync-calendar {
+  margin: 14px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--accent-light);
+}
+.sync-calendar strong {
+  font-size: 12px;
+}
+.sync-calendar p {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 5px 0;
+}
+.sync-calendar .sync-error {
+  color: var(--danger);
+}
 @media (max-width: 600px) {
   .settings-page .appearance-form {
     grid-template-columns: 1fr;

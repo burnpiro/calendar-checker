@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AppError } from "../shared/errors";
 import type { CalendarSummary, FailureDetails } from "../shared/model";
 import type { GoogleGateway } from "./ports";
+import { googleEventSchema, type GoogleEvent } from "../calendar/google-events";
 
 const profileSchema = z.object({
   sub: z.string().min(1),
@@ -19,6 +20,10 @@ const pageSchema = z.object({
         accessRole: z.string(),
         primary: z.boolean().optional(),
         timeZone: z.string().optional(),
+        backgroundColor: z
+          .string()
+          .regex(/^#[0-9a-f]{6}$/i)
+          .optional(),
       }),
     )
     .optional(),
@@ -120,6 +125,10 @@ export class GoogleCalendarGateway implements GoogleGateway {
       throw this.transportError(error, stage);
     }
     if (!response.ok) {
+      if (stage === "calendar-events" && response.status === 410)
+        throw new GoogleHttpError(410, "sync-expired", { stage });
+      if (stage === "calendar-events" && response.status === 404)
+        throw new GoogleHttpError(404, "calendar-unavailable", { stage });
       if (response.status === 401)
         throw new GoogleHttpError(401, "reconnect-required", { stage });
       const data = (await response.json().catch(() => ({}))) as {
@@ -132,13 +141,25 @@ export class GoogleCalendarGateway implements GoogleGateway {
         reason === "userRateLimitExceeded" ||
         reason === "quotaExceeded"
       ) {
-        throw new GoogleHttpError(response.status, "rate-limited", { stage });
+        const seconds = Number(response.headers.get("Retry-After"));
+        throw new GoogleHttpError(response.status, "rate-limited", {
+          stage,
+          ...(Number.isInteger(seconds) && seconds > 0
+            ? { retryAfterSeconds: Math.min(seconds, 86400) }
+            : {}),
+        });
       }
       if (reason === "accessNotConfigured" || reason === "serviceDisabled") {
         throw new GoogleHttpError(response.status, "api-disabled", { stage });
       }
       if (response.status === 403)
-        throw new GoogleHttpError(403, "permission-required", { stage });
+        throw new GoogleHttpError(
+          403,
+          stage === "calendar-events" && reason !== "insufficientPermissions"
+            ? "calendar-unavailable"
+            : "permission-required",
+          { stage },
+        );
       throw new GoogleHttpError(response.status, "api-error", { stage });
     }
     try {
@@ -189,6 +210,9 @@ export class GoogleCalendarGateway implements GoogleGateway {
           accessRole: item.accessRole,
           primary: item.primary ?? false,
           ...(item.timeZone ? { timeZone: item.timeZone } : {}),
+          ...(item.backgroundColor
+            ? { backgroundColor: item.backgroundColor }
+            : {}),
         });
       }
       pageToken = parsed.data.nextPageToken;
@@ -199,5 +223,109 @@ export class GoogleCalendarGateway implements GoogleGateway {
       }
     } while (pageToken);
     return calendars;
+  }
+
+  private async eventPages(
+    token: string,
+    calendarId: string,
+    parameters: Record<string, string>,
+    consume: (value: unknown) => void,
+  ): Promise<unknown> {
+    let pageToken: string | undefined;
+    const seen = new Set<string>();
+    let last: unknown;
+    do {
+      const url = new URL(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+      );
+      for (const [key, value] of Object.entries(parameters))
+        url.searchParams.set(key, value);
+      if (pageToken) url.searchParams.set("pageToken", pageToken);
+      last = await this.request(url.toString(), token, "calendar-events");
+      consume(last);
+      const parsed = z
+        .object({ nextPageToken: z.string().min(1).optional() })
+        .safeParse(last);
+      if (!parsed.success)
+        throw new AppError("invalid-response", { stage: "calendar-events" });
+      pageToken = parsed.data.nextPageToken;
+      if (pageToken) {
+        if (seen.has(pageToken) || seen.size >= 100)
+          throw new AppError("invalid-response", { stage: "calendar-events" });
+        seen.add(pageToken);
+      }
+    } while (pageToken);
+    return last;
+  }
+
+  async getChanges(
+    token: string,
+    calendarId: string,
+    syncToken?: string,
+  ): Promise<{ syncToken: string; changed: boolean }> {
+    let changed = false;
+    const last = await this.eventPages(
+      token,
+      calendarId,
+      {
+        maxResults: "2500",
+        singleEvents: "false",
+        showDeleted: "true",
+        fields: "items(id),nextPageToken,nextSyncToken",
+        ...(syncToken ? { syncToken } : {}),
+      },
+      (value) => {
+        const parsed = z
+          .object({
+            items: z.array(z.object({ id: z.string().min(1) })).optional(),
+          })
+          .safeParse(value);
+        if (!parsed.success)
+          throw new AppError("invalid-response", { stage: "calendar-events" });
+        changed ||= Boolean(parsed.data.items?.length);
+      },
+    );
+    const parsed = z
+      .object({ nextSyncToken: z.string().min(1) })
+      .safeParse(last);
+    if (!parsed.success)
+      throw new AppError("invalid-response", { stage: "calendar-events" });
+    return { syncToken: parsed.data.nextSyncToken, changed };
+  }
+
+  async getInstances(
+    token: string,
+    calendarId: string,
+    start: string,
+    end: string,
+  ): Promise<{ events: GoogleEvent[]; timeZone: string }> {
+    const events: GoogleEvent[] = [];
+    let timeZone = "UTC";
+    await this.eventPages(
+      token,
+      calendarId,
+      {
+        maxResults: "2500",
+        singleEvents: "true",
+        showDeleted: "false",
+        timeMin: start,
+        timeMax: end,
+        fields:
+          "nextPageToken,timeZone,items(id,status,summary,description,location,start,end,eventType,etag,updated,recurringEventId,originalStartTime,iCalUID,htmlLink,hangoutLink,organizer,attendees(self,responseStatus))",
+      },
+      (value) => {
+        const parsed = z
+          .object({
+            items: z.array(googleEventSchema).optional(),
+            timeZone: z.string().optional(),
+          })
+          .safeParse(value);
+        if (!parsed.success)
+          throw new AppError("invalid-response", { stage: "calendar-events" });
+        events.push(...(parsed.data.items ?? []));
+        timeZone = parsed.data.timeZone ?? timeZone;
+      },
+    );
+    return { events, timeZone };
   }
 }

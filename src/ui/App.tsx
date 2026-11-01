@@ -9,6 +9,7 @@ import {
 import { useExtensionState } from "./use-extension-state";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { useTheme } from "./use-theme";
+import { SyncSettings } from "./SyncSettings";
 import "./styles.css";
 
 function timeLabel(value: string | null): string {
@@ -112,6 +113,21 @@ function AccountCard({
         )}
       </details>
       <div className="account-actions">
+        {account.status !== "reconnect" && !account.eventsReadGranted && (
+          <button
+            className="button primary"
+            disabled={busy || !account.enabled}
+            title="Approve read-only event access for this account"
+            onClick={() =>
+              void run(
+                { type: "RECONNECT", accountId: account.id },
+                "Event access approved.",
+              )
+            }
+          >
+            Reconnect
+          </button>
+        )}
         {account.status === "reconnect" ? (
           <button
             className="button primary"
@@ -158,7 +174,7 @@ function AccountCard({
           onClick={() => {
             if (
               window.confirm(
-                `Remove ${account.email} and its saved calendar list from this device? This does not sign you out of Google.`,
+                `Remove ${account.email} and its cached calendars/events from this device? This does not sign you out of Google.`,
               )
             )
               void run({ type: "REMOVE", accountId: account.id });
@@ -217,8 +233,8 @@ function SettingsForm({
           minutes
         </span>
         <small>
-          Checks enabled accounts in the background. Calendar event syncing will
-          be added in the next stage.
+          Checks account access and refreshes calendar lists. Event sync has its
+          own interval below.
         </small>
       </label>
       <label>
@@ -450,6 +466,13 @@ export function App({ compact = false }: { compact?: boolean }) {
                   busy={busy}
                   run={run}
                 />
+                <SyncSettings
+                  key={`sync-${JSON.stringify(state.settings)}`}
+                  settings={state.settings}
+                  accounts={state.accounts}
+                  busy={busy}
+                  run={run}
+                />
                 <section className="settings-section">
                   <div>
                     <p className="eyebrow">TROUBLESHOOTING</p>
@@ -496,9 +519,8 @@ export function App({ compact = false }: { compact?: boolean }) {
                     Extension ID <code>{state.extensionId}</code>
                   </p>
                   <p>
-                    The calendar supports a local demo preview. Google event
-                    syncing, event editing, notification sounds, and DND are
-                    planned next.
+                    Google events are cached locally for offline use. Event
+                    editing, notification sounds, and DND are planned next.
                   </p>
                   <p>
                     Adding another account resets this extension’s cached token

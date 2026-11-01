@@ -21,7 +21,7 @@ Google Cloud is used to register the extension and authorize Calendar API access
 
 Workspace organizations can restrict third-party OAuth access. An administrator may need to allow the app for a managed account. That is separate from connecting a personal Gmail account.
 
-## 3. Add the scopes for stage 1
+## 3. Add the read-only scopes
 
 In **Data Access → Add or remove scopes**, add these exact scopes:
 
@@ -29,9 +29,10 @@ In **Data Access → Add or remove scopes**, add these exact scopes:
 openid
 https://www.googleapis.com/auth/userinfo.email
 https://www.googleapis.com/auth/calendar.calendarlist.readonly
+https://www.googleapis.com/auth/calendar.events.readonly
 ```
 
-These identify the authorized account and read the list of calendars it can access. Stage 1 does not read event contents, create events, or modify calendars. Broader scopes will be requested when the related features are implemented.
+These identify the authorized account, list its calendars, and read their events. The event scope was added in stage 3; existing accounts may need **Reconnect** to approve it. Keep the same OAuth client and registered extension ID when upgrading. No event-writing permission or application server is needed. Broader write scopes belong to stage 4.
 
 ## 4. Create a Chrome Extension OAuth client
 

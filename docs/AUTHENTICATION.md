@@ -2,7 +2,7 @@
 
 ## Current adapter
 
-The stage 1 prototype uses `chrome.identity.getAuthToken` with a Chrome Extension OAuth client. Chrome manages token expiration and renewal. No refresh token or client secret is handled by this app.
+The native adapter uses `chrome.identity.getAuthToken` with a Chrome Extension OAuth client. Chrome manages token expiration and renewal. No refresh token or client secret is handled by this app.
 
 Scopes currently requested:
 
@@ -10,6 +10,7 @@ Scopes currently requested:
 openid
 https://www.googleapis.com/auth/userinfo.email
 https://www.googleapis.com/auth/calendar.calendarlist.readonly
+https://www.googleapis.com/auth/calendar.events.readonly
 ```
 
 The OAuth manifest is omitted when no client ID is configured, so the extension remains loadable with a clear setup state. A configured but malformed client ID is rejected at build time.
@@ -32,9 +33,11 @@ Every subsequent check pins `getAuthToken` to `{ account: { id: savedGoogleSub }
 - Test token renewal explicitly evicts a single token and obtains another. This checks re-acquisition, not natural expiration or refresh-token behavior.
 - Calendar-list access is read-only in stage 1. Do not claim event read/write verification from a successful list request.
 
+Stage 3 adds event-read scope and `withVerifiedToken` for worker-owned event operations. It verifies the pinned identity before invoking the event gateway, retries one HTTP 401 silently, and persists reconnect status/badge on continued failure. Existing grants may need explicit reconnect. Event-specific calendar access failures are separate from OAuth consent failures. The event grant marker is set only after a successfully scoped operation; no write scope is requested.
+
 Every outgoing request uses an Authorization header, never a token query parameter; no credentials/cookies are attached. Requests reject redirects and time out after 15 seconds, including body consumption. A failed read-only GET is retried at most once after 500 ms for transport failures/timeouts. If Chrome reports the device offline, the app skips that retry. HTTP authorization/permission errors and malformed JSON do not use this transport retry path; token renewal after HTTP 401 remains separate.
 
-Diagnostics identify `authorization`, `account-details`, or `calendar-list`. Optional details are fixed network categories, bounded numeric browser network codes, and HTTP statuses. Raw native/remote error messages, headers, tokens, callback URLs, and account data are not retained. Account records keep these safe failure details for consistent UI after reopening the popup, and a successful check clears them.
+Diagnostics identify `authorization`, `account-details`, `calendar-list`, or `calendar-events`. Optional details are fixed network categories, bounded numeric browser network codes, HTTP statuses, and bounded retry seconds. Raw native/remote error messages, headers, tokens, callback URLs, and account data are not retained. Aggregate event-sync counts omit identifiers and content. Account records keep safe failure details for consistent UI after reopening the popup, and a successful check clears them. Provider sync cursors are local IndexedDB sync state, distinct from OAuth tokens, and are excluded from diagnostics and UI metadata.
 
 ## Investigating a connection failure
 
@@ -43,6 +46,7 @@ A generic fetch failure does not prove that the device is offline or that the OA
 - `authorization`: Chrome's native token acquisition failed. `browserNetworkCode`, when present, is the native connection error number only.
 - `account-details`: a token was obtained, but loading or validating the Google identity failed.
 - `calendar-list`: identity was verified, but the calendar-list request failed.
+- `calendar-events`: the worker failed while reading the event change feed or bounded instances. Settings shows calendar-specific errors and retry times.
 - `timeout`: either headers or body did not arrive before the deadline.
 - `offline`: Chrome explicitly reported an offline device. Other transport errors display as a connection issue rather than assuming offline use.
 

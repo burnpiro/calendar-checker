@@ -1,6 +1,10 @@
 import type { ErrorCode, FailureDetails } from "./model";
 
 const MESSAGES: Record<ErrorCode, string> = {
+  "calendar-unavailable":
+    "This calendar is no longer readable. Cached events have been kept; check its sharing permissions in Google Calendar.",
+  "sync-expired":
+    "Google requires a fresh calendar sync. Cached events remain available while it is rebuilt.",
   "setup-required":
     "Configure the Google OAuth client ID and rebuild the extension before connecting an account.",
   "auth-cancelled":
@@ -46,7 +50,9 @@ function networkMessage(details: FailureDetails): string {
         ? "The connection failed while loading your Google account details."
         : details.stage === "calendar-list"
           ? "The connection failed while loading your Google calendar list."
-          : "A Google connection failed.";
+          : details.stage === "calendar-events"
+            ? "The connection failed while syncing Google events."
+            : "A Google connection failed.";
   const reason =
     details.networkFailure === "timeout"
       ? "The request timed out."

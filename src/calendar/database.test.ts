@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { CalendarDatabase, LocalCalendarRepository } from "./database";
 import { makeDemoMonth } from "./demo";
 import { eventSchema } from "./model";
+import { Dexie } from "dexie";
 
 const databases: CalendarDatabase[] = [];
 function database(name = `calendar-test-${crypto.randomUUID()}`) {
@@ -15,6 +16,24 @@ afterEach(async () => {
 });
 
 describe("local event storage", () => {
+  it("upgrades the stage 2 database without clearing samples or reserved Google rows", async () => {
+    const name = `migration-${crypto.randomUUID()}`;
+    const old = new Dexie(name);
+    old.version(1).stores({
+      events: "&key, [accountId+calendarId], start, end, eventType",
+      demoEvents: "&key, [accountId+calendarId], start, end, eventType",
+      meta: "&key",
+    });
+    const event = makeDemoMonth("2026-11-01", "UTC")[0]!;
+    await old.table("demoEvents").put(event);
+    await old.table("events").put({ ...event, source: "google" });
+    old.close();
+    const upgraded = database(name);
+    expect(await upgraded.demoEvents.count()).toBe(1);
+    expect(await upgraded.events.count()).toBe(1);
+    expect(await upgraded.ranges.count()).toBe(0);
+    expect(await upgraded.syncStates.count()).toBe(0);
+  });
   it("keeps demo generation separate from Google records and de-duplicates repeated preparation", async () => {
     const db = database();
     const repository = new LocalCalendarRepository(db);

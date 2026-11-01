@@ -1,4 +1,4 @@
-import { AUTH_ALARM } from "../shared/model";
+import { AUTH_ALARM, SYNC_ALARM } from "../shared/model";
 
 interface AlarmPort {
   get(name: string): Promise<{ periodInMinutes?: number } | undefined>;
@@ -6,6 +6,12 @@ interface AlarmPort {
     name: string,
     info: { delayInMinutes: number; periodInMinutes: number },
   ): Promise<void>;
+}
+
+export async function ensureSyncAlarm(alarms: AlarmPort): Promise<void> {
+  // A short scheduler tick respects per-calendar cadence/backoff without postponing it.
+  if ((await alarms.get(SYNC_ALARM))?.periodInMinutes === 1) return;
+  await alarms.create(SYNC_ALARM, { delayInMinutes: 1, periodInMinutes: 1 });
 }
 
 export async function ensureConnectionAlarm(

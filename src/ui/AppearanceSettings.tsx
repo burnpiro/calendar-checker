@@ -54,6 +54,10 @@ export function AppearanceSettings({
               connectionCheckMinutes: _interval,
               staleAfterMinutes: _stale,
               calendarVisibility: _visibility,
+              syncIntervalMinutes: _sync,
+              refreshOnOpen: _refresh,
+              cachePastMonths: _past,
+              cacheFutureMonths: _future,
               ...appearance
             } = draft;
             void run(
@@ -226,9 +230,7 @@ export function AppearanceSettings({
               }
             >
               <option value="demo">Demo preview · sample events</option>
-              <option value="google">
-                My Google calendars · event sync coming next
-              </option>
+              <option value="google">My Google calendars</option>
             </select>
           </label>
           <button className="button primary" disabled={busy}>

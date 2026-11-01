@@ -9,17 +9,24 @@ import {
   isTrustedSender,
   routeCommand,
 } from "../src/background/message-router";
-import { ensureConnectionAlarm } from "../src/background/scheduler";
+import {
+  ensureConnectionAlarm,
+  ensureSyncAlarm,
+} from "../src/background/scheduler";
 import { SerialQueue } from "../src/background/serial-queue";
-import { AUTH_ALARM } from "../src/shared/model";
+import { AUTH_ALARM, SYNC_ALARM } from "../src/shared/model";
 import { LocalCalendarRepository } from "../src/calendar/database";
+import { EventSyncService } from "../src/background/event-sync";
+import { EventRepository } from "../src/calendar/event-repository";
+import { AppError } from "../src/shared/errors";
 
 export default defineBackground(() => {
   const repository = new ChromeRepository();
   const localCalendar = new LocalCalendarRepository();
+  const google = new GoogleCalendarGateway();
   const service = new AuthService({
     identity: new ChromeIdentityProvider(),
-    google: new GoogleCalendarGateway(),
+    google,
     repository,
     badge: new ChromeBadge(),
     configuration: {
@@ -27,10 +34,16 @@ export default defineBackground(() => {
       oauthConfigured: Boolean(chrome.runtime.getManifest().oauth2?.client_id),
     },
   });
+  const eventSync = new EventSyncService(
+    service,
+    google,
+    new EventRepository(),
+  );
   const queue = new SerialQueue();
   const reschedule = async () => {
     const { settings } = await repository.read();
     await ensureConnectionAlarm(chrome.alarms, settings.connectionCheckMinutes);
+    await ensureSyncAlarm(chrome.alarms);
   };
 
   // Register listeners synchronously before the first asynchronous initialization step.
@@ -47,11 +60,47 @@ export default defineBackground(() => {
       const reading =
         (command as { type?: unknown } | null)?.type === "GET_STATE";
       const result = reading
-        ? routeCommand(command, service, reschedule, localCalendar)
-        : queue.run(() =>
-            routeCommand(command, service, reschedule, localCalendar),
-          );
-      void result.then(sendResponse);
+        ? routeCommand(command, service, reschedule, localCalendar, eventSync)
+        : queue
+            .run(async () => {
+              await ready;
+              return routeCommand(
+                command,
+                service,
+                reschedule,
+                localCalendar,
+                eventSync,
+              );
+            })
+            .catch(() => ({
+              ok: false as const,
+              error: {
+                code: "storage-error" as const,
+                message: new AppError("storage-error").message,
+              },
+            }));
+      void result.then((reply) => {
+        sendResponse(reply);
+        if (
+          reply.ok &&
+          ["CONNECT", "RECONNECT", "SET_ENABLED"].includes(
+            (command as { type: string }).type,
+          )
+        )
+          void queue
+            .run(() =>
+              eventSync.run({
+                reason:
+                  (command as { type: string }).type === "RECONNECT"
+                    ? "manual"
+                    : "view",
+                ...((command as { type: string }).type !== "CONNECT"
+                  ? { accountId: (command as { accountId: string }).accountId }
+                  : {}),
+              }),
+            )
+            .catch(() => undefined);
+      });
       return true;
     },
   );
@@ -61,11 +110,19 @@ export default defineBackground(() => {
       .run(async () => {
         await ready;
         await service.checkEnabled();
+        await eventSync.run();
       })
       .catch(() => undefined);
   };
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === AUTH_ALARM) backgroundCheck();
+    if (alarm.name === SYNC_ALARM)
+      void queue
+        .run(async () => {
+          await ready;
+          await eventSync.run();
+        })
+        .catch(() => undefined);
   });
   chrome.runtime.onStartup.addListener(backgroundCheck);
   chrome.runtime.onInstalled.addListener(() => {
@@ -77,6 +134,8 @@ export default defineBackground(() => {
       accessLevel: "TRUSTED_CONTEXTS",
     });
     await reschedule();
+    await eventSync.repository.recover();
+    await eventSync.repository.reconcile((await service.snapshot()).accounts);
     await service.refreshBadge();
   })();
   // Preserve a visible failure signal without logging data or silently deleting a bad store.

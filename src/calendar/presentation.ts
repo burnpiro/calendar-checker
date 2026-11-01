@@ -44,6 +44,7 @@ export function visibleEvents(
   accounts: Account[],
   query: string,
   hiddenTypes: string[],
+  preferred?: Map<string, string>,
 ): CalendarEvent[] {
   const enabled = new Set(
     accounts.filter((account) => account.enabled).map((account) => account.id),
@@ -52,7 +53,10 @@ export function visibleEvents(
   return events.filter(
     (event) =>
       event.source === settings.dataSource &&
-      (event.source === "demo" || enabled.has(event.accountId)) &&
+      (event.source === "demo" ||
+        (enabled.has(event.accountId) &&
+          (!preferred ||
+            preferred.get(event.calendarId) === event.accountId))) &&
       settings.calendarVisibility[
         calendarKey(event.accountId, event.calendarId)
       ] !== false &&

@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import {
@@ -8,13 +8,24 @@ import {
   type BrowserContext,
   type Page,
 } from "@playwright/test";
-import { emptyStore, STORAGE_KEY, storeSchema } from "../../src/shared/model";
+import {
+  emptyStore,
+  STORAGE_KEY,
+  storeSchema,
+  SCOPES,
+} from "../../src/shared/model";
 import { browserFetch } from "../../src/background/google";
 
 const extensionPath = resolve(".output/chrome-mv3");
+interface GoogleFixture {
+  version: number;
+  offline: boolean;
+  requests: Array<{ kind: string; hasCursor: boolean; hasBounds: boolean }>;
+}
 
 async function launch(
   profile: string,
+  extension = extensionPath,
 ): Promise<{ context: BrowserContext; id: string }> {
   const context = await chromium.launchPersistentContext(profile, {
     channel: "chromium",
@@ -23,8 +34,8 @@ async function launch(
       // Configure the native virtual display as well as Playwright's page viewport.
       // Chromium's default 800x600 display leaves only 498px below its toolbar.
       "--screen-info={1440x1000}",
-      `--disable-extensions-except=${extensionPath}`,
-      `--load-extension=${extensionPath}`,
+      `--disable-extensions-except=${extension}`,
+      `--load-extension=${extension}`,
     ],
   });
   const worker =
@@ -163,6 +174,22 @@ test("setup, local settings and background alarms survive a browser restart", as
       chrome.alarms.get("calendar-checker.auth-check"),
     );
     expect(alarm?.periodInMinutes).toBe(9);
+    await page
+      .getByRole("spinbutton", { name: "Event sync interval", exact: true })
+      .fill("7");
+    await page
+      .getByRole("button", { name: "Save sync preferences", exact: true })
+      .click();
+    await expect(page.getByRole("status")).toContainText(
+      "Sync preferences saved",
+    );
+    expect(
+      (
+        await page.evaluate(() =>
+          chrome.alarms.get("calendar-checker.event-sync"),
+        )
+      )?.periodInMinutes,
+    ).toBe(1);
     await page.getByRole("button", { name: "Generate report" }).click();
     await expect(page.locator("pre")).toContainText(
       '"connectionCheckMinutes": 9',
@@ -184,6 +211,12 @@ test("setup, local settings and background alarms survive a browser restart", as
         name: "Warn when data is older than",
       }),
     ).toHaveValue("27");
+    await expect(
+      reopened.getByRole("spinbutton", {
+        name: "Event sync interval",
+        exact: true,
+      }),
+    ).toHaveValue("7");
     await reopened.setViewportSize({ width: 800, height: 600 });
     await reopened.goto(`chrome-extension://${second.id}/popup.html`);
     await expect(reopened.getByTestId("calendar-grid")).toBeVisible();
@@ -434,7 +467,9 @@ test("calendar navigation, demo isolation, event details, shared preferences and
       .getByRole("button", { name: "Show my calendars", exact: true })
       .click();
     await expect(
-      page.getByText("Google event syncing is coming next.", { exact: false }),
+      page.getByText("Connect or enable a Google account in Settings", {
+        exact: false,
+      }),
     ).toBeVisible();
     await expect(page.locator(".calendar-event")).toHaveCount(0);
     await page
@@ -482,5 +517,290 @@ test("calendar navigation, demo isolation, event details, shared preferences and
   } finally {
     await active?.close();
     await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test("bundled worker syncs Google fixtures, updates instances and retains them across an offline browser restart", async () => {
+  test.setTimeout(60_000);
+  const root = await mkdtemp(join(tmpdir(), "calendar-google-fixture-"));
+  const fixtureExtension = join(root, "extension");
+  const profile = join(root, "profile");
+  let active: BrowserContext | undefined;
+  try {
+    // Only this disposable copy gets a synthetic public client ID. Never rewrite the
+    // developer's .env.local or the final extension they load into their own Chrome.
+    await cp(extensionPath, fixtureExtension, { recursive: true });
+    const manifest = JSON.parse(
+      await readFile(join(fixtureExtension, "manifest.json"), "utf8"),
+    );
+    manifest.oauth2 = {
+      client_id: "123456789-fixture.apps.googleusercontent.com",
+      scopes: [...SCOPES],
+    };
+    await writeFile(
+      join(fixtureExtension, "manifest.json"),
+      JSON.stringify(manifest),
+    );
+    const { context, id } = await launch(profile, fixtureExtension);
+    active = context;
+    const worker = context.serviceWorkers()[0]!;
+    const date = new Date().toISOString().slice(0, 7) + "-05";
+    await worker.evaluate(
+      ({ date }) => {
+        const fixture: GoogleFixture = {
+          version: 0,
+          offline: false,
+          requests: [],
+        };
+        (
+          globalThis as unknown as { calendarFixture: GoogleFixture }
+        ).calendarFixture = fixture;
+        chrome.identity.getAuthToken = (async (
+          details: chrome.identity.TokenDetails,
+        ) => ({
+          token: "fixture-token-only",
+          grantedScopes: details.scopes,
+        })) as typeof chrome.identity.getAuthToken;
+        const nativeFetch = globalThis.fetch.bind(globalThis);
+        globalThis.fetch = async (input, init) => {
+          const url = new URL(String(input));
+          if (url.hostname !== "www.googleapis.com")
+            return nativeFetch(input, init);
+          if (fixture.offline)
+            throw new TypeError("Fixture connection unavailable");
+          if (
+            (init?.headers as Record<string, string>)?.Authorization !==
+            "Bearer fixture-token-only"
+          )
+            throw new Error("Missing fixture authorization");
+          const respond = (data: unknown, status = 200) =>
+            new Response(JSON.stringify(data), {
+              status,
+              headers: { "Content-Type": "application/json" },
+            });
+          if (url.pathname === "/oauth2/v3/userinfo")
+            return respond({
+              sub: "fixture-account",
+              email: "fixture@example.test",
+              email_verified: true,
+            });
+          if (url.pathname.endsWith("/calendarList"))
+            return respond({
+              items: [
+                {
+                  id: "fixture-calendar",
+                  summary: "Fixture work",
+                  accessRole: "owner",
+                  primary: true,
+                  timeZone: "UTC",
+                  backgroundColor: "#348e81",
+                },
+              ],
+            });
+          if (url.pathname.endsWith("/events")) {
+            const bounded = url.searchParams.has("timeMin");
+            fixture.requests.push({
+              kind: bounded ? "range" : "feed",
+              hasCursor: url.searchParams.has("syncToken"),
+              hasBounds: bounded || url.searchParams.has("timeMax"),
+            });
+            if (!bounded)
+              return respond({
+                items:
+                  url.searchParams.get("syncToken") ===
+                  `fixture-cursor-${fixture.version}`
+                    ? []
+                    : [{ id: "series" }],
+                nextSyncToken: `fixture-cursor-${fixture.version}`,
+              });
+            return respond({
+              timeZone: "UTC",
+              items:
+                fixture.version === 2
+                  ? []
+                  : [
+                      {
+                        id: "series-instance",
+                        recurringEventId: "series",
+                        originalStartTime: { dateTime: `${date}T09:00:00Z` },
+                        summary: fixture.version
+                          ? "Rescheduled fixture standup"
+                          : "Fixture standup",
+                        start: {
+                          dateTime: `${date}T${fixture.version ? "11" : "09"}:00:00Z`,
+                          timeZone: "UTC",
+                        },
+                        end: { dateTime: `${date}T12:00:00Z` },
+                        eventType: "focusTime",
+                        description: "<img src=x onerror=alert(1)>",
+                        htmlLink:
+                          "https://calendar.google.com/calendar/event?eid=fixture",
+                        etag: `etag-${fixture.version}`,
+                      },
+                      {
+                        id: "holiday",
+                        summary: "Fixture day off",
+                        start: { date },
+                        end: { date: date.slice(0, 8) + "06" },
+                        eventType: "outOfOffice",
+                      },
+                    ],
+            });
+          }
+          throw new Error("Unexpected fixture endpoint");
+        };
+      },
+      { date },
+    );
+    const settings = await context.newPage();
+    await settings.goto(`chrome-extension://${id}/options.html`);
+    await settings
+      .getByRole("button", { name: "+ Add Google account", exact: true })
+      .click();
+    await expect(
+      settings.locator("article").filter({ hasText: "fixture@example.test" }),
+    ).toBeVisible();
+    await expect(settings.getByText(/2 cached Google events/)).toBeVisible();
+    await settings
+      .getByRole("button", { name: "Generate report", exact: true })
+      .click();
+    await expect(settings.locator("pre")).toContainText('"cachedRanges": 1');
+    await expect(settings.locator("pre")).not.toContainText(
+      "fixture-token-only",
+    );
+    await expect(settings.locator("pre")).not.toContainText("fixture-cursor-");
+    const page = await context.newPage();
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.setViewportSize({ width: 1440, height: 960 });
+    await page.goto(`chrome-extension://${id}/calendar.html`);
+    await page
+      .getByRole("button", { name: "Show my calendars", exact: true })
+      .click();
+    await expect(
+      page.locator(".calendar-event").filter({ hasText: "Fixture standup" }),
+    ).toBeVisible();
+    await expect(page.locator(".calendar-footer")).toContainText("Last synced");
+    await page
+      .locator(".calendar-event")
+      .filter({ hasText: "Fixture standup" })
+      .click();
+    await expect(page.getByRole("dialog")).toContainText(
+      "Recurring event instance",
+    );
+    await expect(
+      page
+        .getByRole("dialog")
+        .getByRole("link", { name: /Open in Google Calendar/ }),
+    ).toHaveAttribute(
+      "href",
+      "https://calendar.google.com/calendar/event?eid=fixture",
+    );
+    await expect(page.getByRole("dialog").locator("img")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await worker.evaluate(() => {
+      (
+        globalThis as unknown as { calendarFixture: GoogleFixture }
+      ).calendarFixture.version = 1;
+    });
+    await page
+      .getByRole("button", { name: "Sync events", exact: true })
+      .click();
+    const updated = page
+      .locator(".calendar-event")
+      .filter({ hasText: "Rescheduled fixture standup" });
+    await expect(updated).toBeVisible();
+    await expect(updated).toHaveAttribute(
+      "aria-label",
+      /Rescheduled fixture standup/,
+    );
+    await expect(
+      page.getByRole("button", { name: "Sync events", exact: true }),
+    ).toBeEnabled();
+    const rangesBefore = await worker.evaluate(
+      () =>
+        (
+          globalThis as unknown as { calendarFixture: GoogleFixture }
+        ).calendarFixture.requests.filter((r) => r.kind === "range").length,
+    );
+    await page
+      .getByRole("button", { name: "Sync events", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Sync events", exact: true }),
+    ).toBeEnabled();
+    expect(
+      await worker.evaluate(
+        () =>
+          (
+            globalThis as unknown as { calendarFixture: GoogleFixture }
+          ).calendarFixture.requests.filter((r) => r.kind === "range").length,
+      ),
+    ).toBe(rangesBefore);
+    const requests = await worker.evaluate(
+      () =>
+        (globalThis as unknown as { calendarFixture: GoogleFixture })
+          .calendarFixture.requests,
+    );
+    expect(
+      requests.some((request) => request.kind === "feed" && request.hasCursor),
+    ).toBe(true);
+    expect(
+      requests.some((request) => request.kind === "feed" && request.hasBounds),
+    ).toBe(false);
+    await page.screenshot({ path: "test-results/google-calendar.png" });
+    const popup = await context.newPage();
+    await popup.setViewportSize({ width: 800, height: 600 });
+    await popup.goto(`chrome-extension://${id}/popup.html`);
+    await expect(
+      popup
+        .locator(".calendar-event")
+        .filter({ hasText: "Rescheduled fixture standup" }),
+    ).toBeVisible();
+    await expectCalendarFits(popup);
+    await popup.screenshot({ path: "test-results/popup-google.png" });
+    await worker.evaluate(() => {
+      (
+        globalThis as unknown as { calendarFixture: GoogleFixture }
+      ).calendarFixture.offline = true;
+    });
+    await context.setOffline(true);
+    await settings.evaluate(() =>
+      chrome.runtime.sendMessage({
+        namespace: "calendar-checker",
+        command: { type: "SYNC_EVENTS", reason: "manual" },
+      }),
+    );
+    await expect(page.locator(".calendar-sync-notice")).toContainText(
+      "Offline",
+    );
+    await expect(updated).toBeVisible();
+    await page.screenshot({ path: "test-results/google-calendar-offline.png" });
+    expect(errors).toEqual([]);
+    await context.close();
+    active = undefined;
+    const reopened = await launch(profile, fixtureExtension);
+    active = reopened.context;
+    await reopened.context.setOffline(true);
+    const offline = await reopened.context.newPage();
+    await offline.goto(`chrome-extension://${id}/calendar.html`);
+    await expect(
+      offline
+        .locator(".calendar-event")
+        .filter({ hasText: "Rescheduled fixture standup" }),
+    ).toBeVisible();
+    await expect(offline.locator(".calendar-sync-notice")).toContainText(
+      "Offline",
+    );
+    for (let index = 0; index < 10; index++)
+      await offline
+        .getByRole("button", { name: "Next period", exact: true })
+        .click();
+    await expect(offline.locator(".calendar-sync-notice")).toContainText(
+      "not been cached",
+    );
+  } finally {
+    await active?.close();
+    await rm(root, { recursive: true, force: true });
   }
 });
