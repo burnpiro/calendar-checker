@@ -20,6 +20,9 @@ async function launch(
     channel: "chromium",
     headless: true,
     args: [
+      // Configure the native virtual display as well as Playwright's page viewport.
+      // Chromium's default 800x600 display leaves only 498px below its toolbar.
+      "--screen-info={1440x1000}",
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
     ],
@@ -54,13 +57,61 @@ async function expectCalendarFits(page: Page) {
           fullWidth: left === 0 && right === window.innerWidth,
           scrollAreas: scrollAreas.length,
           pageOverflow:
-            document.documentElement.scrollHeight > window.innerHeight ||
-            document.documentElement.scrollWidth > window.innerWidth,
+            document.body.scrollHeight > window.innerHeight ||
+            document.body.scrollWidth > window.innerWidth,
         };
       }),
     )
     .toEqual({ fullWidth: true, scrollAreas: 0, pageOverflow: false });
 }
+
+test("native toolbar popup expands to 800 by 600 and survives reopening", async () => {
+  const profile = await mkdtemp(join(tmpdir(), "calendar-native-popup-test-"));
+  let active: BrowserContext | undefined;
+  try {
+    const { context, id } = await launch(profile);
+    active = context;
+    const controller = await context.newPage();
+    await controller.goto(`chrome-extension://${id}/options.html`);
+    const worker = context.serviceWorkers()[0]!;
+    // Native popup targets are not exposed as ordinary Playwright pages.
+    // The controller can inspect the same-extension Window without forcing a viewport.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await worker.evaluate(() => chrome.action.openPopup());
+      await expect
+        .poll(() =>
+          controller.evaluate(() => {
+            const popup = chrome.extension.getViews({ type: "popup" })[0];
+            const grid = popup?.document.querySelector(".calendar-viewport");
+            const rect = grid?.getBoundingClientRect();
+            return popup
+              ? {
+                  width: popup.innerWidth,
+                  height: popup.innerHeight,
+                  gridWidth: rect?.width,
+                  rows: popup.document.querySelectorAll(".calendar-day-row")
+                    .length,
+                }
+              : null;
+          }),
+        )
+        .toEqual({ width: 800, height: 600, gridWidth: 800, rows: 6 });
+      await controller.evaluate(() => {
+        chrome.extension.getViews({ type: "popup" })[0]?.close();
+      });
+      await expect
+        .poll(() =>
+          controller.evaluate(
+            () => chrome.extension.getViews({ type: "popup" }).length,
+          ),
+        )
+        .toBe(0);
+    }
+  } finally {
+    await active?.close();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
 
 test("setup, local settings and background alarms survive a browser restart", async () => {
   const profile = await mkdtemp(join(tmpdir(), "calendar-checker-test-"));

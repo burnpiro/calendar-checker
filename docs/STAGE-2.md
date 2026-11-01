@@ -1,12 +1,14 @@
 # Stage 2: calendar shell and local storage
 
-Version: 0.2.1. Scope: calendar UI, local event storage, and shared preferences. Google event synchronization remains stage 3.
+Version: 0.2.2. Scope: calendar UI, local event storage, and shared preferences. Google event synchronization remains stage 3.
 
 ## Open the calendar
 
 Build with `npm run build`, then reload Calendar Checker at `chrome://extensions`. The toolbar popup now opens an 800×600 calendar. **Open full calendar** opens `calendar.html` in a tab; **Settings** opens account and calendar preferences. Existing Google OAuth configuration and connected accounts are preserved.
 
 The popup uses [Chrome's maximum toolbar-popup size, 800×600 pixels](https://developer.chrome.com/docs/extensions/reference/api/action#popup), and adapts to a narrower available viewport. The grid spans the full popup width. A compact toolbar holds navigation, search, view switches, and labelled full-calendar/settings icons; a short second row identifies the data source and time zone. Month rows fit automatically, with overflow events accessible through “more” controls. Week view uses hourly slots and compact time labels to fit the configured hours, including 00:00–24:00, without scrolling the calendar. Event start/end times retain their original precision.
+
+The popup document links `entrypoints/popup/popup.css` in its head. That stylesheet requests 800×600 on the HTML element before React mounts; its body and React root fit the viewport Chrome actually grants. Do not rely only on viewport-relative component limits to request the initial size: the native popup starts at 25×25, and those limits can prevent it from growing. The fixed HTML sizing box is a request to Chrome, while the visible content is sized to the body. Layout checks measure body overflow rather than treating the requested HTML size as visible content on a smaller viewport.
 
 The calendar supports:
 
@@ -64,7 +66,7 @@ FullCalendar v7 uses its native React package, standard daygrid/timegrid/interac
 
 ## Validation
 
-Unit tests cover legacy preference compatibility, partial patches, diagnostic privacy, visible-hour/time-zone validation, sample/Google isolation, reset safety, database reopening, all-day end semantics, DST/date conversion, and filters. Chromium tests exercise the bundled worker/UI and remain independent of personal Chrome profiles or Google credentials.
+Unit tests cover legacy preference compatibility, partial patches, diagnostic privacy, visible-hour/time-zone validation, sample/Google isolation, reset safety, database reopening, all-day end semantics, DST/date conversion, and filters. Chromium tests exercise the bundled worker/UI and remain independent of personal Chrome profiles or Google credentials. Native-popup regression coverage calls `chrome.action.openPopup()` and measures its actual extension Window through `chrome.extension.getViews`, including closing/reopening. Opening `popup.html` in a normal page with a preset viewport cannot verify native auto-sizing. The native headless display is configured explicitly with `--screen-info={1440x1000}`; a page viewport alone does not change native screen space.
 
 Run checks sequentially because both commands build the same output directory:
 

@@ -2,7 +2,7 @@
   "name": "calendar-checker",
   "description": "A local-first multi-account Google Calendar Chrome extension.",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"

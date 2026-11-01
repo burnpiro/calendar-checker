@@ -38,6 +38,7 @@ Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.
 - Preserve demo/Google table isolation and worker-owned writes. Never use samples to stand in for an unsynced Google calendar. Sample-only reset must not touch Google rows or future pending writes.
 - Settings commands are partial patches. Merge and validate in the worker; never reset unrelated preferences. Diagnostic exports must not include account/calendar visibility keys.
 - FullCalendar v7 differs from v6: use installed package types and documented render hooks/theme variables. Do not depend on hashed internal CSS class names.
+- Preserve the popup's head-linked document sizing stylesheet. For sizing changes run native toolbar-popup coverage; a normal browser page with a fixed test viewport cannot verify Chrome popup auto-sizing.
 - Keep production CSP restrictive and dependencies bundled. Prefer system fonts and local assets.
 - Reuse local design tokens, Tailwind, Radix primitives, and Lucide icons. Do not add unused packages or duplicate the existing component system.
 - Never rotate `config/extension-key.json` casually: it fixes the extension ID and OAuth registration. Its public key is safe to commit; no private signing key belongs in the repository.
