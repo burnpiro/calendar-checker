@@ -2,6 +2,9 @@ import { AppError, asAppError } from "../shared/errors";
 import { commandSchema, type Reply } from "../shared/model";
 import type { AuthService } from "./auth-service";
 import type { EventWriteService } from "./event-writes";
+import type { ReminderService } from "../reminders/service";
+import type { ReminderPlatform } from "./reminder-platform";
+import type { SoundLibrary } from "./sounds";
 import type { EventSyncService } from "./event-sync";
 
 export function isTrustedSender(
@@ -20,12 +23,53 @@ export async function routeCommand(
   reschedule: () => Promise<void>,
   eventSync?: EventSyncService,
   eventWrites?: EventWriteService,
+  reminderFeatures?: {
+    service: ReminderService;
+    platform: ReminderPlatform;
+    sounds: SoundLibrary;
+  },
 ): Promise<Reply> {
   try {
     const parsed = commandSchema.safeParse(raw);
     if (!parsed.success) throw new AppError("invalid-request");
     const command = parsed.data;
     switch (command.type) {
+      case "REFRESH_REMINDERS":
+        if (!reminderFeatures) throw new AppError("unexpected");
+        await reminderFeatures.service.run();
+        break;
+      case "REMINDER_ACTION":
+        if (!reminderFeatures) throw new AppError("unexpected");
+        await reminderFeatures.service.action(
+          command.id,
+          command.action,
+          command.minutes,
+        );
+        break;
+      case "PREVIEW_SOUND":
+        if (!reminderFeatures) throw new AppError("unexpected");
+        await reminderFeatures.platform.preview(command.id, command.volume);
+        break;
+      case "IMPORT_SOUND":
+        if (!reminderFeatures) throw new AppError("unexpected");
+        await reminderFeatures.sounds.import(
+          command.name,
+          command.mime,
+          command.data,
+        );
+        break;
+      case "REMOVE_SOUND":
+        if (!reminderFeatures) throw new AppError("unexpected");
+        await reminderFeatures.sounds.remove(
+          command.id,
+          (await service.snapshot()).settings,
+        );
+        break;
+      case "TEST_NOTIFICATION": {
+        if (!reminderFeatures) throw new AppError("unexpected");
+        await reminderFeatures.platform.testNotification();
+        break;
+      }
       case "PREPARE_EDIT":
         if (!eventWrites) throw new AppError("unexpected");
         return {
@@ -86,6 +130,14 @@ export async function routeCommand(
         );
         break;
       case "UPDATE_SETTINGS":
+        if (
+          reminderFeatures &&
+          (command.settings.reminders || command.settings.notificationCalendars)
+        )
+          await reminderFeatures.sounds.validateAssignments({
+            ...(await service.snapshot()).settings,
+            ...command.settings,
+          });
         await service.updateSettings(command.settings);
         await reschedule();
         break;

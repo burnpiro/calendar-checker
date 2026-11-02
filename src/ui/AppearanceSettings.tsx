@@ -33,6 +33,8 @@ export function AppearanceSettings({
       "America/Los_Angeles",
       "Asia/Tokyo",
       draft.primaryTimeZone,
+      draft.secondaryTimeZone,
+      ...Intl.supportedValuesOf("timeZone"),
     ]),
   ];
   return (
@@ -55,6 +57,9 @@ export function AppearanceSettings({
               connectionCheckMinutes: _interval,
               staleAfterMinutes: _stale,
               calendarVisibility: _visibility,
+              reminders: _reminders,
+              dnd: _dnd,
+              notificationCalendars: _notificationCalendars,
               syncIntervalMinutes: _sync,
               refreshOnOpen: _refresh,
               cachePastMonths: _past,
@@ -169,6 +174,22 @@ export function AppearanceSettings({
             <small>
               Use “device” to follow your computer, or an IANA name such as
               Europe/Warsaw.
+            </small>
+          </label>
+          <label>
+            Secondary time zone
+            <input
+              list="time-zone-options"
+              value={draft.secondaryTimeZone}
+              onChange={(e) =>
+                setDraft({ ...draft, secondaryTimeZone: e.target.value })
+              }
+              placeholder="Disabled"
+            />
+            <small>
+              Leave empty to show only the primary zone. Use device to follow
+              the computer. Week labels show multiple values when offsets vary
+              during the week.
             </small>
           </label>
           <label>

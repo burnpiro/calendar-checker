@@ -28,7 +28,13 @@ export default defineConfig({
       description: "Your Google calendars, together on your device.",
       minimum_chrome_version: "120",
       key: publicKey,
-      permissions: ["identity", "storage", "alarms"],
+      permissions: [
+        "identity",
+        "storage",
+        "alarms",
+        "notifications",
+        "offscreen",
+      ],
       host_permissions: ["https://www.googleapis.com/*"],
       action: {
         default_title: "Calendar Checker",

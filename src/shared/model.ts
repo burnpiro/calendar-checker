@@ -56,6 +56,10 @@ export const errorCodeSchema = z.enum([
   "event-readonly",
   "pending-writes",
   "event-gone",
+  "notification-denied",
+  "sound-invalid",
+  "sound-in-use",
+  "reminder-ended",
 ]);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 
@@ -162,6 +166,32 @@ export interface DiagnosticsReport {
 }
 
 export const commandSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("REFRESH_REMINDERS") }),
+  z.object({
+    type: z.literal("REMINDER_ACTION"),
+    id: z.uuid(),
+    action: z.enum(["dismiss", "snooze"]),
+    minutes: z.number().int().min(1).max(1440).optional(),
+  }),
+  z.object({ type: z.literal("TEST_NOTIFICATION") }),
+  z.object({
+    type: z.literal("PREVIEW_SOUND"),
+    id: z.union([z.literal("builtin"), z.uuid()]),
+    volume: z.number().min(0).max(1),
+  }),
+  z.object({
+    type: z.literal("IMPORT_SOUND"),
+    name: z.string().trim().min(1).max(100),
+    mime: z.enum([
+      "audio/wav",
+      "audio/mpeg",
+      "audio/ogg",
+      "audio/mp4",
+      "audio/webm",
+    ]),
+    data: z.string().min(1).max(7_000_000),
+  }),
+  z.object({ type: z.literal("REMOVE_SOUND"), id: z.uuid() }),
   saveEventSchema,
   z.object({
     type: z.literal("PREPARE_EDIT"),

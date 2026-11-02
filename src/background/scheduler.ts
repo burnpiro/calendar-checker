@@ -1,3 +1,4 @@
+import { REMINDER_TICK } from "../reminders/model";
 import { AUTH_ALARM, SYNC_ALARM } from "../shared/model";
 
 interface AlarmPort {
@@ -25,4 +26,9 @@ export async function ensureConnectionAlarm(
     delayInMinutes: minutes,
     periodInMinutes: minutes,
   });
+}
+
+export async function ensureReminderTick(alarms: AlarmPort): Promise<void> {
+  if ((await alarms.get(REMINDER_TICK))?.periodInMinutes === 1) return;
+  await alarms.create(REMINDER_TICK, { delayInMinutes: 1, periodInMinutes: 1 });
 }

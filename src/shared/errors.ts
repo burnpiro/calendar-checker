@@ -1,6 +1,14 @@
 import type { ErrorCode, FailureDetails } from "./model";
 
 const MESSAGES: Record<ErrorCode, string> = {
+  "notification-denied":
+    "Chrome notifications are blocked. Allow Calendar Checker notifications in Chrome and your operating-system settings.",
+  "sound-invalid":
+    "Choose a playable MP3, WAV, Ogg, M4A or WebM audio file up to 5 MB and 60 seconds. Up to 10 custom sounds can be stored locally.",
+  "sound-in-use":
+    "This sound is assigned to reminders. Choose another sound for the default and calendar overrides before deleting it.",
+  "reminder-ended":
+    "This snooze would be after the event ends. Choose a shorter snooze or dismiss it.",
   "event-conflict":
     "This event changed in Google. Review the pending change before choosing which version to keep.",
   "event-readonly":

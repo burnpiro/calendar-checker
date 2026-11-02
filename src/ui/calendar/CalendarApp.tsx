@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
+import { ReminderInbox } from "../ReminderInbox";
+import { dndActive } from "../../reminders/planning";
+import { secondarySlotLabel } from "../../calendar/dual-time";
 import { EventEditor } from "./EventEditor";
 import { EventRepository } from "../../calendar/event-repository";
 import { PendingChanges } from "../PendingChanges";
@@ -114,6 +117,11 @@ function CalendarBody({
   const fitWeek = settings.weekLayout === "fit";
   const hourlySlots = compact || fitWeek;
   const zone = displayTimeZone(settings.primaryTimeZone);
+  const secondaryZone =
+    settings.secondaryTimeZone &&
+    displayTimeZone(settings.secondaryTimeZone) !== zone
+      ? displayTimeZone(settings.secondaryTimeZone)
+      : undefined;
   const resolvedTheme = useTheme(settings.theme);
   const calendar = useRef<CalendarRef>(null);
   const viewport = useRef<HTMLDivElement>(null);
@@ -131,6 +139,9 @@ function CalendarBody({
     scope: EditScope;
     seed?: { start: string };
   } | null>(null);
+  const [remindersOpen, setRemindersOpen] = useState(
+    window.location.hash === "#reminders",
+  );
   const [pendingOpen, setPendingOpen] = useState(false);
   const [editingError, setEditingError] = useState("");
   const [preparing, setPreparing] = useState(false);
@@ -672,6 +683,9 @@ function CalendarBody({
               <span className="zone-label">
                 <Globe2 size={12} />
                 {zone.replaceAll("_", " ")}
+                {secondaryZone
+                  ? ` · ${secondaryZone.replaceAll("_", " ")}`
+                  : ""}
               </span>
               {compact && (
                 <span className="compact-data-note">{syncStatus.short}</span>
@@ -737,6 +751,28 @@ function CalendarBody({
               scrollTime={`${String(settings.weekStartHour).padStart(2, "0")}:00:00`}
               eventTimeFormat={timeFormat}
               slotHeaderFormat={timeFormat}
+              slotHeaderContent={
+                secondaryZone
+                  ? (info) => (
+                      <span className="calendar-dual-label">
+                        <span title={zone}>{info.text}</span>
+                        <span
+                          className="calendar-secondary-hour"
+                          title={`${secondaryZone}; distinct times across the visible week, with day differences`}
+                        >
+                          {secondarySlotLabel(
+                            info.date,
+                            visibleRange.start,
+                            zone,
+                            secondaryZone,
+                            settings.timeFormat,
+                            settings.showWeekends,
+                          )}
+                        </span>
+                      </span>
+                    )
+                  : undefined
+              }
               slotDuration={hourlySlots ? "01:00:00" : "00:30:00"}
               slotMinHeight={
                 fitWeek ? 0 : settings.weekHourHeight / (hourlySlots ? 1 : 2)
@@ -800,6 +836,24 @@ function CalendarBody({
               className="small-link"
               onClick={() => {
                 hidePreview();
+                setRemindersOpen(true);
+              }}
+            >
+              Reminders
+            </button>
+            <button
+              className="small-link"
+              title="Configure Do not disturb"
+              onClick={() => void chrome.runtime.openOptionsPage()}
+            >
+              {dndActive(settings.dnd, new Date(clock.now))
+                ? "DND on"
+                : "DND off"}
+            </button>
+            <button
+              className="small-link"
+              onClick={() => {
+                hidePreview();
                 setPendingOpen(true);
               }}
             >
@@ -820,6 +874,7 @@ function CalendarBody({
           event={selected}
           onClose={() => setSelected(null)}
           timeZone={zone}
+          secondaryTimeZone={secondaryZone}
           format={settings.timeFormat}
           preparing={preparing}
           editingError={editingError}
@@ -843,6 +898,33 @@ function CalendarBody({
             onClose={() => setEditor(null)}
           />
         )}
+        <Dialog.Root open={remindersOpen} onOpenChange={setRemindersOpen}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="write-overlay" />
+            <Dialog.Content
+              className="write-dialog"
+              aria-describedby="reminders-description"
+            >
+              <header className="write-header">
+                <div>
+                  <Dialog.Title>Reminders</Dialog.Title>
+                  <Dialog.Description id="reminders-description">
+                    Recent alerts and snoozes from saved calendar events.
+                  </Dialog.Description>
+                </div>
+                <Dialog.Close
+                  className="icon-button"
+                  aria-label="Close reminders"
+                >
+                  <X size={18} />
+                </Dialog.Close>
+              </header>
+              <div className="pending-dialog-body">
+                <ReminderInbox settings={settings} />
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
         <Dialog.Root open={pendingOpen} onOpenChange={setPendingOpen}>
           <Dialog.Portal>
             <Dialog.Overlay className="write-overlay" />
@@ -874,6 +956,7 @@ function CalendarBody({
           !selected &&
           !editor &&
           !pendingOpen &&
+          !remindersOpen &&
           createPortal(
             <div
               className="event-hover-card"
@@ -890,6 +973,12 @@ function CalendarBody({
               </span>
               <strong>{tooltip.event.title}</strong>
               <p>{eventWhen(tooltip.event, zone, settings.timeFormat)}</p>
+              {secondaryZone && !tooltip.event.allDay && (
+                <p>
+                  {eventWhen(tooltip.event, secondaryZone, settings.timeFormat)}{" "}
+                  · {secondaryZone}
+                </p>
+              )}
               {tooltip.event.location && (
                 <small>{tooltip.event.location}</small>
               )}

@@ -16,7 +16,7 @@ Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.
 
 ## Development workflow
 
-1. Confirm scope against the stage plan. Stage 4 adds event writes and a durable outbox; reminders remain stage 5. Read `docs/STAGE-3.md`, `docs/STAGE-4.md`, ADR 0004 and ADR 0006 before modifying sync, writes or cleanup.
+1. Confirm scope against the stage plan. Stage 5 adds reminders/audio/DND/dual zones; stage 6 remains acceptance and packaging. Read `docs/STAGE-3.md`, `docs/STAGE-4.md`, ADR 0004 and ADR 0006 before modifying sync, writes or cleanup. For reminders/audio read `docs/STAGE-5.md` and ADR 0007.
 2. Verify changing Chrome/Google API behavior against primary documentation. Record architecture decisions in `docs/decisions/`.
 3. Keep browser adapters small and domain behavior independently testable. Validate external data and runtime messages.
 4. Add tests for meaningful auth, sync, persistence, scheduling, or conflict behavior. Avoid tests that merely restate markup or constants.
@@ -38,6 +38,7 @@ Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.
 - The application displays Google data only. Keep fictional provider fixtures in test code, outside the extension bundle. Never substitute samples for unsynced Google calendars. Schema 3 removes the legacy preview table/seed markers; migrations must preserve Google rows, coverage, cursors, and future pending writes.
 - Outbox rows are independent of remote snapshots. Persist before sending; never drop pending work during cache replacement or calendar cleanup. Block account removal with pending work. Use stable creation IDs/private operation markers and If-Match ETags; never blindly repeat an uncertain mutation or overwrite a conflict. Edits patch only changed fields. Recurring master edits must load the original master, never substitute a selected occurrence’s start/ETag.
 - Change-feed cursors and bounded expanded occurrence queries are separate. Never add timeMin/timeMax/orderBy/q to cursor requests. Do not advance cursors or mark coverage fresh until all required pages/ranges commit atomically. Preserve stale snapshots on errors/410; clean only the affected calendar/account.
+- Reminders use their own serialized queue and durable ledger, independent of Google sync. Never use display filters to silence reminders or blindly replay uncertain audio. Keep notification IDs stable, DND/account checks explicit, snoozes durable, and OS delivery claims separate from mocked API tests. Custom audio stays in IndexedDB; validate headers/decoding/limits and clean up offscreen resources.
 - Settings commands are partial patches. Merge and validate in the worker; never reset unrelated preferences. Diagnostic exports must not include account/calendar visibility keys.
 - FullCalendar v7 differs from v6: use installed package types and documented render hooks/theme variables. Do not depend on hashed internal CSS class names.
 - Preserve the popup's head-linked document sizing stylesheet. For sizing changes run native toolbar-popup coverage; a normal browser page with a fixed test viewport cannot verify Chrome popup auto-sizing.

@@ -4,11 +4,15 @@ import type { CalendarSyncState, CachedRange } from "./sync-model";
 
 import type { PendingWrite, EditBase } from "./write-model";
 
+import type { ReminderJob, LocalSound } from "../reminders/model";
+
 interface Meta {
   key: string;
   value: string;
 }
 export class CalendarDatabase extends Dexie {
+  reminders!: EntityTable<ReminderJob, "key">;
+  sounds!: EntityTable<LocalSound, "id">;
   events!: EntityTable<CalendarEvent, "key">;
   meta!: EntityTable<Meta, "key">;
   outbox!: EntityTable<PendingWrite, "id">;
@@ -38,6 +42,10 @@ export class CalendarDatabase extends Dexie {
     this.version(4).stores({
       outbox: "&id, accountId, [accountId+calendarId], status",
       editBases: "&key",
+    });
+    this.version(5).stores({
+      reminders: "&key, &id, status, dueAt, endAt",
+      sounds: "&id",
     });
   }
 }

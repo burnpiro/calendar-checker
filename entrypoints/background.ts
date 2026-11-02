@@ -1,3 +1,7 @@
+import { ReminderService } from "../src/reminders/service";
+import { ReminderPlatform } from "../src/background/reminder-platform";
+import { SoundLibrary } from "../src/background/sounds";
+import { REMINDER_ALARM, REMINDER_TICK } from "../src/reminders/model";
 import { EventWriteService } from "../src/background/event-writes";
 import { AuthService } from "../src/background/auth-service";
 import {
@@ -13,6 +17,7 @@ import {
 import {
   ensureConnectionAlarm,
   ensureSyncAlarm,
+  ensureReminderTick,
 } from "../src/background/scheduler";
 import { SerialQueue } from "../src/background/serial-queue";
 import { AUTH_ALARM, SYNC_ALARM } from "../src/shared/model";
@@ -43,11 +48,25 @@ export default defineBackground(() => {
     google,
     eventSync.repository,
   );
+  const reminderPlatform = new ReminderPlatform();
+  const reminders = new ReminderService(
+    eventSync.repository.db,
+    () => service.snapshot(),
+    reminderPlatform,
+  );
+  const reminderFeatures = {
+    service: reminders,
+    platform: reminderPlatform,
+    sounds: new SoundLibrary(eventSync.repository.db, (id) =>
+      reminderPlatform.validate(id),
+    ),
+  };
   const queue = new SerialQueue();
   const reschedule = async () => {
     const { settings } = await repository.read();
     await ensureConnectionAlarm(chrome.alarms, settings.connectionCheckMinutes);
     await ensureSyncAlarm(chrome.alarms);
+    await ensureReminderTick(chrome.alarms);
   };
 
   // Register listeners synchronously before the first asynchronous initialization step.
@@ -64,7 +83,14 @@ export default defineBackground(() => {
       const reading =
         (command as { type?: unknown } | null)?.type === "GET_STATE";
       const result = reading
-        ? routeCommand(command, service, reschedule, eventSync, eventWrites)
+        ? routeCommand(
+            command,
+            service,
+            reschedule,
+            eventSync,
+            eventWrites,
+            reminderFeatures,
+          )
         : queue
             .run(async () => {
               await ready;
@@ -74,6 +100,7 @@ export default defineBackground(() => {
                 reschedule,
                 eventSync,
                 eventWrites,
+                reminderFeatures,
               );
             })
             .catch(() => ({
@@ -85,6 +112,18 @@ export default defineBackground(() => {
             }));
       void result.then((reply) => {
         sendResponse(reply);
+        if (
+          reply.ok &&
+          ![
+            "GET_STATE",
+            "GET_DIAGNOSTICS",
+            "PREVIEW_SOUND",
+            "IMPORT_SOUND",
+            "REMOVE_SOUND",
+            "TEST_NOTIFICATION",
+          ].includes((command as { type: string }).type)
+        )
+          void reminders.run().catch(() => undefined);
         if (
           reply.ok &&
           [
@@ -101,6 +140,7 @@ export default defineBackground(() => {
             .run(async () => {
               await eventWrites.run();
               await eventSync.run();
+              await reminders.run();
             })
             .catch(() => undefined);
         }
@@ -135,10 +175,13 @@ export default defineBackground(() => {
         await service.checkEnabled();
         await eventWrites.run();
         await eventSync.run();
+        await reminders.run();
       })
       .catch(() => undefined);
   };
   chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === REMINDER_ALARM || alarm.name === REMINDER_TICK)
+      void ready.then(() => reminders.run()).catch(() => undefined);
     if (alarm.name === AUTH_ALARM) backgroundCheck();
     if (alarm.name === SYNC_ALARM)
       void queue
@@ -151,9 +194,35 @@ export default defineBackground(() => {
             await eventSync.run();
           } finally {
             await service.refreshBadge().catch(() => undefined);
+            await reminders.run().catch(() => undefined);
           }
         })
         .catch(() => undefined);
+  });
+  chrome.notifications.onButtonClicked.addListener((notificationId, index) => {
+    const id = notificationId.replace(/^calendar-reminder:/, "");
+    if (id === notificationId || ![0, 1].includes(index)) return;
+    void ready
+      .then(() => reminders.action(id, index === 0 ? "snooze" : "dismiss"))
+      .then(() => reminders.run())
+      .catch(() => undefined);
+  });
+  chrome.notifications.onClosed.addListener((notificationId, byUser) => {
+    if (byUser && notificationId.startsWith("calendar-reminder:"))
+      void ready
+        .then(() =>
+          reminders.action(
+            notificationId.slice("calendar-reminder:".length),
+            "dismiss",
+          ),
+        )
+        .catch(() => undefined);
+  });
+  chrome.notifications.onClicked.addListener((notificationId) => {
+    if (notificationId.startsWith("calendar-reminder:"))
+      void chrome.tabs.create({
+        url: chrome.runtime.getURL("/calendar.html#reminders"),
+      });
   });
   chrome.runtime.onStartup.addListener(backgroundCheck);
   chrome.runtime.onInstalled.addListener(() => {
@@ -167,8 +236,10 @@ export default defineBackground(() => {
     await reschedule();
     await eventSync.repository.recover();
     await eventWrites.recover();
+    await reminderFeatures.sounds.recover();
     await eventSync.repository.reconcile((await service.snapshot()).accounts);
     await service.refreshBadge();
+    await reminders.run();
   })();
   // Preserve a visible failure signal without logging data or silently deleting a bad store.
   void ready.catch(async () => {

@@ -341,6 +341,10 @@ export class AuthService {
     const parsed = settingsSchema.safeParse({
       ...store.settings,
       ...settings,
+      notificationCalendars: {
+        ...store.settings.notificationCalendars,
+        ...settings.notificationCalendars,
+      },
       calendarVisibility: {
         ...store.settings.calendarVisibility,
         ...settings.calendarVisibility,

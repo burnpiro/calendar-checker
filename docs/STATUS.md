@@ -21,9 +21,17 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 ## Next work
 
-Stage 5: desktop/sound reminders, custom sounds, volume/preview, snooze, scheduled/manual DND, dual-zone presentation, and restart/sleep recovery. Add Chrome notifications/offscreen permissions with their implementation.
+Stage 6: live Google multi-account/read/write acceptance, real OS notification/audio/native-button and sleep/wake acceptance, accessibility/performance review, and local unpacked/ZIP packaging. Publishing remains a separate request.
 
-Reload the current release and use Reconnect on existing accounts to approve event writing. Continue the real two-account/lifecycle matrix and the stage 4 live write checks. First-account connection is user-confirmed; full live event-read/write and multi-account acceptance remain pending.
+Reload v0.5.0 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+
+## Local reminders, audio, DND and dual zones · v0.5.0
+
+Implemented: independent schema 5 reminder/sound tables; durable delivery history and snoozes; shared-calendar deduplication independent of display filters; per-calendar/channel/offset/sound overrides; next-due alarm plus one-minute watchdog; missed/late-alarm coalescing and recovery windows; manual/until-time/weekly overnight named-zone DND; generic/private notifications; validated local sound imports/previews, volume and a reproducible bundled chime; worker-only offscreen playback with idle cleanup; and aligned secondary week labels plus dual-zone event previews/details, including DST/date shifts. Account removal purges reminder contents without dropping pending writes. Existing cache/outbox/cursors/preferences and public OAuth identity are preserved. Chrome adds notifications/offscreen permissions; Google scopes and local-only architecture are unchanged.
+
+Validation: **206 unit/adapter tests**, TypeScript, formatting, production build, and **16 isolated Chromium tests** pass. New cases cover deduplication, account/calendar/channel controls, pending deletion overlays, repeat/snooze/restart recovery, missed/coalesced alerts, overnight/manual/DST DND, calendar rescheduling/removal, sound header/duration/reference/import recovery, schema 4→5 preservation, distant offsets, and dual-zone rollover/DST labels. Browser flows use captured desktop API requests with fictional events, real zero-volume offscreen audio decoding/playback, local Blob persistence/snooze/alarm restoration across a full Chrome restart, assigned-sound removal protection, DND suppression, idle document closure, both week columns in readable/fit layouts, and exact dual-zone hover/details. Settings/sound/inbox/week screenshots were inspected. Real OS display/audibility/sleep/native-button acceptance and live Google lifecycle acceptance remain pending; no personal Chrome profile or real Google event was used.
+
+Limits: Chrome must run; sleep/OS settings may delay or suppress alerts. Planning uses cached data and up to 5000 reminders due within 14 days; history is retained seven days after event end. Delivery is not atomic across IndexedDB and the OS, and uncertain audio attempts favor avoiding repeats. Sound limits are ten files, 5 MB and 60 seconds each. See `STAGE-5.md` and ADR 0007.
 
 ## Event editor controls · v0.4.1
 

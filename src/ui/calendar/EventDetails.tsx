@@ -8,6 +8,7 @@ export function EventDetails({
   event,
   onClose,
   timeZone,
+  secondaryTimeZone,
   format,
   onEdit,
   pending,
@@ -17,6 +18,7 @@ export function EventDetails({
   event: CalendarEvent | null;
   onClose: () => void;
   timeZone: string;
+  secondaryTimeZone?: string;
   format: Settings["timeFormat"];
   onEdit?: (scope: "event" | "series") => void;
   pending?: boolean;
@@ -63,6 +65,15 @@ export function EventDetails({
                     <small>{event.allDay ? "Date-only event" : timeZone}</small>
                   </span>
                 </p>
+                {secondaryTimeZone && !event.allDay && (
+                  <p>
+                    <Clock3 size={17} />
+                    <span>
+                      {eventWhen(event, secondaryTimeZone, format)}
+                      <small>{secondaryTimeZone}</small>
+                    </span>
+                  </p>
+                )}
                 <p>
                   <CalendarDays size={17} />
                   <span>{event.calendarName}</span>

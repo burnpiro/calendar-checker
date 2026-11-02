@@ -12,9 +12,9 @@ MV3 background worker -- native Chrome Identity / optional explicit Google choos
         |             -- toolbar badge / connection alarm / per-calendar sync scheduler
         |
 chrome.storage.local (metadata + preferences + safe diagnostics)
-IndexedDB via Dexie (Google events, ranges, sync state, outbox, edit bases)
+IndexedDB via Dexie (Google events, ranges, sync state, outbox, edit bases, reminders, sounds)
 
-Later: offscreen audio / reminders.
+Offscreen document: local audio decode/playback through validated worker messages.
 ```
 
 `entrypoints/background.ts` wires platform APIs, listeners, initialization, scheduling, and a serialized mutation queue. Listeners are registered synchronously at worker creation. Durable state does not depend on worker globals.
@@ -43,13 +43,17 @@ Calendar event-list popovers use FullCalendar's public `popoverClass` and `dayCe
 
 `useCurrentHourScroll` runs when Week is entered or its visible range/layout/time zone changes. After slot measurements settle, it checks the current time's position against the scroll viewport and calls public `scrollToTime` only when needed, with a little context above the hour. It respects configured hours and fit mode, leaves already-visible current times in place, and does not run on periodic clock ticks or user scrolling.
 
+`src/reminders/` owns pure DND/plan logic and an independently queued durable reminder service. Schema 5 adds `reminders` and `sounds`; the background platform adapter controls native notifications, one next-due alarm, a one-minute watchdog and validated offscreen audio. Snoozes and delivery state survive restarts. Shared calendar copies deduplicate without display filters. Audio imports/decode checks use worker-owned commands and local Blobs; the offscreen page accepts no arbitrary URL and closes when idle. See `STAGE-5.md` and ADR 0007.
+
+Dual-zone week labels use public `slotHeaderContent` and named-zone conversions across the visible week. Distinct values/date shifts reveal DST differences; hover/details use exact event instants in both zones. Appearance settings exclude reminder/DND overrides when saving, and worker patches merge individual calendar override keys.
+
 ## State and ownership
 
 - Store key: `calendar-checker.state.v1`.
 - Account key: verified Google `sub` (not email, which can change).
 - Account record: email, enabled state, authorization/check status, calendar summaries/permissions/colors, event-read grant marker, optional web auth method, timestamps, safe error code.
 - Settings: connection interval, event sync interval (both 1–1440 minutes, default 5), stale threshold (1–10080 minutes, default 15), refresh on open, home cache months (0–12 past/future, default 2/6), appearance (including week layout and minimum hour height), primary zone, visibility, and optional public Web OAuth client ID. Retired data-source preferences are ignored on read. Additive defaults preserve old records; worker patches merge individual visibility keys and validate the full result.
-- Event database: `calendar-checker-events`, version 4, upgrading in place. `events` stores normalized Google instances, `ranges` records bounded snapshot membership/coverage, and `syncStates` stores per-calendar cursors/retries. `outbox` stores independent pending writes/conflict versions; `editBases` retains at most 50 detached series masters. The migration drops the legacy `demoEvents` table and deletes `demo-v1:` seed markers; unrelated `meta` records survive. All-day ends are exclusive; timed records store instants and an original zone. Removing account/calendar metadata reconciles its Google cache/edit bases without dropping pending writes; account removal is blocked while pending rows exist. Pausing preserves work without sending it.
+- Event database: `calendar-checker-events`, version 5, upgrading in place. `events` stores normalized Google instances, `ranges` records bounded snapshot membership/coverage, and `syncStates` stores per-calendar cursors/retries. `outbox` stores independent pending writes/conflict versions; `editBases` retains at most 50 detached series masters. The migration drops the legacy `demoEvents` table and deletes `demo-v1:` seed markers; unrelated `meta` records survive. All-day ends are exclusive; timed records store instants and an original zone. Removing account/calendar metadata reconciles its Google cache/edit bases without dropping pending writes; account removal is blocked while pending rows exist. Pausing preserves work without sending it.
 - Diagnostics: most recent 50 action/time/outcome/code entries, with optional fixed failure step/category, HTTP status, and bounded browser network code. No raw provider messages, tokens, account identifiers, email, or calendar contents.
 - OAuth access tokens: Chrome-managed for existing native accounts; memory-only for web chooser accounts, with bounded silent authorization after expiry/worker restart. No refresh tokens or client secrets. Provider sync cursors are distinct local sync state and never enter UI metadata or diagnostics. Reports include aggregate sync counts and safe settings only.
 

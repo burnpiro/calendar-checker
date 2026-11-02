@@ -1,0 +1,135 @@
+.reminder-form-wide {
+  grid-column: 1 / -1;
+}
+.notification-settings h3 {
+  margin: 22px 0 12px;
+  font-size: 15px;
+  font-weight: 650;
+}
+.notification-settings
+  .settings-form
+  input:not([type="checkbox"]):not([type="range"]) {
+  max-width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--card);
+}
+.notification-settings .settings-form small {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.dnd-rule {
+  border: 1px solid var(--line);
+  padding: 14px;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+.dnd-rule legend {
+  padding: 0 4px;
+}
+.dnd-days,
+.dnd-times {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.dnd-days label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+.dnd-times label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.calendar-reminder-rule {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 8px 0;
+}
+.calendar-reminder-rule summary {
+  cursor: pointer;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.calendar-reminder-rule label {
+  margin-top: 12px;
+}
+.reminder-actions,
+.sound-import {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sound-import label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sound-import input {
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--text);
+}
+.sound-list {
+  padding: 0;
+  list-style: none;
+}
+.sound-list li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.sound-list span {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.reminder-card {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.reminder-card p {
+  font-size: 11px;
+  margin: 6px 0;
+}
+.reminder-inbox {
+  font-size: 12px;
+}
+.calendar-dual-label {
+  display: grid;
+  grid-template-columns: minmax(38px, auto) minmax(48px, auto);
+  gap: 8px;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+.calendar-secondary-hour {
+  padding-left: 7px;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 9px;
+}
+.week-fit .calendar-dual-label {
+  grid-template-columns: minmax(24px, auto) minmax(40px, auto);
+  gap: 4px;
+}
+.week-fit .calendar-secondary-hour {
+  font-size: 8px;
+  line-height: 10px;
+  padding-left: 4px;
+}

@@ -1,6 +1,6 @@
 # Stage 4: Event creation, editing and offline changes
 
-Release: v0.4.1. No application server is used. All event traffic goes directly to Google; preferences, cache and the pending queue stay in the local Chrome profile.
+Historical stage 4 release: v0.4.1. Current v0.5.0 also includes [stage 5 reminders and time zones](STAGE-5.md). No application server is used. All event traffic goes directly to Google; preferences, cache and the pending queue stay in the local Chrome profile.
 
 ## Upgrade
 

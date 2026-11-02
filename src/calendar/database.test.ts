@@ -131,7 +131,7 @@ it("upgrades a stage 3 cache in place with empty independent outbox and edit-bas
   old.close();
   const upgraded = database(name);
   await upgraded.open();
-  expect(upgraded.verno).toBe(4);
+  expect(upgraded.verno).toBe(5);
   expect(await upgraded.events.toArray()).toEqual([event]);
   expect(await upgraded.meta.get("keep")).toEqual({
     key: "keep",
@@ -139,4 +139,44 @@ it("upgrades a stage 3 cache in place with empty independent outbox and edit-bas
   });
   expect(await upgraded.outbox.count()).toBe(0);
   expect(await upgraded.editBases.count()).toBe(0);
+});
+
+it("adds reminders and sound tables without losing stage 4 outbox, cache or mutation receipts", async () => {
+  const name = `stage-5-migration-${crypto.randomUUID()}`;
+  const old = new Dexie(name);
+  old.version(4).stores({
+    events: "&key, [accountId+calendarId], start, end, eventType",
+    meta: "&key",
+    syncStates: "&key, accountId, [accountId+calendarId]",
+    ranges: "&key, accountId, [accountId+calendarId]",
+    outbox: "&id, accountId, [accountId+calendarId], status",
+    editBases: "&key",
+  });
+  const event = makeFixtureMonth("2026-11-01", "UTC")[0]!;
+  const pending = {
+    id: crypto.randomUUID(),
+    accountId: event.accountId,
+    calendarId: event.calendarId,
+    status: "queued",
+    event,
+  };
+  await old.table("events").put(event);
+  await old.table("outbox").put(pending);
+  await old
+    .table("meta")
+    .put({ key: "write-receipt:keep", value: "keep-receipt" });
+  await old.table("editBases").put({ key: event.key, event });
+  old.close();
+  const upgraded = database(name);
+  await upgraded.open();
+  expect(await upgraded.outbox.toArray()).toEqual([pending]);
+  expect(await upgraded.events.toArray()).toEqual([event]);
+  expect(await upgraded.editBases.toArray()).toEqual([
+    { key: event.key, event },
+  ]);
+  expect(await upgraded.meta.get("write-receipt:keep")).toMatchObject({
+    value: "keep-receipt",
+  });
+  expect(await upgraded.reminders.count()).toBe(0);
+  expect(await upgraded.sounds.count()).toBe(0);
 });

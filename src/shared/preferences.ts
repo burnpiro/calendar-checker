@@ -1,14 +1,14 @@
 import { z } from "zod";
 
-export function isTimeZone(value: string): boolean {
-  if (value === "device") return true;
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: value });
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { isTimeZone } from "./time-zones";
+export { isTimeZone, displayTimeZone } from "./time-zones";
+import {
+  reminderSchema,
+  dndSchema,
+  notificationCalendarsSchema,
+  reminderDefaults,
+  dndDefaults,
+} from "./reminder-preferences";
 
 export const appearanceDefaults = {
   webOAuthClientId: import.meta.env?.WXT_GOOGLE_WEB_CLIENT_ID?.trim() ?? "",
@@ -29,6 +29,12 @@ export const appearanceDefaults = {
   weekStartHour: 7,
   weekEndHour: 22,
   primaryTimeZone: "device",
+  secondaryTimeZone: "",
+  reminders: reminderDefaults,
+  dnd: dndDefaults,
+  notificationCalendars: {} as import("zod").infer<
+    typeof notificationCalendarsSchema
+  >,
   calendarVisibility: {} as Record<string, boolean>,
 };
 
@@ -64,6 +70,13 @@ const fields = {
     .string()
     .max(100)
     .refine(isTimeZone, "Choose a valid IANA time zone."),
+  secondaryTimeZone: z
+    .string()
+    .max(100)
+    .refine((value) => value === "" || isTimeZone(value)),
+  reminders: reminderSchema,
+  dnd: dndSchema,
+  notificationCalendars: notificationCalendarsSchema,
   calendarVisibility: z.record(z.string().max(1000), z.boolean()),
 };
 const completeSettings = z
@@ -93,10 +106,4 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export function calendarKey(accountId: string, calendarId: string): string {
   return JSON.stringify([accountId, calendarId]);
-}
-
-export function displayTimeZone(preference: string): string {
-  return preference === "device"
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone
-    : preference;
 }

@@ -2,15 +2,17 @@
 
 A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
 
-## Current release: stage 4 · v0.4.1
+## Current release: stage 5 · v0.5.0
 
-Google event reading, local synchronization, and event creation/editing are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
+Google event reading/synchronization, event creation/editing, local reminders and dual time zones are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
 
 - FullCalendar Standard month and week views, Today/previous/next navigation, and a mini date navigator.
 - A collapsible calendar sidebar, independent calendar visibility, local text/type filters, and account reconnect warnings. In the popup and narrow windows, a clickable backdrop closes the slide-out sidebar when you click outside it.
 - Event details on click and basic previews after one second of hover; keyboard focus also exposes a preview. Event lists and previews stay within the visible window, with long lists scrolling internally.
 - Create/edit/delete ordinary events, choose writable account/calendar destinations, edit one recurring occurrence or its whole series, and preserve existing guests/meeting links.
 - A durable offline outbox, retry-safe creation, conditional edits, explicit conflict resolution, and a shared pending-changes panel.
+- Optional desktop/sound reminders, imported local sounds, snooze, missed-reminder recovery, per-calendar overrides, and manual/scheduled Do not disturb.
+- Optional secondary time zone with aligned week labels and exact dual-zone event details/previews.
 - Dexie-backed event storage with reactive cross-window queries, persistence across restarts, and offline access to cached Google events.
 - Shared settings for the default view, week start/weekends, 12/24-hour clock, visible week hours, scrolling or fit-to-height week layout, minimum hour height, primary time zone, theme, and density.
 - Light, dark, and follow-device themes; local Google cache counts.
@@ -34,7 +36,7 @@ The stage 1 account features remain available in Settings:
 
 **Upgrading existing accounts:** stage 4 now requests `calendar.events` for event creation/editing. Reload the extension and use **Reconnect** to approve the new permission. The existing Google Cloud Data Access declaration already includes it; no new OAuth client or application server is needed. See [the stage 4 guide](docs/STAGE-4.md).
 
-Google event reads/writes are covered by synthetic API/identity tests; live write-scope and multi-account acceptance remain pending. Notifications, custom sounds, snooze, DND, and dual time zones remain in [the full plan](docs/PLAN.md).
+Google event reads/writes are covered by synthetic API/identity tests; live write-scope and multi-account acceptance remain pending. Stage 5 reminder/DND/dual-zone implementation is covered by local tests; real OS display/audio and sleep acceptance remain pending. See [stage 5](docs/STAGE-5.md).
 
 ## Requirements
 
@@ -50,7 +52,7 @@ npm run build
 npm run extension:id
 ```
 
-Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.4.1. The native-popup sizing correction remains covered by an actual toolbar-popup test.
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.5.0. The native-popup sizing correction remains covered by an actual toolbar-popup test.
 
 Without connected accounts, the calendar shows an empty grid and a prompt to connect an account. Settings displays setup instructions and disables Google sign-in until a client ID is configured. Preserve any existing `.env.local` when updating.
 
@@ -66,7 +68,7 @@ The calendar artwork fills the icon without a surrounding tile or border. The ba
 
 The badge background matches the selected event's color, with black or white text chosen for readability. Dates and times use the calendar's primary time zone. All-day, declined, and already-started events are skipped. Shared calendars use the same preferred cached account as the calendar UI. Hover the icon for the saved event's name, date/time, and zone. Reconnect or storage warnings take priority.
 
-**Settings → Calendar appearance → Show next event on toolbar** enables or disables the event badge (enabled by default). It refreshes on settings/account/cache updates and the existing one-minute scheduler, including offline use; Chrome can delay background alarms. It reflects the bounded local cache, so missing or stale Google data can affect which event is available. No reminder or notification is sent.
+**Settings → Calendar appearance → Show next event on toolbar** enables or disables the event badge (enabled by default). It refreshes on settings/account/cache updates and the existing one-minute scheduler, including offline use; Chrome can delay background alarms. It reflects the bounded local cache, so missing or stale Google data can affect which event is available. The toolbar badge itself does not send reminders.
 
 ## Week view layout
 
@@ -81,6 +83,14 @@ Choose **Fit all hours · no vertical scroll** to shrink the configured hour ran
 Click **Create event** (+) or an empty date/time to create a one-hour timed event in a writable calendar. All-day mode is an explicit choice. Choose hours/minutes on the clock face or type an exact time; the time-zone selector opens the full supported list and filters by region/city text, starting from your configured primary zone. Open an event's details to edit it; recurring events offer **Edit occurrence** and **Edit series**. The editor supports title, dates/time zone, all-day dates, location, description, basic repeating rules and confirmed deletion. Existing guests and meeting data are preserved; guest-update behavior is selectable. Specialized Google event types remain read-only here.
 
 Changes are saved locally before sending. **Pending changes** in the calendar footer or **Settings → Event editing** shows offline/retrying work and conflicts. Choose the Google version or explicitly apply your changed fields; a newer remote edit conflicts again. Account removal is blocked until pending work is resolved/discarded. New creation IDs prevent duplicates after lost responses. Settings also chooses a default account/calendar. See [stage 4 behavior and limitations](docs/STAGE-4.md), including series master caching, unsupported this-and-following splits, and guest-list/calendar-move limitations.
+
+## Reminders, sounds and Do not disturb
+
+Automatic reminders start disabled. Enable desktop and/or sound alerts in **Settings → Notifications, sounds and Do not disturb**, choose reminder offsets and save. Import local audio, preview it, set volume, assign calendar-specific sounds, configure snooze presets and notification privacy, and choose missed-reminder recovery behavior. Manual or named-zone weekly DND can skip/defer due alerts, including overnight schedules.
+
+The calendar footer's **Reminders** panel provides snooze/dismiss controls independently of native OS buttons. Reminders work from the local cache and pending edits; display filters do not silence them. Account enablement and reminder-specific calendar overrides do. Chrome must be running, and sleep/OS notification settings can delay or suppress alerts. See [the stage 5 guide](docs/STAGE-5.md) for limits and verification.
+
+For two time zones, set **Secondary time zone** in Calendar appearance. Week labels align both zones, show date shifts and distinguish weeks with changing DST offsets. Event details and hover previews show exact times in both zones.
 
 ## Connect Google
 
@@ -132,11 +142,11 @@ You can keep the test browser in a temporary location using `PLAYWRIGHT_BROWSERS
 
 ## Storage and permissions
 
-Account identifiers, emails, cached calendar names/permissions, preferences, and sanitized diagnostics are stored in `chrome.storage.local`. Event data uses local Dexie/IndexedDB (`calendar-checker-events`, schema 4): Google `events`, snapshot `ranges`, per-calendar `syncStates`, mutation-receipt `meta`, independent pending `outbox`, and bounded series `editBases`. Upgrading removes the old preview-event table and its seed markers while preserving Google data. Native OAuth tokens are Chrome-managed; chooser tokens use worker memory only and session-dependent silent renewal. Provider sync cursors are durable local state and are excluded from UI metadata and diagnostics. There is no `chrome.storage.sync` usage.
+Account identifiers, emails, cached calendar names/permissions, preferences, and sanitized diagnostics are stored in `chrome.storage.local`. Event data uses local Dexie/IndexedDB (`calendar-checker-events`, schema 5): Google `events`, snapshot `ranges`, per-calendar `syncStates`, mutation-receipt `meta`, independent pending `outbox`, bounded series `editBases`, durable `reminders`, and local audio `sounds`. Upgrading removes the old preview-event table and its seed markers while preserving Google data. Native OAuth tokens are Chrome-managed; chooser tokens use worker memory only and session-dependent silent renewal. Provider sync cursors are durable local state and are excluded from UI metadata and diagnostics. There is no `chrome.storage.sync` usage.
 
-Permissions remain `identity`, `storage`, `alarms`, and direct requests to `https://www.googleapis.com/*`. Google scopes cover OpenID identity, email, calendar-list read access, event read access, and event editing (`calendar.events`).
+Permissions are `identity`, `storage`, `alarms`, `notifications`, `offscreen`, and direct requests to `https://www.googleapis.com/*`. Google scopes cover OpenID identity, email, calendar-list read access, event read access, and event editing (`calendar.events`).
 
-After resolving/discarding any pending changes, removing an account deletes its local metadata, cached events/edit bases, coverage, and sync cursors. Pausing preserves that data while stopping sync and hiding events. Removal does not sign you out of Gmail or revoke Google's app consent. Local extension storage is cleared on uninstall; Chrome background work can be delayed by sleep or suspension.
+After resolving/discarding any pending changes, removing an account deletes its local metadata, cached events/edit bases, reminder contents, coverage, and sync cursors. Pausing preserves that data while stopping sync and hiding events. Removal does not sign you out of Gmail or revoke Google's app consent. Local extension storage is cleared on uninstall; Chrome background work can be delayed by sleep or suspension.
 
 ## Development documentation
 
@@ -152,6 +162,7 @@ After resolving/discarding any pending changes, removing an account deletes its 
 - [Stage 2 interface and storage guide](docs/STAGE-2.md)
 - [Stage 3 synchronization and upgrade guide](docs/STAGE-3.md)
 - [Stage 4 event editing and offline queue](docs/STAGE-4.md)
+- [Stage 5 reminders, audio, DND and dual zones](docs/STAGE-5.md)
 - [Durable notes for future agents](docs/agents/LEARNINGS.md)
 
 This repository is developed in local Git. No remote, publication, hosting, or deployment is required.

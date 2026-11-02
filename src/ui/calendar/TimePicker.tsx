@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Clock3, X } from "lucide-react";
+import "../event-writing.css";
 
 const two = (value: number) => String(value).padStart(2, "0");
 
