@@ -1,6 +1,6 @@
 # Stage 3: Google event reading and offline synchronization
 
-Release: v0.3.4. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
+Release: v0.3.5. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
 
 ## Use the release
 
@@ -17,6 +17,8 @@ The additional scope is read-only. No event-writing scope or application backend
 For second-account selection, v0.3.3 adds the optional Web application client chooser described in `MULTI-ACCOUNT-SETUP.md` and ADR 0005. Existing native connections retain their method; live chooser/session renewal acceptance remains pending.
 
 Week layout settings in v0.3.4 default to readable hours with a 48-pixel minimum and internal scrolling for long days. Settings → Calendar appearance can change the minimum (32–120 pixels) or select **Fit all hours** to keep the configured day visible without vertical scrolling. This applies to both calendar surfaces without changing sync coverage.
+
+V0.3.5 also adds a borderless full-canvas toolbar icon and a next-event badge derived from the cache: today's next timed start (`HH:mm`) or a later calendar-day distance (`+Nd`) in the primary zone. Account/calendar visibility applies; all-day, declined and past-start events are skipped. Settings → Calendar appearance can disable the event badge. Reconnect/storage warnings take priority. The existing minute tick updates it offline and without a due network request; it is not a reminder feature or proof of fresh cache coverage.
 
 ## Sync design
 

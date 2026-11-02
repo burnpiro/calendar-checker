@@ -25,6 +25,14 @@ Stage 4: event creation/editing, writable account/calendar selection, recurrence
 
 After reloading the current build, approve the new read-only event scope through Reconnect where required and exercise the live checks in `STAGE-3.md`. Continue the stage 1 two-account/lifecycle matrix before treating multi-account authentication as accepted. First-account connection is user-confirmed; live stage 3 event reads are not yet verified. Custom sounds, notifications, snooze, DND, and secondary zones remain stage 5.
 
+## Full-size icon and next-event badge · v0.3.5
+
+The toolbar icon now uses full-canvas calendar artwork with transparent corners and no enclosing tile/border. The local deterministic generator creates 16/24/32/48/128-pixel assets with supersampling; `action.default_icon` explicitly selects the toolbar resolutions.
+
+The event badge defaults on: it shows only today's next timed start (`HH:mm`), or `+Nd` for a later calendar date, using the primary zone. It skips all-day/declined/already-started events, paused accounts, and hidden calendars, and uses the UI's coverage-preferred shared-calendar selection. The tooltip identifies the next saved event. Reconnect and storage warnings retain priority. Appearance settings can disable event display. The existing one-minute tick refreshes it before/after due sync; account/settings/cache changes also update it. It works from local cache offline and reconstructs on startup, without tokens in badge data, new permissions, or reminder delivery.
+
+Validation: **134 unit/adapter tests**, TypeScript, formatting, production build, and **eight isolated Chromium tests** pass. New coverage includes time-only/day-distance selection, local-date boundaries, both DST transitions, filtering/shared calendars, cursor-free cache reads, warning priority, and real Chrome toolbar text changes through the actual alarm while offline. Icon assets were visually inspected. Live Google multi-account acceptance remains pending.
+
 ## Readable and fit week layouts · v0.3.4
 
 Week view now defaults to a 48-pixel minimum per hour and scrolls within the calendar when the selected hour range is too tall. Calendar appearance settings expose **Week view layout** (readable/fit) and **Minimum hour height** (32–120 pixels). Fit mode shows the configured day without vertical scrolling on popup and full calendar; it preserves the saved minimum for switching back. Legacy preferences receive the new defaults. Month layout, sync behavior, and native popup document sizing are unchanged.

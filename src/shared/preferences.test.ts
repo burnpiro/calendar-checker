@@ -28,6 +28,7 @@ describe("preference compatibility and event presentation", () => {
       theme: "system",
       weekLayout: "scroll",
       weekHourHeight: 48,
+      showEventBadge: true,
     });
     expect(settingsSchema.safeParse({}).success).toBe(false);
   });

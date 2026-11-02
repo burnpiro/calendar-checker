@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ChromeIdentityProvider, ChromeRepository } from "./chrome-adapters";
-import { SCOPES, STORAGE_KEY } from "../shared/model";
+import {
+  ChromeIdentityProvider,
+  ChromeRepository,
+  ChromeBadge,
+} from "./chrome-adapters";
+import { SCOPES, STORAGE_KEY, emptyStore } from "../shared/model";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -121,5 +125,50 @@ describe("local persistence", () => {
     });
     expect(local.set).not.toHaveBeenCalled();
     expect(local.clear).not.toHaveBeenCalled();
+  });
+});
+
+describe("toolbar rendering", () => {
+  function toolbar() {
+    const action = {
+      setBadgeText: vi.fn(async () => undefined),
+      setBadgeTextColor: vi.fn(async () => undefined),
+      setBadgeBackgroundColor: vi.fn(async () => undefined),
+      setTitle: vi.fn(async () => undefined),
+    };
+    vi.stubGlobal("chrome", { action });
+    return action;
+  }
+  it("keeps reconnect warnings above the event badge without reading event storage", async () => {
+    const action = toolbar();
+    const readStore = vi.fn(async () => emptyStore());
+    const readEvents = vi.fn();
+    await new ChromeBadge(readStore, readEvents).update(2);
+    expect(action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
+    expect(action.setTitle).toHaveBeenCalledWith({
+      title: "Calendar Checker — 2 accounts need reconnecting",
+    });
+    expect(readStore).not.toHaveBeenCalled();
+    expect(readEvents).not.toHaveBeenCalled();
+  });
+  it("clears the event badge when disabled without reading IndexedDB", async () => {
+    const action = toolbar();
+    const store = emptyStore();
+    store.settings.showEventBadge = false;
+    const readEvents = vi.fn();
+    await new ChromeBadge(async () => store, readEvents).update(0);
+    expect(action.setBadgeText).toHaveBeenCalledWith({ text: "" });
+    expect(action.setTitle).toHaveBeenCalledWith({ title: "Calendar Checker" });
+    expect(readEvents).not.toHaveBeenCalled();
+  });
+  it("reports storage problems without mislabelling them as a reconnect requirement", async () => {
+    const action = toolbar();
+    await new ChromeBadge(async () => {
+      throw new Error("Storage unavailable");
+    }).update(0);
+    expect(action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
+    expect(action.setTitle).toHaveBeenCalledWith({
+      title: "Calendar Checker — open settings to check local storage",
+    });
   });
 });

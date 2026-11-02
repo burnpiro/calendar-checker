@@ -13,8 +13,10 @@ import {
   STORAGE_KEY,
   storeSchema,
   SCOPES,
+  type Store,
 } from "../../src/shared/model";
 import { browserFetch } from "../../src/background/google";
+import { eventSchema, eventKey } from "../../src/calendar/model";
 
 const extensionPath = resolve(".output/chrome-mv3");
 interface GoogleFixture {
@@ -1181,6 +1183,198 @@ test("week view scrolls at a readable hour height by default and shares the opti
     await expect
       .poll(async () => (await metrics(savedPopup)).slotHeight)
       .toBeGreaterThanOrEqual(71);
+  } finally {
+    await active?.close();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test("toolbar badge shows today's next time, later-day distance, visibility and reconnect priority from cached events", async () => {
+  const profile = await mkdtemp(join(tmpdir(), "calendar-toolbar-badge-"));
+  let active: BrowserContext | undefined;
+  try {
+    const { context, id } = await launch(profile);
+    active = context;
+    const worker = context.serviceWorkers()[0]!;
+    await worker.evaluate(() => {
+      Date.now = () => Date.parse("2026-11-02T10:00:00Z");
+    });
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${id}/options.html`);
+    // Wait for worker initialization before creating the fictional local cache.
+    await page.evaluate(() =>
+      chrome.runtime.sendMessage({
+        namespace: "calendar-checker",
+        command: {
+          type: "UPDATE_SETTINGS",
+          settings: { primaryTimeZone: "UTC" },
+        },
+      }),
+    );
+    const store = emptyStore();
+    store.settings.primaryTimeZone = "UTC";
+    store.accounts = [
+      {
+        id: "badge-account",
+        email: "badge@example.test",
+        enabled: true,
+        status: "connected",
+        eventsReadGranted: true,
+        calendars: [
+          {
+            id: "badge-calendar",
+            summary: "Badge fixture",
+            accessRole: "owner",
+            primary: true,
+          },
+        ],
+        connectedAt: "2026-11-02T10:00:00Z",
+        lastCheckedAt: "2026-11-02T10:00:00Z",
+        lastSuccessfulAt: "2026-11-02T10:00:00Z",
+      },
+    ];
+    const events = ["2026-11-02T14:30:00Z", "2026-11-03T09:00:00Z"].map(
+      (start) =>
+        eventSchema.parse({
+          key: eventKey("badge-account", "badge-calendar", start),
+          source: "google",
+          accountId: "badge-account",
+          calendarId: "badge-calendar",
+          eventId: start,
+          title: "Badge fixture meeting",
+          calendarName: "Badge fixture",
+          accountName: "badge@example.test",
+          color: "#7765d8",
+          eventType: "default",
+          allDay: false,
+          start,
+          end: new Date(Date.parse(start) + 3600_000).toISOString(),
+          timeZone: "UTC",
+          updatedAt: "2026-11-02T10:00:00Z",
+        }),
+    );
+    await page.evaluate(
+      async ({ store, events, key }) => {
+        await chrome.storage.local.set({ [key]: store });
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open("calendar-checker-events");
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(new Error("Fixture database failed"));
+        });
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(["events", "syncStates"], "readwrite");
+          for (const event of events) tx.objectStore("events").put(event);
+          // Defer network sync in this cache-only fixture; no Google requests are made.
+          tx.objectStore("syncStates").put({
+            key: JSON.stringify(["badge-account", "badge-calendar"]),
+            accountId: "badge-account",
+            calendarId: "badge-calendar",
+            running: false,
+            invalidated: false,
+            failures: 0,
+            retryAt: "2050-01-01T00:00:00Z",
+          });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(new Error("Fixture cache failed"));
+        });
+        db.close();
+        await chrome.runtime.sendMessage({
+          namespace: "calendar-checker",
+          command: {
+            type: "UPDATE_SETTINGS",
+            settings: { showEventBadge: true },
+          },
+        });
+      },
+      { store, events, key: STORAGE_KEY },
+    );
+    const badge = () => page.evaluate(() => chrome.action.getBadgeText({}));
+    await expect.poll(badge).toBe("14:30");
+    expect(await page.evaluate(() => chrome.action.getTitle({}))).toContain(
+      "Badge fixture meeting",
+    );
+    await page
+      .getByRole("checkbox", {
+        name: "Show next event on toolbar",
+        exact: true,
+      })
+      .uncheck();
+    await page
+      .getByRole("button", { name: "Save calendar preferences", exact: true })
+      .click();
+    await expect.poll(badge).toBe("");
+    await page
+      .getByRole("checkbox", {
+        name: "Show next event on toolbar",
+        exact: true,
+      })
+      .check();
+    await page
+      .getByRole("button", { name: "Save calendar preferences", exact: true })
+      .click();
+    await expect.poll(badge).toBe("14:30");
+    const visible = async (show: boolean) =>
+      page.evaluate(
+        ({ show }) =>
+          chrome.runtime.sendMessage({
+            namespace: "calendar-checker",
+            command: {
+              type: "UPDATE_SETTINGS",
+              settings: {
+                calendarVisibility: {
+                  [JSON.stringify(["badge-account", "badge-calendar"])]: show,
+                },
+              },
+            },
+          }),
+        { show },
+      );
+    await visible(false);
+    await expect.poll(badge).toBe("");
+    await visible(true);
+    await expect.poll(badge).toBe("14:30");
+    await context.setOffline(true);
+    // Fire the actual scheduler alarm after advancing only the worker's badge clock.
+    const tick = async (at: string) =>
+      worker.evaluate(async (at) => {
+        Date.now = () => Date.parse(at);
+        await chrome.alarms.create("calendar-checker.event-sync", {
+          when: new Date().getTime() - 1000,
+          periodInMinutes: 1,
+        });
+      }, at);
+    await tick("2026-11-02T15:00:00Z");
+    await expect.poll(badge).toBe("+1d");
+    await tick("2026-11-03T08:00:00Z");
+    await expect.poll(badge).toBe("09:00");
+    await page.evaluate(async (key) => {
+      const value = (await chrome.storage.local.get(key))[key] as Store;
+      value.accounts[0]!.status = "reconnect";
+      await chrome.storage.local.set({ [key]: value });
+      await chrome.runtime.sendMessage({
+        namespace: "calendar-checker",
+        command: {
+          type: "UPDATE_SETTINGS",
+          settings: { showEventBadge: true },
+        },
+      });
+    }, STORAGE_KEY);
+    await expect.poll(badge).toBe("!");
+    await page.evaluate(async (key) => {
+      const value = (await chrome.storage.local.get(key))[key] as Store;
+      value.accounts[0]!.status = "connected";
+      await chrome.storage.local.set({ [key]: value });
+      await chrome.runtime.sendMessage({
+        namespace: "calendar-checker",
+        command: {
+          type: "UPDATE_SETTINGS",
+          settings: { showEventBadge: true },
+        },
+      });
+    }, STORAGE_KEY);
+    await expect.poll(badge).toBe("09:00");
+    await tick("2026-11-03T10:00:00Z");
+    await expect.poll(badge).toBe("");
   } finally {
     await active?.close();
     await rm(profile, { recursive: true, force: true });

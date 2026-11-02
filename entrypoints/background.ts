@@ -112,7 +112,13 @@ export default defineBackground(() => {
       void queue
         .run(async () => {
           await ready;
-          await eventSync.run();
+          // Keep the next-event badge current even when no network sync is due.
+          await service.refreshBadge().catch(() => undefined);
+          try {
+            await eventSync.run();
+          } finally {
+            await service.refreshBadge().catch(() => undefined);
+          }
         })
         .catch(() => undefined);
   });

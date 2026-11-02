@@ -59,7 +59,9 @@ All app state writes go through the worker's serial queue. UI reads can run whil
 | User cancels reconnect                    | Preserve previous account state and cache.                                                                                                                                                                                      |
 | Unknown or corrupt storage schema         | Report storage failure; never reset the store automatically.                                                                                                                                                                    |
 
-Only enabled accounts that require reconnection contribute to the toolbar `!` badge. Startup reconstructs the badge and ensures the periodic alarm exists. Updating timing settings reschedules the alarm; normal worker wake-ups do not postpone it.
+Enabled accounts requiring reconnection take priority on the toolbar `!` badge. Otherwise `ChromeBadge` reads the store and an indexed upcoming-event/cache-metadata snapshot through `EventRepository.toolbarData`, then uses the pure `nextEventBadge` selector. It shows today’s next timed start as `HH:mm` or later calendar dates as `+Nd`, using the primary time zone and coverage-preferred shared-calendar copy. All-day/declined/past events and hidden or paused calendars do not contribute. The event badge is enabled by default and can be disabled in appearance settings. Cache failures use the existing storage-warning badge. No badge text contains event titles; the action tooltip can show saved event details.
+
+Startup reconstructs the badge and ensures the periodic alarm exists. The one-minute sync tick refreshes the badge before and after any due network work; toolbar rendering failures cannot block event sync. Account/settings saves also refresh it, so visibility/zone changes apply immediately. The badge uses cached data offline and does not imply fresh coverage or introduce a notification scheduler. Updating timing settings reschedules the alarm; normal worker wake-ups do not postpone it.
 
 ## Event synchronization and future writes
 

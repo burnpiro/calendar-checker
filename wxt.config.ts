@@ -30,7 +30,15 @@ export default defineConfig({
       key: publicKey,
       permissions: ["identity", "storage", "alarms"],
       host_permissions: ["https://www.googleapis.com/*"],
-      action: { default_title: "Calendar Checker" },
+      action: {
+        default_title: "Calendar Checker",
+        default_icon: {
+          16: "icon/16.png",
+          24: "icon/24.png",
+          32: "icon/32.png",
+          48: "icon/48.png",
+        },
+      },
       icons: {
         16: "icon/16.png",
         32: "icon/32.png",

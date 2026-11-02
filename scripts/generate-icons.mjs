@@ -18,34 +18,57 @@ function chunk(type, data) {
   return Buffer.concat([length, payload, crc]);
 }
 
+// The calendar itself fills the canvas: no enclosing tile, stroke, or padding.
+function roundedRect(x, y, left, top, right, bottom, radius) {
+  if (x < left || x > right || y < top || y > bottom) return false;
+  const dx = Math.max(left + radius - x, 0, x - (right - radius));
+  const dy = Math.max(top + radius - y, 0, y - (bottom - radius));
+  return dx * dx + dy * dy <= radius * radius;
+}
+function pixelColor(x, y) {
+  let color = null;
+  if (roundedRect(x, y, 0, 0.1, 1, 1, 0.1)) {
+    color = y < 0.36 ? [52, 95, 156] : [243, 247, 253];
+    for (const column of [0.16, 0.42, 0.68])
+      for (const row of [0.47, 0.7])
+        if (roundedRect(x, y, column, row, column + 0.16, row + 0.14, 0.025))
+          color = [52, 95, 156];
+  }
+  for (const binding of [0.23, 0.66])
+    if (roundedRect(x, y, binding, 0, binding + 0.11, 0.23, 0.045))
+      color = [37, 71, 121];
+  return color;
+}
 mkdirSync(new URL("../public/icon/", import.meta.url), { recursive: true });
-for (const size of [16, 32, 48, 128]) {
+for (const size of [16, 24, 32, 48, 128]) {
   const rows = Buffer.alloc(size * (1 + size * 4));
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++) {
-      const px = x / size,
-        py = y / size;
-      const inset = 0.05,
-        radius = 0.17;
-      const dx = Math.max(inset + radius - px, 0, px - (1 - inset - radius));
-      const dy = Math.max(inset + radius - py, 0, py - (1 - inset - radius));
-      const inside =
-        px >= inset &&
-        px <= 1 - inset &&
-        py >= inset &&
-        py <= 1 - inset &&
-        dx * dx + dy * dy <= radius * radius;
-      let color = inside ? [52, 95, 156, 255] : [0, 0, 0, 0];
-      if (px > 0.23 && px < 0.77 && py > 0.25 && py < 0.78)
-        color = [255, 255, 255, 255];
-      if (px > 0.23 && px < 0.77 && py > 0.34 && py < 0.4)
-        color = [52, 95, 156, 255];
-      for (const gx of [0.33, 0.55])
-        for (const gy of [0.49, 0.65])
-          if (px > gx && px < gx + 0.12 && py > gy && py < gy + 0.08)
-            color = [52, 95, 156, 255];
+      // Supersample locally for clean edges at toolbar and Retina resolutions.
+      const sum = [0, 0, 0];
+      let covered = 0;
+      for (let sy = 0; sy < 4; sy++)
+        for (let sx = 0; sx < 4; sx++) {
+          const color = pixelColor(
+            (x + (sx + 0.5) / 4) / size,
+            (y + (sy + 0.5) / 4) / size,
+          );
+          if (!color) continue;
+          covered++;
+          color.forEach((value, channel) => {
+            sum[channel] += value;
+          });
+        }
       const offset = y * (1 + size * 4) + 1 + x * 4;
-      rows.set(color, offset);
+      rows.set(
+        covered
+          ? [
+              ...sum.map((value) => Math.round(value / covered)),
+              Math.round((255 * covered) / 16),
+            ]
+          : [0, 0, 0, 0],
+        offset,
+      );
     }
   const header = Buffer.alloc(13);
   header.writeUInt32BE(size);

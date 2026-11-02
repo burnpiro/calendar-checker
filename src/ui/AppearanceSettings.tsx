@@ -264,6 +264,20 @@ export function AppearanceSettings({
             />
             Show weekends
           </label>
+          <label className="check-setting">
+            <input
+              type="checkbox"
+              checked={draft.showEventBadge}
+              onChange={(event) =>
+                setDraft({ ...draft, showEventBadge: event.target.checked })
+              }
+            />
+            Show next event on toolbar
+          </label>
+          <small>
+            Shows today's next start time in 24-hour format, or +1d, +2d, and so
+            on for later dates. Reconnect warnings take priority.
+          </small>
           <button className="button primary" disabled={busy}>
             Save calendar preferences
           </button>

@@ -14,6 +14,12 @@ import type {
 } from "./ports";
 
 import { GoogleWebIdentity } from "./web-identity";
+import { EventRepository } from "../calendar/event-repository";
+import {
+  emptyToolbarBadge,
+  nextEventBadge,
+  reconnectToolbarBadge,
+} from "../calendar/toolbar-badge";
 
 export class ChromeIdentityProvider implements IdentityProvider {
   private readonly web = new GoogleWebIdentity();
@@ -94,14 +100,39 @@ export class ChromeRepository implements Repository {
 }
 
 export class ChromeBadge implements Badge {
+  constructor(
+    private readonly readStore: () => Promise<Store> = () =>
+      new ChromeRepository().read(),
+    private readonly readEvents = (now: Date) =>
+      new EventRepository().toolbarData(now),
+    private readonly now = () => new Date(Date.now()),
+  ) {}
+
   async update(reconnectCount: number): Promise<void> {
-    await chrome.action.setBadgeText({ text: reconnectCount > 0 ? "!" : "" });
-    await chrome.action.setBadgeBackgroundColor({ color: "#b42335" });
-    await chrome.action.setTitle({
-      title:
-        reconnectCount > 0
-          ? `Calendar Checker — ${reconnectCount} account${reconnectCount === 1 ? " needs" : "s need"} reconnecting`
-          : "Calendar Checker",
-    });
+    let badge = emptyToolbarBadge;
+    if (reconnectCount > 0) badge = reconnectToolbarBadge(reconnectCount);
+    else {
+      try {
+        const { accounts, settings } = await this.readStore();
+        if (
+          settings.showEventBadge &&
+          accounts.some((account) => account.enabled)
+        ) {
+          const now = this.now();
+          const { events, metadata } = await this.readEvents(now);
+          badge = nextEventBadge(accounts, settings, events, metadata, now);
+        }
+      } catch {
+        badge = {
+          text: "!",
+          color: "#b42335",
+          title: "Calendar Checker — open settings to check local storage",
+        };
+      }
+    }
+    await chrome.action.setBadgeBackgroundColor({ color: badge.color });
+    await chrome.action.setBadgeTextColor({ color: "#ffffff" });
+    await chrome.action.setBadgeText({ text: badge.text });
+    await chrome.action.setTitle({ title: badge.title });
   }
 }

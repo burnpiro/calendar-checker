@@ -9,6 +9,7 @@ import {
   syncStateSchema,
   type CachedRange,
   type CalendarSyncState,
+  type SyncMetadata,
 } from "./sync-model";
 
 export class EventRepository {
@@ -162,6 +163,40 @@ export class EventRepository {
         errorCode: undefined,
         errorDetails: undefined,
       });
+    }
+  }
+  async toolbarData(
+    now: Date,
+  ): Promise<{ events: CalendarEvent[]; metadata: SyncMetadata }> {
+    try {
+      return await this.db.transaction(
+        "r",
+        this.db.events,
+        this.db.ranges,
+        this.db.syncStates,
+        async () => ({
+          // Use a whole-second lower bound because normalized instants can omit
+          // fractional seconds. Selection compares actual timestamps afterward.
+          events: await this.db.events
+            .where("start")
+            .aboveOrEqual(now.toISOString().slice(0, 19))
+            .filter(
+              (event) => !event.allDay && event.responseStatus !== "declined",
+            )
+            .toArray(),
+          metadata: {
+            states: (await this.db.syncStates.toArray()).map(
+              ({ syncToken: _cursor, ...state }) => state,
+            ),
+            ranges: (await this.db.ranges.toArray()).map(
+              ({ eventKeys: _keys, ...range }) => range,
+            ),
+            failed: false,
+          },
+        }),
+      );
+    } catch {
+      throw new AppError("storage-error");
     }
   }
   async summary() {
