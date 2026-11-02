@@ -1,6 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import { TimePicker } from "./TimePicker";
+import { TimeZonePicker } from "./TimeZonePicker";
+import { initialEventRange, movedEventEnd } from "./editor-time";
 import { Temporal } from "temporal-polyfill";
 import type { CalendarEvent } from "../../calendar/model";
 import {
@@ -25,7 +28,7 @@ export function EventEditor({
   scope: EditScope;
   accounts: Account[];
   settings: Settings;
-  seed?: { start: string; allDay: boolean };
+  seed?: { start: string };
   onClose: () => void;
 }) {
   const id = useRef(crypto.randomUUID());
@@ -51,42 +54,15 @@ export function EventEditor({
   const [zone, setZone] = useState(
     base?.timeZone ?? displayTimeZone(settings.primaryTimeZone),
   );
-  const [allDay, setAllDay] = useState(base?.allDay ?? seed?.allDay ?? false);
-  const initialStart =
-    base?.start ??
-    seed?.start ??
-    Temporal.Now.zonedDateTimeISO(zone)
-      .round({ smallestUnit: "hour", roundingMode: "ceil" })
-      .toInstant()
-      .toString();
+  const [initial] = useState(() => initialEventRange(base, seed, zone));
+  const [allDay, setAllDay] = useState(initial.allDay);
+  const [start, setStart] = useState(initial.start);
+  const [end, setEnd] = useState(initial.end);
   const toLocal = (instant: string) =>
     Temporal.Instant.from(instant)
       .toZonedDateTimeISO(zone)
       .toPlainDateTime()
       .toString();
-  const initialDate = initialStart.slice(0, 10);
-  const [start, setStart] = useState(
-    allDay
-      ? initialDate
-      : /^\d{4}-\d\d-\d\d$/.test(initialStart)
-        ? `${initialStart}T09:00`
-        : toLocal(initialStart),
-  );
-  const [end, setEnd] = useState(
-    allDay
-      ? base?.allDay
-        ? Temporal.PlainDate.from(base.end).subtract({ days: 1 }).toString()
-        : initialDate
-      : base && !base.allDay
-        ? toLocal(base.end)
-        : Temporal.PlainDateTime.from(
-            /^\d{4}-\d\d-\d\d$/.test(initialStart)
-              ? `${initialStart}T09:00`
-              : toLocal(initialStart),
-          )
-            .add({ hours: 1 })
-            .toString(),
-  );
   const [title, setTitle] = useState(base?.title ?? "");
   const [description, setDescription] = useState(base?.description ?? "");
   const [location, setLocation] = useState(base?.location ?? "");
@@ -99,6 +75,25 @@ export function EventEditor({
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const confirmation = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (confirmDelete) {
+      confirmation.current?.scrollIntoView({ block: "nearest" });
+      confirmation.current
+        ?.querySelector("button")
+        ?.focus({ preventScroll: true });
+    }
+  }, [confirmDelete]);
+  const markDirty = () => {
+    setDirty(true);
+    setConfirmDelete(false);
+  };
+  const moveStart = (value: string) => {
+    setEnd(movedEventEnd(start, end, value, allDay));
+    setStart(value);
+    markDirty();
+  };
+
   const close = () => {
     if (!busy && (!dirty || window.confirm("Discard changes in this form?")))
       onClose();
@@ -285,46 +280,67 @@ export function EventEditor({
                     />
                     All day
                   </label>
-                  <label>
-                    Starts
-                    <input
-                      type={allDay ? "date" : "datetime-local"}
-                      step={allDay ? undefined : "0.001"}
-                      required
-                      value={start}
-                      onChange={(e) => setStart(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    {allDay ? "Last day (inclusive)" : "Ends"}
-                    <input
-                      type={allDay ? "date" : "datetime-local"}
-                      step={allDay ? undefined : "0.001"}
-                      required
-                      value={end}
-                      onChange={(e) => setEnd(e.target.value)}
-                    />
-                  </label>
-                  <label className="editor-wide">
-                    Event time zone
-                    <input
-                      list="event-zones"
-                      required
-                      value={zone}
-                      onChange={(e) => setZone(e.target.value)}
-                    />
-                    <datalist id="event-zones">
-                      {[
-                        ...new Set([
-                          displayTimeZone(settings.primaryTimeZone),
-                          "UTC",
-                          ...Intl.supportedValuesOf("timeZone"),
-                        ]),
-                      ].map((z) => (
-                        <option key={z}>{z}</option>
-                      ))}
-                    </datalist>
-                  </label>
+                  <div className="editor-date-time">
+                    <label>
+                      Starts
+                      <input
+                        type="date"
+                        required
+                        value={start.slice(0, 10)}
+                        onChange={(e) =>
+                          moveStart(
+                            e.target.value
+                              ? e.target.value + (allDay ? "" : start.slice(10))
+                              : "",
+                          )
+                        }
+                      />
+                    </label>
+                    {!allDay && (
+                      <TimePicker
+                        label="Start time"
+                        value={start.slice(11, 16)}
+                        onChange={(time) =>
+                          moveStart(`${start.slice(0, 10)}T${time}`)
+                        }
+                      />
+                    )}
+                  </div>
+                  <div className="editor-date-time">
+                    <label>
+                      {allDay ? "Last day (inclusive)" : "Ends"}
+                      <input
+                        type="date"
+                        required
+                        value={end.slice(0, 10)}
+                        onChange={(e) =>
+                          setEnd(
+                            e.target.value
+                              ? e.target.value + (allDay ? "" : end.slice(10))
+                              : "",
+                          )
+                        }
+                      />
+                    </label>
+                    {!allDay && (
+                      <TimePicker
+                        label="End time"
+                        value={end.slice(11, 16)}
+                        onChange={(time) => {
+                          setEnd(`${end.slice(0, 10)}T${time}`);
+                          markDirty();
+                        }}
+                      />
+                    )}
+                  </div>
+                  <TimeZonePicker
+                    value={zone}
+                    defaultZone={displayTimeZone(settings.primaryTimeZone)}
+                    onChange={(value) => {
+                      setZone(value);
+                      markDirty();
+                    }}
+                  />
                   {!base?.recurringEventId && (
                     <>
                       <label>
@@ -422,7 +438,11 @@ export function EventEditor({
                     </p>
                   )}
                   {confirmDelete && (
-                    <div className="editor-wide delete-confirm" role="alert">
+                    <div
+                      ref={confirmation}
+                      className="editor-wide delete-confirm"
+                      role="alert"
+                    >
                       <p>
                         Delete{" "}
                         {scope === "series"

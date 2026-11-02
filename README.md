@@ -2,7 +2,7 @@
 
 A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
 
-## Current release: stage 4 · v0.4.0
+## Current release: stage 4 · v0.4.1
 
 Google event reading, local synchronization, and event creation/editing are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
 
@@ -50,7 +50,7 @@ npm run build
 npm run extension:id
 ```
 
-Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.4.0. The native-popup sizing correction remains covered by an actual toolbar-popup test.
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.4.1. The native-popup sizing correction remains covered by an actual toolbar-popup test.
 
 Without connected accounts, the calendar shows an empty grid and a prompt to connect an account. Settings displays setup instructions and disables Google sign-in until a client ID is configured. Preserve any existing `.env.local` when updating.
 
@@ -78,7 +78,7 @@ Choose **Fit all hours · no vertical scroll** to shrink the configured hour ran
 
 ## Create, edit and review pending changes
 
-Click **Create event** (+) or an empty date/time to create an event in a writable calendar. Open an event's details to edit it; recurring events offer **Edit occurrence** and **Edit series**. The editor supports title, dates/time zone, all-day dates, location, description, basic repeating rules and confirmed deletion. Existing guests and meeting data are preserved; guest-update behavior is selectable. Specialized Google event types remain read-only here.
+Click **Create event** (+) or an empty date/time to create a one-hour timed event in a writable calendar. All-day mode is an explicit choice. Choose hours/minutes on the clock face or type an exact time; the time-zone selector opens the full supported list and filters by region/city text, starting from your configured primary zone. Open an event's details to edit it; recurring events offer **Edit occurrence** and **Edit series**. The editor supports title, dates/time zone, all-day dates, location, description, basic repeating rules and confirmed deletion. Existing guests and meeting data are preserved; guest-update behavior is selectable. Specialized Google event types remain read-only here.
 
 Changes are saved locally before sending. **Pending changes** in the calendar footer or **Settings → Event editing** shows offline/retrying work and conflicts. Choose the Google version or explicitly apply your changed fields; a newer remote edit conflicts again. Account removal is blocked until pending work is resolved/discarded. New creation IDs prevent duplicates after lost responses. Settings also chooses a default account/calendar. See [stage 4 behavior and limitations](docs/STAGE-4.md), including series master caching, unsupported this-and-following splits, and guest-list/calendar-move limitations.
 

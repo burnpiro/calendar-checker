@@ -23,7 +23,13 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 Stage 5: desktop/sound reminders, custom sounds, volume/preview, snooze, scheduled/manual DND, dual-zone presentation, and restart/sleep recovery. Add Chrome notifications/offscreen permissions with their implementation.
 
-Reload v0.4.0 and use Reconnect on existing accounts to approve event writing. Continue the real two-account/lifecycle matrix and the stage 4 live write checks. First-account connection is user-confirmed; full live event-read/write and multi-account acceptance remain pending.
+Reload the current release and use Reconnect on existing accounts to approve event writing. Continue the real two-account/lifecycle matrix and the stage 4 live write checks. First-account connection is user-confirmed; full live event-read/write and multi-account acceptance remain pending.
+
+## Event editor controls · v0.4.1
+
+New events default to one timed hour from toolbar, month cells and timed week slots; existing all-day events retain their mode. Changing a start preserves the duration, including date rollover. Separate date controls and a nested 24-hour clock picker replace the native datetime minute scroller, with hour/minute dial buttons, pointer selection and exact numeric input. Delete scrolls to confirmation and focuses its button. Time-zone selection starts in the configured primary zone for new events, preserves existing event zones, opens all supported named zones with an empty query, filters region/city text, and supports keyboard selection. Both dialogs and the inline zone list remain bounded in the popup.
+
+Validation: **173 unit/adapter tests**, TypeScript, formatting, production build, and **14 isolated Chromium tests** pass. New checks cover one-hour date-cell/toolbar defaults, clicked-zone conversion, midnight rollover, preservation of existing all-day dates/seconds, duration changes, clock selection and exact minute entry, complete/filterable zone lists with reset-on-reopen and keyboard/Escape handling, saved Google fixture payloads, and focused visible delete confirmation. Clock/time-zone/delete screenshots were inspected. These use fictional events and do not establish live Google acceptance.
 
 ## Event writing and durable offline queue · v0.4.0
 

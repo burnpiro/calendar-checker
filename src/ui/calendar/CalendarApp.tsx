@@ -129,7 +129,7 @@ function CalendarBody({
     id: string;
     base?: CalendarEvent;
     scope: EditScope;
-    seed?: { start: string; allDay: boolean };
+    seed?: { start: string };
   } | null>(null);
   const [pendingOpen, setPendingOpen] = useState(false);
   const [editingError, setEditingError] = useState("");
@@ -420,7 +420,7 @@ function CalendarBody({
       setPreparing(false);
     }
   };
-  const newEvent = (seed?: { start: string; allDay: boolean }) => {
+  const newEvent = (seed?: { start: string }) => {
     hidePreview();
     setSelected(null);
     setEditor({ id: crypto.randomUUID(), scope: "event", seed });
@@ -725,9 +725,7 @@ function CalendarBody({
               weekends={settings.showWeekends}
               events={inputs}
               editable={false}
-              dateClick={(info) =>
-                newEvent({ start: info.dateStr, allDay: info.allDay })
-              }
+              dateClick={(info) => newEvent({ start: info.dateStr })}
               eventInteractive
               dayMaxEvents={compact ? true : 3}
               fixedWeekCount

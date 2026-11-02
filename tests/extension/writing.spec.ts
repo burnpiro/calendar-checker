@@ -468,7 +468,10 @@ test("editing resolves Google conflicts explicitly and targets the series master
     });
     await expect(
       seriesEditor.getByLabel("Starts", { exact: true }),
-    ).toHaveValue(`${month}-01T08:00`);
+    ).toHaveValue(`${month}-01`);
+    await expect(
+      seriesEditor.getByRole("button", { name: "Start time", exact: true }),
+    ).toHaveText("08:00");
     await seriesEditor
       .getByLabel("Title", { exact: true })
       .fill("Edited whole series");
@@ -488,8 +491,11 @@ test("editing resolves Google conflicts explicitly and targets the series master
       exact: true,
     });
     await expect(occurrence.getByLabel("Starts", { exact: true })).toHaveValue(
-      `${month}-05T08:00`,
+      `${month}-05`,
     );
+    await expect(
+      occurrence.getByRole("button", { name: "Start time", exact: true }),
+    ).toHaveText("08:00");
     await occurrence
       .getByLabel("Title", { exact: true })
       .fill("Edited occurrence");
@@ -520,6 +526,15 @@ test("editing resolves Google conflicts explicitly and targets the series master
       exact: true,
     });
     await deleting.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(
+      deleting.getByRole("button", { name: "Confirm delete", exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+    await expect(
+      deleting.getByRole("button", { name: "Confirm delete", exact: true }),
+    ).toBeFocused();
+    await page.screenshot({
+      path: "test-results/delete-confirmation-visible.png",
+    });
     await deleting
       .getByRole("button", { name: "Confirm delete", exact: true })
       .click();
@@ -537,6 +552,155 @@ test("editing resolves Google conflicts explicitly and targets the series master
         ),
       )
       .toEqual(["master_instance"]);
+  } finally {
+    await active?.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("new events default to one hour with a clock picker and an unfiltered searchable zone list", async () => {
+  const root = await mkdtemp(join(tmpdir(), "calendar-editor-controls-"));
+  let active: BrowserContext | undefined;
+  try {
+    const extension = await copyExtension(root);
+    const session = await open(join(root, "profile"), extension);
+    active = session.context;
+    await seed(session.worker);
+    const page = await session.context.newPage();
+    await page.setViewportSize({ width: 800, height: 600 });
+    await page.goto(`chrome-extension://${session.id}/popup.html`);
+    await page
+      .locator(`.calendar-day-cell[data-date="${month}-10"]`)
+      .click({ position: { x: 25, y: 45 } });
+    const editor = page.getByRole("dialog", { name: "New event", exact: true });
+    await expect(
+      editor.getByLabel("All day", { exact: true }),
+    ).not.toBeChecked();
+    await expect(editor.getByLabel("Starts", { exact: true })).toHaveValue(
+      `${month}-10`,
+    );
+    await expect(
+      editor.getByRole("button", { name: "Start time", exact: true }),
+    ).toHaveText("09:00");
+    await expect(
+      editor.getByRole("button", { name: "End time", exact: true }),
+    ).toHaveText("10:00");
+    await editor
+      .getByRole("button", { name: "Start time", exact: true })
+      .click();
+    const clock = page.getByRole("dialog", { name: "Start time", exact: true });
+    await clock.getByRole("button", { name: "14 hours", exact: true }).click();
+    await clock
+      .getByRole("button", { name: "30 minutes", exact: true })
+      .click();
+    await expect(
+      clock.getByRole("button", { name: "Set time", exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: "test-results/event-clock-picker.png" });
+    await clock.getByRole("button", { name: "Set time", exact: true }).click();
+    await expect(clock).toHaveCount(0);
+    await expect(editor).toBeVisible();
+    await expect(
+      editor.getByRole("button", { name: "Start time", exact: true }),
+    ).toHaveText("14:30");
+    await expect(
+      editor.getByRole("button", { name: "End time", exact: true }),
+    ).toHaveText("15:30");
+    // Exact minutes stay available without a native scrolling time control.
+    await editor.getByRole("button", { name: "End time", exact: true }).click();
+    const endClock = page.getByRole("dialog", {
+      name: "End time",
+      exact: true,
+    });
+    await endClock
+      .getByRole("spinbutton", { name: "Minute", exact: true })
+      .fill("47");
+    await endClock
+      .getByRole("button", { name: "Set time", exact: true })
+      .click();
+    await expect(
+      editor.getByRole("button", { name: "End time", exact: true }),
+    ).toHaveText("15:47");
+    await expect(
+      editor.getByRole("button", {
+        name: "Event time zone UTC · default",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await editor
+      .getByRole("button", {
+        name: "Event time zone UTC · default",
+        exact: true,
+      })
+      .click();
+    const search = editor.getByRole("combobox", { name: "Search time zones" });
+    await expect(search).toHaveValue("");
+    const options = editor.getByRole("option");
+    expect(await options.count()).toBeGreaterThan(400);
+    await search.fill("new york");
+    await expect(
+      editor.getByRole("option", { name: "America/New York", exact: true }),
+    ).toBeVisible();
+    await search.press("ArrowDown");
+    await search.press("Enter");
+    await expect(
+      editor.getByRole("button", {
+        name: "Event time zone America/New York",
+        exact: true,
+      }),
+    ).toBeFocused();
+    await editor
+      .getByRole("button", {
+        name: "Event time zone America/New York",
+        exact: true,
+      })
+      .click();
+    await expect(search).toHaveValue("");
+    expect(await options.count()).toBeGreaterThan(400);
+    await page.screenshot({ path: "test-results/event-timezone-search.png" });
+    await search.fill("not-a-real-timezone");
+    await expect(editor.getByText("No matching time zones.")).toBeVisible();
+    await search.press("Escape");
+    await expect(editor).toBeVisible();
+    await editor
+      .getByRole("button", {
+        name: "Event time zone America/New York",
+        exact: true,
+      })
+      .click();
+    await search.fill("UTC");
+    await editor
+      .getByRole("option", { name: "UTC · default", exact: true })
+      .click();
+    await editor
+      .getByLabel("Title", { exact: true })
+      .fill("Clock-created event");
+    await editor
+      .getByRole("button", { name: "Save event", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Pending changes", exact: true }),
+    ).toBeVisible();
+    const event = await session.worker.evaluate(() =>
+      Object.values(
+        (globalThis as unknown as { writeFixture: WriteFixture }).writeFixture
+          .events,
+      ).find((event) => event.summary === "Clock-created event"),
+    );
+    expect(event?.start?.dateTime).toBe(`${month}-10T14:30:00Z`);
+    expect(event?.end?.dateTime).toBe(`${month}-10T15:47:00Z`);
+    expect(event?.start?.timeZone).toBe("UTC");
+    // Toolbar creation also starts timed, in the saved default zone.
+    await page.getByRole("button", { name: "Create event" }).click();
+    await expect(
+      editor.getByLabel("All day", { exact: true }),
+    ).not.toBeChecked();
+    await expect(
+      editor.getByRole("button", {
+        name: "Event time zone UTC · default",
+        exact: true,
+      }),
+    ).toBeVisible();
   } finally {
     await active?.close();
     await rm(root, { recursive: true, force: true });

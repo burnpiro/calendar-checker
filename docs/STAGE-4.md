@@ -1,6 +1,6 @@
 # Stage 4: Event creation, editing and offline changes
 
-Release: v0.4.0. No application server is used. All event traffic goes directly to Google; preferences, cache and the pending queue stay in the local Chrome profile.
+Release: v0.4.1. No application server is used. All event traffic goes directly to Google; preferences, cache and the pending queue stay in the local Chrome profile.
 
 ## Upgrade
 
@@ -10,13 +10,13 @@ Release: v0.4.0. No application server is used. All event traffic goes directly 
 
 ## Create and modify
 
-Click **Create event** (+) or an empty day/time. Choose an enabled account and writable calendar, then enter the title, date/time, event time zone, location and description. All-day forms use an inclusive last day; Google receives an exclusive end. New events can repeat daily, weekly, monthly or yearly for 1–1000 occurrences.
+Click **Create event** (+) or an empty day/time. New events default to one timed hour, including month cells; choose All day explicitly when needed. Moving the start preserves the chosen duration and handles crossing midnight. Start/end dates and clock buttons are separate. The clock offers a 24-hour dial, five-minute labels, pointer selection for any minute, and numeric entry for an exact time. New events start in the configured primary time zone; existing events retain their zone. Opening the time-zone selector shows all supported zones with an empty search, with case-insensitive region/city filtering and keyboard selection. Choose an enabled account and writable calendar, then enter the title, date/time, event time zone, location and description. All-day forms use an inclusive last day; Google receives an exclusive end. New events can repeat daily, weekly, monthly or yearly for 1–1000 occurrences.
 
 **Settings → Event editing** sets the default account/calendar combination for new events. An unavailable default falls back to a primary writable calendar. Reader/busy-only calendars never appear as destinations. Editing keeps the original account/calendar; moving an existing event is not implemented.
 
 Open event details, then **Edit event**. Recurring instances offer **Edit occurrence** or **Edit series**. The latter loads the original master, including its first occurrence and recurrence rule; the form does not shift the series to the selected instance. Existing complex rules are preserved unless deliberately replaced. A previously loaded series can be edited offline; a master not yet cached needs connectivity first. Series timing/recurrence changes appear after Google expands and syncs the instances. This-and-following splits are not available.
 
-**Delete** inside the editor requires an explicit confirmation and follows the chosen occurrence/series scope. Existing guests and meeting data are preserved on edits. Choose whether Google should notify existing guests; Google can still send some service emails. Guest-list editing and creation of conference links are not included. Specialized Google event types and locked/non-writable events remain read-only here; use their Google Calendar link.
+**Delete** inside the editor scrolls to its confirmation and focuses Confirm delete so the action stays visible in the popup. It follows the chosen occurrence/series scope. Existing guests and meeting data are preserved on edits. Choose whether Google should notify existing guests; Google can still send some service emails. Guest-list editing and creation of conference links are not included. Specialized Google event types and locked/non-writable events remain read-only here; use their Google Calendar link.
 
 Ambiguous or nonexistent daylight-saving times are rejected when entering a new wall-clock time; use an unambiguous time or zone. Unchanged existing instants retain their original offset and seconds. No reminder delivery is introduced in this stage.
 
