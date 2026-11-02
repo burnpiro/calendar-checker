@@ -8,6 +8,7 @@
 - Account/calendar/search filters and Google's event types: default, birthday, fromGmail, focusTime, outOfOffice, workingLocation. Holidays are generally a calendar filter.
 - Event details on click, basic hover details after one second, and equivalent keyboard access. Keep previews/event lists within the actual popup viewport; scroll long lists internally.
 - Create and modify events with account and writable-calendar selection; respect specialized event restrictions and recurring-series semantics.
+- Busy-only shared calendars display read-only availability blocks without event details (v0.5.2).
 - Offline caching with cache coverage and last-success timestamps; explicit stale/offline states.
 - Offline mutations in a durable outbox, retry-safe creation, and version-aware conflict handling.
 - Desktop and sound reminders, custom imported sounds, volume/preview, configurable reminder offsets and snooze.

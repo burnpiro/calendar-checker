@@ -104,7 +104,7 @@ export class EventRepository {
             .delete();
           await this.db.ranges.bulkPut(snapshots);
           await this.db.syncStates.put(next);
-          if (!next.invalidated)
+          if (!next.invalidated && next.dataKind !== "freebusy")
             await this.db.outbox
               .where("[accountId+calendarId]")
               .equals([next.accountId, next.calendarId])

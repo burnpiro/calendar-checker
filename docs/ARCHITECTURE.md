@@ -79,6 +79,10 @@ Enabled accounts requiring reconnection take priority on the toolbar `!` badge. 
 
 Startup reconstructs the badge and ensures the periodic alarm exists. The one-minute sync tick refreshes the badge before and after any due network work; toolbar rendering failures cannot block event sync. Account/settings saves also refresh it, so visibility/zone changes apply immediately. The badge uses cached data offline and does not imply fresh coverage or introduce a notification scheduler. Updating timing settings reschedules the alarm; normal worker wake-ups do not postpone it.
 
+## Busy-only calendars
+
+`freeBusyReader` calendars use bounded `POST /calendar/v3/freeBusy` queries with `calendar.events.freebusy`, independently of event cursors. Schema 5 accepts additive optional `availabilityOnly` event and `dataKind` sync fields without an index migration. Local availability keys represent UTC-day segments of Google busy intervals, never Google event IDs; they have no details, edit actions, reminders or toolbar event countdown. All windows succeed before atomic replacement. Nested calendar errors are failures, not empty results. Access-mode changes rebuild coverage; a busy commit cannot acknowledge real event outbox work. At equal coverage, shared-calendar selection prefers event details over availability.
+
 ## Event synchronization and writes
 
 The unexpanded change feed requests only IDs/cursors; bounded expanded queries fetch display data. Google handles recurrence, moved/cancelled exceptions, and DST. No-change feeds validate coverage; changes refresh retained ranges. Coverage absence, invalidation, staleness, offline state, and a successful empty result remain distinct. Shared calendar display prefers the best-covered/freshest authorized copy while retaining account provenance.

@@ -75,6 +75,10 @@ function harness(accounts = [account("a")]) {
     invalidateToken: vi.fn(async () => undefined),
   };
   const google = {
+    getBusy: vi.fn(
+      async (_token: string, _calendar: string, _start: string, _end: string) =>
+        [] as { start: string; end: string }[],
+    ),
     getProfile: vi.fn(async (token: string) => ({
       id: token.replace("private-token-", ""),
       email: token.replace("private-token-", "") + "@example.test",
@@ -129,6 +133,77 @@ function harness(accounts = [account("a")]) {
 }
 
 describe("Google event synchronization", () => {
+  it("polls busy-only calendars without cursors, caches availability and respects cadence", async () => {
+    const a = account("a");
+    a.calendars[0]!.accessRole = "freeBusyReader";
+    const h = harness([a]);
+    h.google.getBusy.mockImplementation(
+      async (_token, _calendar, start, end) =>
+        start <= "2026-11-02T09:00:00Z" && end > "2026-11-02T10:00:00Z"
+          ? [{ start: "2026-11-02T09:00:00Z", end: "2026-11-02T10:00:00Z" }]
+          : [],
+    );
+    await h.sync.run();
+    expect(h.google.getChanges).not.toHaveBeenCalled();
+    expect(h.google.getInstances).not.toHaveBeenCalled();
+    expect(await h.db.events.toArray()).toMatchObject([
+      {
+        title: "Busy",
+        availabilityOnly: true,
+        locked: true,
+        description: "",
+        location: "",
+        start: "2026-11-02T09:00:00.000Z",
+      },
+    ]);
+    expect(await h.cache.state("a", "a-calendar")).toMatchObject({
+      dataKind: "freebusy",
+      invalidated: false,
+    });
+    expect((await h.cache.state("a", "a-calendar")).syncToken).toBeUndefined();
+    const calls = h.google.getBusy.mock.calls.length;
+    await h.sync.run({ reason: "background" });
+    expect(h.google.getBusy).toHaveBeenCalledTimes(calls);
+    h.stored().settings.refreshOnOpen = false;
+    h.advance(6 * 60_000);
+    await h.sync.run({ reason: "open" });
+    expect(h.google.getBusy).toHaveBeenCalledTimes(calls);
+    await h.sync.run({ reason: "background" });
+    expect(h.google.getBusy).toHaveBeenCalledTimes(calls * 2);
+    const before = await h.db.events.toArray();
+    const ranges = await h.cache.ranges("a", "a-calendar");
+    h.google.getBusy
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new AppError("network"));
+    await h.sync.run({ reason: "manual" });
+    expect(await h.db.events.toArray()).toEqual(before);
+    expect(await h.cache.ranges("a", "a-calendar")).toEqual(ranges);
+    expect(await h.cache.state("a", "a-calendar")).toMatchObject({
+      errorCode: "network",
+      invalidated: true,
+      running: false,
+    });
+  });
+  it("replaces busy snapshots with event snapshots after an access upgrade and clears busy periods on an empty success", async () => {
+    const a = account("a");
+    a.calendars[0]!.accessRole = "freeBusyReader";
+    const h = harness([a]);
+    await h.sync.run();
+    expect(await h.db.events.count()).toBe(0);
+    expect((await h.cache.ranges("a", "a-calendar")).length).toBe(1);
+    h.stored().accounts[0]!.calendars[0]!.accessRole = "owner";
+    await h.sync.run();
+    expect(h.google.getChanges).toHaveBeenCalledTimes(1);
+    expect(await h.db.events.count()).toBe(1);
+    h.stored().accounts[0]!.calendars[0]!.accessRole = "freeBusyReader";
+    const old = await h.db.events.toArray();
+    expect(
+      visibleEvents(old, h.stored().settings, h.stored().accounts, "", []),
+    ).toEqual([]);
+    await h.sync.run();
+    expect(await h.db.events.count()).toBe(0);
+    expect((await h.cache.state("a", "a-calendar")).dataKind).toBe("freebusy");
+  });
   it("honors refresh-on-open independently of periodic cadence, while fetching uncached dates", async () => {
     const h = harness();
     await h.sync.run();

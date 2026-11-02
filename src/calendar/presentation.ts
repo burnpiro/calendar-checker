@@ -50,10 +50,19 @@ export function visibleEvents(
     accounts.filter((account) => account.enabled).map((account) => account.id),
   );
   const needle = query.trim().toLocaleLowerCase();
+  const busyOnly = new Set(
+    accounts.flatMap((account) =>
+      account.calendars
+        .filter((calendar) => calendar.accessRole === "freeBusyReader")
+        .map((calendar) => calendarKey(account.id, calendar.id)),
+    ),
+  );
   return events.filter(
     (event) =>
       event.source === "google" &&
       enabled.has(event.accountId) &&
+      (!busyOnly.has(calendarKey(event.accountId, event.calendarId)) ||
+        event.availabilityOnly === true) &&
       (!preferred || preferred.get(event.calendarId) === event.accountId) &&
       settings.calendarVisibility[
         calendarKey(event.accountId, event.calendarId)

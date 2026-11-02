@@ -10,7 +10,7 @@ import { makeFixtureMonth } from "../../tests/fixtures/calendar";
 import { dateKey, eventWhen, visibleEvents } from "../calendar/presentation";
 
 const accounts = ["fixture-work-account", "fixture-personal-account"].map(
-  (id) => ({ id, enabled: true }) as Account,
+  (id) => ({ id, enabled: true, calendars: [] }) as unknown as Account,
 );
 
 describe("preference compatibility and event presentation", () => {

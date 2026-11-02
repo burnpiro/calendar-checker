@@ -35,6 +35,7 @@ const identity = {
   accountId: z.string().min(1),
   calendarId: z.string().min(1),
   eventId: z.string().min(1),
+  availabilityOnly: z.literal(true).optional(),
   title: z.string().min(1),
   description: z.string().default(""),
   location: z.string().default(""),

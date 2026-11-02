@@ -23,7 +23,15 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 Stage 6: live Google multi-account/read/write acceptance, real OS notification/audio/native-button and sleep/wake acceptance, accessibility/performance review, and local unpacked/ZIP packaging. Publishing remains a separate request.
 
-Reload v0.5.1 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+Reload v0.5.2 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+
+## Busy-only shared calendars · v0.5.2
+
+Shared calendars with `freeBusyReader` access now poll Google's documented freeBusy endpoint and render read-only **Busy** blocks in month/week views. Bounded queries use at most 31 days per request and the existing home/browse cache, cadence and backoff. All required windows commit atomically; failures preserve stale availability. Stable UTC-day segments deduplicate overlapping snapshots. Full-event copies win over busy copies at equal coverage. Access downgrades hide cached full-event details; upgrades rebuild the event cursor/snapshots. Busy snapshots never acknowledge pending event writes. Availability does not trigger event reminders or the next-event badge, and cannot be edited.
+
+Adds only the narrow read-only Google `calendar.events.freebusy` scope. Users must add it to Cloud Data Access, reload and Reconnect existing accounts. No new Chrome permission, server or database index/schema version is required; optional availability/data-kind fields preserve existing rows. No personal events or raw diagnostics were copied into the repository.
+
+Validation: `npm run check` passes (TypeScript, **218 unit/adapter tests**, formatting and production build). **17 isolated Chromium extension tests** pass, including busy-only endpoint routing, month/week Busy rendering, read-only details and cached availability after a full offline Chrome restart. Fictional-availability screenshots were inspected. Unit coverage includes nested provider errors, interval validation/merging/window boundaries, cadence/backoff, failed-window preservation, access upgrades/downgrades, detailed-copy preference and pending-write protection. Live free/busy consent/data acceptance remains pending. After explicit user approval, `calendar.events.freebusy` was added to the existing Cloud Data Access list and save-confirmed on 2026-11-02. Existing declarations were retained. This configures the consent screen; actual account Reconnect and live busy-data verification remain pending.
 
 ## Calendar sidebar account groups · v0.5.1
 

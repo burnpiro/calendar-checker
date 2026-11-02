@@ -73,3 +73,10 @@ Keep concise, verified implementation facts here. Include the date and supportin
 - Import validated local Blobs only; an offscreen AUDIO_PLAYBACK/BLOBS document decodes/plays them with bounded lifetimes. Only worker messages can control it. Serialize creation/playback/idle shutdown, revoke URLs, recover interrupted provisional imports, and distinguish explicit previews from automatic audio stopped by DND.
 - Week dual-zone labels must evaluate each actual day, not use one current offset for the week. Public slotHeaderContent supplies the primary slot time; show distinct secondary conversions/date shifts across DST changes. Exact event previews/details use original instants, while all-day dates remain unchanged.
 - Raw IndexedDB writes in browser fixtures do not broadcast Dexie mutations to an already-open useLiveQuery. Seed before opening a surface or reload it after fixture seeding. Production cache/outbox mutations remain worker-owned Dexie transactions.
+
+## 2026-11-02 · busy-only availability
+
+- Google `calendar.events` does not authorize freeBusy queries; v0.5.2 adds `calendar.events.freebusy` with explicit Reconnect. Keep bounded free/busy polling independent of event change cursors. A nested calendar error in an HTTP 200 response must not establish empty coverage.
+- Availability keys are local UTC-day segments, not Google event IDs. Never edit them, generate event reminders/countdowns from them, or let a busy snapshot acknowledge pending event writes. Prefer detailed shared copies at equal coverage and rebuild snapshots when access mode changes. See ADR 0008.
+
+- The availability scope was explicitly approved by the user and save-confirmed in the existing Cloud project on 2026-11-02. This does not prove an active account grant; reload/Reconnect and live busy-calendar verification remain pending.

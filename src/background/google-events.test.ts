@@ -13,6 +13,81 @@ const calendar = {
 const account = { id: "account", email: "user@example.test" };
 const at = "2026-11-01T12:00:00.000Z";
 
+describe("Google free/busy protocol", () => {
+  it("queries one calendar with bounded times, validates offsets and clips returned intervals", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      reply({
+        calendars: {
+          calendar: {
+            busy: [
+              {
+                start: "2026-11-02T10:00:00+01:00",
+                end: "2026-11-02T12:00:00+01:00",
+              },
+            ],
+          },
+        },
+      }),
+    );
+    const busy = await new GoogleCalendarGateway(fetcher).getBusy(
+      "private-token",
+      "calendar",
+      "2026-11-02T09:30:00Z",
+      "2026-11-02T11:30:00Z",
+    );
+    expect(busy).toEqual([
+      { start: "2026-11-02T09:30:00.000Z", end: "2026-11-02T11:00:00.000Z" },
+    ]);
+    const [url, init] = fetcher.mock.calls[0]!;
+    expect(url).toBe("https://www.googleapis.com/calendar/v3/freeBusy");
+    expect(init).toMatchObject({
+      method: "POST",
+      credentials: "omit",
+      redirect: "error",
+      headers: { Authorization: "Bearer private-token" },
+    });
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+    expect(JSON.parse(String(init?.body))).toEqual({
+      timeMin: "2026-11-02T09:30:00Z",
+      timeMax: "2026-11-02T11:30:00Z",
+      timeZone: "UTC",
+      items: [{ id: "calendar" }],
+    });
+  });
+  it.each([
+    [
+      {
+        calendars: { calendar: { errors: [{ reason: "notFound" }], busy: [] } },
+      },
+      "calendar-unavailable",
+    ],
+    [
+      {
+        calendars: {
+          calendar: { errors: [{ reason: "internalError" }], busy: [] },
+        },
+      },
+      "api-error",
+    ],
+    [{ calendars: { other: { busy: [] } } }, "invalid-response"],
+    [{ calendars: { calendar: {} } }, "invalid-response"],
+    [
+      { calendars: { calendar: { busy: [{ start: "invalid", end: at }] } } },
+      "invalid-response",
+    ],
+  ])(
+    "does not turn nested errors or malformed responses into fresh empty coverage",
+    async (body, code) => {
+      const gateway = new GoogleCalendarGateway(
+        vi.fn<typeof fetch>().mockResolvedValue(reply(body)),
+      );
+      await expect(
+        gateway.getBusy("token", "calendar", at, "2026-12-01T00:00:00Z"),
+      ).rejects.toMatchObject({ code });
+    },
+  );
+});
+
 describe("Google event transport and normalization", () => {
   it("paginates the independent change feed with a stable cursor and no date filters", async () => {
     const fetcher = vi

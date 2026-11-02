@@ -1,6 +1,11 @@
 import type { Account, Settings } from "../shared/model";
 import { calendarKey } from "../shared/preferences";
-import { containsRange, readableCalendar, type DateRange } from "./sync-model";
+import {
+  containsRange,
+  readableCalendar,
+  viewableCalendar,
+  type DateRange,
+} from "./sync-model";
 import type { SyncMetadata } from "./sync-model";
 
 export function preferredCalendarAccounts(
@@ -9,11 +14,14 @@ export function preferredCalendarAccounts(
   metadata: SyncMetadata | undefined,
   view: DateRange,
 ): Map<string, string> {
-  const chosen = new Map<string, { id: string; rank: number; score: number }>();
+  const chosen = new Map<
+    string,
+    { id: string; rank: number; score: number; details: boolean }
+  >();
   for (const account of accounts.filter((item) => item.enabled))
     for (const calendar of account.calendars) {
       if (
-        !readableCalendar(calendar.accessRole) ||
+        !viewableCalendar(calendar.accessRole) ||
         settings.calendarVisibility[calendarKey(account.id, calendar.id)] ===
           false
       )
@@ -29,8 +37,11 @@ export function preferredCalendarAccounts(
             range.start < view.end &&
             range.end > view.start,
         ) ?? [];
+      const details = readableCalendar(calendar.accessRole);
+      const modeChanged =
+        (state?.dataKind ?? "events") !== (details ? "events" : "freebusy");
       const rank = ranges.some((range) => containsRange(range, view))
-        ? state?.invalidated
+        ? state?.invalidated || modeChanged
           ? 2
           : 3
         : ranges.length
@@ -44,9 +55,13 @@ export function preferredCalendarAccounts(
       if (
         !previous ||
         rank > previous.rank ||
-        (rank === previous.rank && score > previous.score)
+        (rank === previous.rank &&
+          Number(details) > Number(previous.details)) ||
+        (rank === previous.rank &&
+          details === previous.details &&
+          score > previous.score)
       )
-        chosen.set(calendar.id, { id: account.id, rank, score });
+        chosen.set(calendar.id, { id: account.id, rank, score, details });
     }
   return new Map([...chosen].map(([calendar, value]) => [calendar, value.id]));
 }
@@ -75,6 +90,11 @@ export function coverageStatus(
     );
     running ||= state?.running ?? false;
     invalid ||= state?.invalidated ?? false;
+    const role = accounts
+      .find((a) => a.id === accountId)
+      ?.calendars.find((c) => c.id === calendarId)?.accessRole;
+    invalid ||=
+      (state?.dataKind === "freebusy") !== (role === "freeBusyReader");
     failed ||= Boolean(state?.errorCode);
     const ranges =
       metadata?.ranges.filter(
@@ -116,7 +136,7 @@ export function coverageStatus(
     return {
       short: "No calendars selected",
       message:
-        "Select a readable calendar in the sidebar. Busy-only calendars cannot provide event details.",
+        "Select a calendar in the sidebar. Busy-only calendars show availability without event details.",
       warning: true,
     };
   if (!online)

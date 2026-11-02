@@ -1,6 +1,7 @@
 import type { CalendarSummary, Store } from "../shared/model";
 import type { EventBody } from "../calendar/write-model";
 import type { GoogleEvent } from "../calendar/google-events";
+import type { BusyInterval } from "../calendar/availability";
 
 export interface TokenRequest {
   accountId?: string;
@@ -17,6 +18,12 @@ export interface GoogleGateway {
   listCalendars(token: string): Promise<CalendarSummary[]>;
 }
 export interface EventGateway {
+  getBusy(
+    token: string,
+    calendarId: string,
+    start: string,
+    end: string,
+  ): Promise<BusyInterval[]>;
   getChanges(
     token: string,
     calendarId: string,

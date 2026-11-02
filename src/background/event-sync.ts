@@ -1,5 +1,10 @@
 import { AppError, asAppError, isReconnectError } from "../shared/errors";
-import type { CalendarSummary, Settings } from "../shared/model";
+import type { Account, CalendarSummary, Settings } from "../shared/model";
+import {
+  availabilityWindows,
+  busyEvents,
+  type BusyInterval,
+} from "../calendar/availability";
 import { normalizeGoogleEvent } from "../calendar/google-events";
 import type { CalendarEvent } from "../calendar/model";
 import { EventRepository } from "../calendar/event-repository";
@@ -7,7 +12,7 @@ import {
   containsRange,
   homeRange,
   monthRange,
-  readableCalendar,
+  viewableCalendar,
   requestBounds,
   type CachedRange,
   type CalendarSyncState,
@@ -52,6 +57,7 @@ export class EventSyncService {
     desired: Array<DateRange & { kind: string }>,
     settings: Settings,
     reason: SyncRequest["reason"],
+    availability = false,
   ): boolean {
     const now = this.now().getTime();
     if (state.retryAt && Date.parse(state.retryAt) > now) return false;
@@ -67,7 +73,13 @@ export class EventSyncService {
             cached.end === range.end,
         ),
     );
-    if (!state.syncToken || reason === "manual" || missing) return true;
+    if (
+      (state.dataKind === "freebusy") !== availability ||
+      (availability ? !state.lastCheckedAt : !state.syncToken) ||
+      reason === "manual" ||
+      missing
+    )
+      return true;
     if (reason === "open")
       return (
         settings.refreshOnOpen &&
@@ -100,6 +112,57 @@ export class EventSyncService {
       retryAt: new Date(this.now().getTime() + seconds * 1000).toISOString(),
     });
   }
+  private async syncAvailability(
+    token: string,
+    account: Account,
+    calendar: CalendarSummary,
+    state: CalendarSyncState,
+    desired: Array<DateRange & { kind: "home" | "browse" }>,
+  ): Promise<void> {
+    const at = this.now().toISOString();
+    const ranges: CachedRange[] = [];
+    const events = new Map<string, CalendarEvent>();
+    for (const range of desired) {
+      const intervals: BusyInterval[] = [];
+      for (const window of availabilityWindows(requestBounds(range))) {
+        intervals.push(
+          ...(await this.google.getBusy(
+            token,
+            calendar.id,
+            window.start,
+            window.end,
+          )),
+        );
+      }
+      const normalized = busyEvents(intervals, account, calendar, at);
+      for (const event of normalized) events.set(event.key, event);
+      ranges.push({
+        ...range,
+        key: JSON.stringify([account.id, calendar.id, range.kind]),
+        accountId: account.id,
+        calendarId: calendar.id,
+        eventKeys: normalized.map((event) => event.key),
+        fetchedAt: at,
+        validatedAt: at,
+      });
+    }
+    await this.repository.commit(
+      {
+        ...state,
+        dataKind: "freebusy",
+        syncToken: undefined,
+        running: false,
+        invalidated: false,
+        failures: 0,
+        lastCheckedAt: at,
+        errorCode: undefined,
+        errorDetails: undefined,
+        retryAt: undefined,
+      },
+      ranges,
+      [...events.values()],
+    );
+  }
   async run(request: SyncRequest = {}): Promise<void> {
     if (request.month) {
       try {
@@ -120,7 +183,7 @@ export class EventSyncService {
     )) {
       const pending: CalendarSummary[] = [];
       for (const calendar of account.calendars.filter((item) =>
-        readableCalendar(item.accessRole),
+        viewableCalendar(item.accessRole),
       )) {
         const state = await this.repository.state(account.id, calendar.id);
         const ranges = await this.repository.ranges(account.id, calendar.id);
@@ -131,6 +194,7 @@ export class EventSyncService {
             this.desired(ranges, home, request.month),
             snapshot.settings,
             request.reason,
+            calendar.accessRole === "freeBusyReader",
           )
         )
           pending.push(calendar);
@@ -161,6 +225,22 @@ export class EventSyncService {
                   account.id,
                   calendar.id,
                 );
+                if (calendar.accessRole === "freeBusyReader") {
+                  state = { ...state, invalidated: true, syncToken: undefined };
+                  await this.repository.putState(state);
+                  await this.syncAvailability(
+                    token,
+                    verified,
+                    calendar,
+                    state,
+                    this.desired(previous, home, request.month),
+                  );
+                  completed.add(calendar.id);
+                  continue;
+                }
+                if (state.dataKind === "freebusy") {
+                  state = { ...state, invalidated: true, syncToken: undefined };
+                }
                 let changes: { syncToken: string; changed: boolean };
                 try {
                   changes = await this.google.getChanges(
@@ -228,6 +308,7 @@ export class EventSyncService {
                 await this.repository.commit(
                   {
                     ...state,
+                    dataKind: "events",
                     syncToken: changes.syncToken,
                     running: false,
                     invalidated: false,

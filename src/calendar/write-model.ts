@@ -221,6 +221,7 @@ export function canEditEvent(
         (c) => c.id === event.calendarId && writableCalendar(c.accessRole),
       ),
     ) &&
+    !event.availabilityOnly &&
     event.eventType === "default" &&
     !event.locked &&
     (event.organizerSelf !== false || event.guestsCanModify === true)

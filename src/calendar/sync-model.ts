@@ -12,6 +12,7 @@ export const syncStateSchema = z.object({
   accountId: z.string(),
   calendarId: z.string(),
   syncToken: z.string().optional(),
+  dataKind: z.enum(["events", "freebusy"]).optional(),
   running: z.boolean(),
   invalidated: z.boolean(),
   failures: z.number().int().nonnegative(),
@@ -95,4 +96,7 @@ export function readableCalendar(role: string): boolean {
   return ["reader", "writer", "writerWithoutPrivateAccess", "owner"].includes(
     role,
   );
+}
+export function viewableCalendar(role: string): boolean {
+  return role === "freeBusyReader" || readableCalendar(role);
 }

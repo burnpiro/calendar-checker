@@ -52,6 +52,7 @@ export function nextEventBadge(
     .filter(
       (event) =>
         !event.allDay &&
+        !event.availabilityOnly &&
         event.responseStatus !== "declined" &&
         Date.parse(event.start) >= now.getTime(),
     )

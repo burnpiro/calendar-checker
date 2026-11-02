@@ -10,10 +10,13 @@ Scopes currently requested:
 openid
 https://www.googleapis.com/auth/userinfo.email
 https://www.googleapis.com/auth/calendar.calendarlist.readonly
-https://www.googleapis.com/auth/calendar.events.readonly
+https://www.googleapis.com/auth/calendar.events
+https://www.googleapis.com/auth/calendar.events.freebusy
 ```
 
 The OAuth manifest is omitted when no client ID is configured, so the extension remains loadable with a clear setup state. A configured but malformed client ID is rejected at build time.
+
+V0.5.2 adds the narrow read-only availability scope `calendar.events.freebusy`, required by Google’s freeBusy endpoint for shared calendars. Add it to Cloud Data Access and explicitly Reconnect existing accounts. Token pinning, grant validation, worker-only access and noninteractive background behavior stay unchanged.
 
 ## Explicit account onboarding
 

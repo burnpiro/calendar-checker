@@ -31,11 +31,14 @@ https://www.googleapis.com/auth/userinfo.email
 https://www.googleapis.com/auth/calendar.calendarlist.readonly
 https://www.googleapis.com/auth/calendar.events.readonly
 https://www.googleapis.com/auth/calendar.events
+https://www.googleapis.com/auth/calendar.events.freebusy
 ```
 
-These identify the authorized account, list its calendars, read events, and allow stage 4 event creation/editing on writable calendars. Existing accounts need **Reconnect** to approve the event-write scope. Keep the same OAuth client and registered extension ID when upgrading. No application server is needed.
+These identify the authorized account, list its calendars, read events, allow stage 4 event creation/editing on writable calendars, and read availability from busy-only shared calendars. V0.5.2 adds `calendar.events.freebusy`; add this declaration and use Reconnect to approve it for existing accounts. Existing accounts need **Reconnect** to approve the event-write scope. Keep the same OAuth client and registered extension ID when upgrading. No application server is needed.
 
 Manage this Chrome Extension app's Data Access scopes through the Cloud Console. The similarly named `gcloud iam oauth-clients` commands manage Workforce Identity Federation clients, a different resource; see [Google's distinction](https://docs.cloud.google.com/iam/docs/workforce-manage-oauth-app). [Data Access documentation](https://support.google.com/cloud/answer/15549135) describes selecting scopes, updating the selection, and saving it.
+
+For this workspace, the availability scope was added to project `YOUR_GOOGLE_CLOUD_PROJECT` after explicit user approval and the Console confirmed **Data access changes saved!** on 2026-11-02. Existing accounts still need Reconnect; a saved declaration is not an active grant.
 
 ### Permissions prepared for later stages
 

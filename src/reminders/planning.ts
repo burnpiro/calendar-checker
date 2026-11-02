@@ -63,6 +63,7 @@ export function reminderCandidates(
   const chosen = new Map<string, CalendarEvent>();
   for (const event of events) {
     if (
+      event.availabilityOnly ||
       !allowed.has(JSON.stringify([event.accountId, event.calendarId])) ||
       event.responseStatus === "declined"
     )

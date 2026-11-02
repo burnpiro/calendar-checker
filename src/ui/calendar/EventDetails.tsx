@@ -45,7 +45,9 @@ export function EventDetails({
                   className="event-type-chip"
                   style={{ borderColor: event.color }}
                 >
-                  {EVENT_TYPE_NAMES[event.eventType]}
+                  {event.availabilityOnly
+                    ? "Availability"
+                    : EVENT_TYPE_NAMES[event.eventType]}
                 </span>
                 <Dialog.Close
                   className="icon-button"
@@ -118,7 +120,9 @@ export function EventDetails({
                 id="event-description"
                 className="event-description"
               >
-                {event.description || "No description."}
+                {event.availabilityOnly
+                  ? "Only availability is shared. Google does not provide event titles or details; overlapping events may appear as one busy period."
+                  : event.description || "No description."}
               </Dialog.Description>
               {editingError && (
                 <p className="write-error" role="alert">
@@ -126,7 +130,11 @@ export function EventDetails({
                 </p>
               )}
               {preparing && <p role="status">Loading event for editing…</p>}
-              {pending ? (
+              {event.availabilityOnly ? (
+                <p className="editor-note">
+                  Busy periods are read-only and do not send event reminders.
+                </p>
+              ) : pending ? (
                 <p className="editor-note">
                   This event has a pending change. Open Pending changes to
                   review it.

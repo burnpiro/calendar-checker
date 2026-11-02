@@ -142,6 +142,7 @@ function harness(accounts = [account()]) {
         remote.delete(id);
       },
     ),
+    getBusy: vi.fn(async () => []),
     getChanges: vi.fn(async () => ({ syncToken: "cursor", changed: true })),
     getInstances: vi.fn(async () => ({
       events: [...remote.values()],
@@ -195,6 +196,18 @@ function harness(accounts = [account()]) {
 }
 
 describe("durable event writing", () => {
+  it("does not acknowledge a real pending write with a busy-only snapshot after an access downgrade", async () => {
+    const h = harness();
+    const command = h.command();
+    await h.writes.save(command);
+    await h.writes.run();
+    expect((await h.db.outbox.get(command.id))?.status).toBe("awaiting-sync");
+    h.stored().accounts[0]!.calendars[0]!.accessRole = "freeBusyReader";
+    await h.sync.run({ reason: "manual" });
+    expect((await h.cache.state("a", "a-calendar")).dataKind).toBe("freebusy");
+    expect((await h.db.outbox.get(command.id))?.status).toBe("awaiting-sync");
+    expect(h.google.getInstances).not.toHaveBeenCalled();
+  });
   it("queues without networking, survives reopening and remote snapshot replacement, and blocks account removal", async () => {
     const h = harness();
     const command = h.command();

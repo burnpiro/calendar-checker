@@ -4,6 +4,10 @@ import { AppError } from "../shared/errors";
 import type { CalendarSummary, FailureDetails } from "../shared/model";
 import type { GoogleGateway } from "./ports";
 import { googleEventSchema, type GoogleEvent } from "../calendar/google-events";
+import {
+  busyIntervalSchema,
+  type BusyInterval,
+} from "../calendar/availability";
 
 const profileSchema = z.object({
   sub: z.string().min(1),
@@ -334,6 +338,65 @@ export class GoogleCalendarGateway implements GoogleGateway {
       },
     );
     return { events, timeZone };
+  }
+  async getBusy(
+    token: string,
+    calendarId: string,
+    start: string,
+    end: string,
+  ): Promise<BusyInterval[]> {
+    const value = await this.requestOnce(
+      "https://www.googleapis.com/calendar/v3/freeBusy",
+      token,
+      "calendar-events",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          timeMin: start,
+          timeMax: end,
+          timeZone: "UTC",
+          items: [{ id: calendarId }],
+        }),
+      },
+    );
+    const parsed = z
+      .object({
+        calendars: z.record(
+          z.string(),
+          z.object({
+            errors: z.array(z.object({ reason: z.string() })).optional(),
+            busy: z.array(busyIntervalSchema).max(50_000).optional(),
+          }),
+        ),
+      })
+      .safeParse(value);
+    if (!parsed.success)
+      throw new AppError("invalid-response", { stage: "calendar-events" });
+    const calendar = parsed.data.calendars[calendarId];
+    if (!calendar)
+      throw new AppError("invalid-response", { stage: "calendar-events" });
+    if (calendar.errors?.length)
+      throw new AppError(
+        calendar.errors.some((error) =>
+          ["notFound", "forbidden"].includes(error.reason),
+        )
+          ? "calendar-unavailable"
+          : "api-error",
+        { stage: "calendar-events" },
+      );
+    if (!calendar.busy)
+      throw new AppError("invalid-response", { stage: "calendar-events" });
+    return calendar.busy
+      .map((range) => ({
+        start: new Date(
+          Math.max(Date.parse(range.start), Date.parse(start)),
+        ).toISOString(),
+        end: new Date(
+          Math.min(Date.parse(range.end), Date.parse(end)),
+        ).toISOString(),
+      }))
+      .filter((range) => range.start < range.end);
   }
   private eventUrl(calendarId: string, eventId?: string): string {
     return `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events${eventId ? `/${encodeURIComponent(eventId)}` : ""}`;

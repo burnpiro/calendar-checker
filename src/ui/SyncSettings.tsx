@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Account, Command, Settings } from "../shared/model";
 import { AppError } from "../shared/errors";
 import { calendarKey } from "../shared/preferences";
-import { readableCalendar } from "../calendar/sync-model";
+import { viewableCalendar } from "../calendar/sync-model";
 import { useConnectionClock, useSyncMetadata } from "./use-sync-metadata";
 
 export function SyncSettings({
@@ -124,7 +124,7 @@ export function SyncSettings({
           ? "Connected to the network"
           : "Offline — saved events remain available"}
         . Calendar visibility affects display; enabled accounts continue syncing
-        their readable calendars.
+        their accessible calendars, including busy-only availability.
       </p>
       {metadata?.failed && (
         <p role="alert">Local sync status could not be read.</p>
@@ -157,13 +157,16 @@ export function SyncSettings({
             return (
               <div className="sync-calendar" key={calendar.id}>
                 <strong>{calendar.summary}</strong>
-                {!readableCalendar(calendar.accessRole) ? (
-                  <p>
-                    Busy-only or unreadable calendar · event details are
-                    unavailable.
-                  </p>
+                {!viewableCalendar(calendar.accessRole) ? (
+                  <p>Unreadable calendar · event information is unavailable.</p>
                 ) : (
                   <>
+                    {calendar.accessRole === "freeBusyReader" && (
+                      <p>
+                        Busy-only calendar · shows occupied times without event
+                        details.
+                      </p>
+                    )}
                     <p>
                       {state?.running
                         ? "Syncing…"
