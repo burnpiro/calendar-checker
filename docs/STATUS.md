@@ -23,7 +23,15 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 Stage 6: live Google multi-account/read/write acceptance, real OS notification/audio/native-button and sleep/wake acceptance, accessibility/performance review, and local unpacked/ZIP packaging. Publishing remains a separate request.
 
-Reload v0.5.0 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+Reload v0.5.1 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+
+## Calendar sidebar account groups · v0.5.1
+
+The **Your calendars** list groups calendars under each connected account's email, preserving account order and calendar colors. Paused accounts are labelled and their calendar toggles remain disabled. Visibility continues to use the account/calendar pair, including calendars shared across multiple accounts. The popup drawer and full-calendar sidebar use the same grouped list.
+
+Validation: `npm run check` passed (TypeScript, **206 unit/adapter tests**, formatting and production build), followed by **16 isolated Chromium extension tests**. A separate disposable-profile UI check verified three account groups, paused controls, independent toggles for the same shared calendar ID and persistence across popup/full-calendar surfaces. Fictional-account screenshots were visually inspected.
+
+Live stage 5 follow-up (2026-11-02): the user confirmed sound preview and the desktop test notification work after enabling the second macOS Google Chrome notification entry. This confirms those explicit controls on this Mac; automatic reminder, snooze/native-button, and sleep/wake acceptance remain pending.
 
 ## Local reminders, audio, DND and dual zones · v0.5.0
 

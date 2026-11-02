@@ -172,7 +172,27 @@
 }
 .calendar-list {
   display: grid;
-  gap: 6px;
+  gap: 16px;
+}
+.calendar-account-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.calendar-account-group legend {
+  width: 100%;
+  padding: 0 6px 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.calendar-account-group legend small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
 }
 .calendar-list-item {
   display: flex;
@@ -197,12 +217,6 @@
   font-size: 12px;
   line-height: 1.4;
   overflow-wrap: anywhere;
-}
-.calendar-list-name small {
-  display: block;
-  font-size: 9px;
-  color: var(--muted);
-  margin-top: 3px;
 }
 .calendar-color {
   width: 6px;

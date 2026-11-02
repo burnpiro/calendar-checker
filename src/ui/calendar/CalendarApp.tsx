@@ -437,16 +437,20 @@ function CalendarBody({
     setEditor({ id: crypto.randomUUID(), scope: "event", seed });
   };
   const reconnectCount = state.accounts.filter(needsReconnect).length;
-  const sourceCalendars = state.accounts.flatMap((account, index) =>
-    account.calendars.map((item) => ({
-      accountId: account.id,
-      calendarId: item.id,
-      name: item.summary,
-      accountName: account.email,
-      color:
-        item.backgroundColor ?? ["#7765d8", "#348e81", "#c58a35"][index % 3]!,
-      enabled: account.enabled,
-    })),
+  const calendarGroups = state.accounts
+    .map((account, index) => ({
+      account,
+      calendars: account.calendars.map((item) => ({
+        key: calendarKey(account.id, item.id),
+        name: item.summary,
+        color:
+          item.backgroundColor ?? ["#7765d8", "#348e81", "#c58a35"][index % 3]!,
+      })),
+    }))
+    .filter((group) => group.calendars.length > 0);
+  const calendarCount = calendarGroups.reduce(
+    (total, group) => total + group.calendars.length,
+    0,
   );
   return (
     <Tooltip.Provider delayDuration={500}>
@@ -484,41 +488,45 @@ function CalendarBody({
             />
             <div className="sidebar-section-title">
               YOUR CALENDARS
-              <span>{sourceCalendars.length}</span>
+              <span>{calendarCount}</span>
             </div>
             <div className="calendar-list">
-              {sourceCalendars.map((item) => {
-                const key = calendarKey(item.accountId, item.calendarId);
-                return (
-                  <label
-                    key={key}
-                    className={`calendar-list-item ${!item.enabled ? "calendar-paused" : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      style={{ accentColor: item.color }}
-                      checked={settings.calendarVisibility[key] !== false}
-                      disabled={busy || !item.enabled}
-                      onChange={(event) =>
-                        patch({
-                          calendarVisibility: {
-                            [key]: event.target.checked,
-                          },
-                        })
-                      }
-                    />
-                    <span className="calendar-list-name">
-                      {item.name}
-                      <small>{item.accountName}</small>
-                    </span>
-                    <span
-                      className="calendar-color"
-                      style={{ background: item.color }}
-                    />
-                  </label>
-                );
-              })}
-              {!sourceCalendars.length && (
+              {calendarGroups.map(({ account, calendars }) => (
+                <fieldset className="calendar-account-group" key={account.id}>
+                  <legend>
+                    {account.email}
+                    {!account.enabled && <small>Paused</small>}
+                  </legend>
+                  {calendars.map((item) => (
+                    <label
+                      key={item.key}
+                      className={`calendar-list-item ${!account.enabled ? "calendar-paused" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        style={{ accentColor: item.color }}
+                        checked={
+                          settings.calendarVisibility[item.key] !== false
+                        }
+                        disabled={busy || !account.enabled}
+                        onChange={(event) =>
+                          patch({
+                            calendarVisibility: {
+                              [item.key]: event.target.checked,
+                            },
+                          })
+                        }
+                      />
+                      <span className="calendar-list-name">{item.name}</span>
+                      <span
+                        className="calendar-color"
+                        style={{ background: item.color }}
+                      />
+                    </label>
+                  ))}
+                </fieldset>
+              ))}
+              {!calendarCount && (
                 <p className="sidebar-note">
                   Connect an account in Settings to see its calendars here.
                 </p>
