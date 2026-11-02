@@ -161,6 +161,7 @@ export class AuthService {
         lastCheckedAt: at,
         lastSuccessfulAt: at,
         eventsReadGranted: true,
+        eventsWriteGranted: true,
         ...(store.settings.webOAuthClientId
           ? { authMethod: "web" as const }
           : {}),
@@ -204,6 +205,7 @@ export class AuthService {
       account.status = "connected";
       account.lastSuccessfulAt = this.now().toISOString();
       account.eventsReadGranted = true;
+      account.eventsWriteGranted = true;
       delete account.errorCode;
       delete account.errorDetails;
       this.record(store, action);
@@ -247,6 +249,7 @@ export class AuthService {
   async withVerifiedToken<T>(
     accountId: string,
     operation: (token: string, account: Account) => Promise<T>,
+    action: "event-sync" | "event-write" = "event-sync",
   ): Promise<T> {
     const store = await this.deps.repository.read();
     this.requireSetup(store);
@@ -271,6 +274,7 @@ export class AuthService {
             });
           const result = await operation(token, account);
           account.eventsReadGranted = true;
+          if (action === "event-write") account.eventsWriteGranted = true;
           account.status = "connected";
           account.lastCheckedAt = this.now().toISOString();
           account.lastSuccessfulAt = account.lastCheckedAt;
@@ -302,9 +306,11 @@ export class AuthService {
           : safe.code === "network"
             ? "offline"
             : "error";
-      if (safe.code === "permission-required")
+      if (safe.code === "permission-required") {
         account.eventsReadGranted = false;
-      this.record(store, "event-sync", safe);
+        if (action === "event-write") account.eventsWriteGranted = false;
+      }
+      this.record(store, action, safe);
       await this.save(store);
       throw safe;
     }

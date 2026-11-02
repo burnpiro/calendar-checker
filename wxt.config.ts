@@ -53,7 +53,7 @@ export default defineConfig({
                 "openid",
                 "https://www.googleapis.com/auth/userinfo.email",
                 "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
-                "https://www.googleapis.com/auth/calendar.events.readonly",
+                "https://www.googleapis.com/auth/calendar.events",
               ],
             },
           }

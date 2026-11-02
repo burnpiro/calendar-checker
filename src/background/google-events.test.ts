@@ -211,3 +211,81 @@ describe("Google event transport and normalization", () => {
     ).toThrowError();
   });
 });
+
+describe("Google event write HTTP protocol", () => {
+  it("sends bounded conditional PATCHes with an explicit guest policy and no transport retry", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(reply({ id: "event" }));
+    const gateway = new GoogleCalendarGateway(fetcher);
+    await gateway.patchEvent(
+      "private-token",
+      "a/b@example.test",
+      "instance/a",
+      { summary: "Edited" },
+      '"etag-1"',
+      "none",
+    );
+    const [url, init] = fetcher.mock.calls[0]!;
+    expect(String(url)).toContain(
+      "a%2Fb%40example.test/events/instance%2Fa?sendUpdates=none",
+    );
+    expect(init).toMatchObject({
+      method: "PATCH",
+      credentials: "omit",
+      redirect: "error",
+      cache: "no-store",
+      headers: {
+        "If-Match": '"etag-1"',
+        Authorization: "Bearer private-token",
+        "Content-Type": "application/json",
+      },
+    });
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+    expect(JSON.parse(String(init?.body))).toEqual({ summary: "Edited" });
+    fetcher.mockReset().mockRejectedValue(new TypeError("Connection lost"));
+    await expect(
+      gateway.insertEvent("token", "calendar", { id: "stable-id" }, "all"),
+    ).rejects.toMatchObject({ code: "network" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it.each([409, 412])(
+    "classifies %s as a conflict without retrying or exposing Google's body",
+    async (status) => {
+      const fetcher = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          reply({ error: { message: "private-event-data" } }, status),
+        );
+      await expect(
+        new GoogleCalendarGateway(fetcher).patchEvent(
+          "token",
+          "calendar",
+          "event",
+          {},
+          "etag",
+          "all",
+        ),
+      ).rejects.toMatchObject({ code: "event-conflict", status });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("handles DELETE's empty response without parsing JSON", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    await expect(
+      new GoogleCalendarGateway(fetcher).deleteEvent(
+        "token",
+        "calendar",
+        "event",
+        '"etag"',
+        "all",
+      ),
+    ).resolves.toBeUndefined();
+    expect(fetcher.mock.calls[0]![1]).toMatchObject({
+      method: "DELETE",
+      headers: { "If-Match": '"etag"' },
+    });
+  });
+});

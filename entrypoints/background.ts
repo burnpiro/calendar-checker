@@ -1,3 +1,4 @@
+import { EventWriteService } from "../src/background/event-writes";
 import { AuthService } from "../src/background/auth-service";
 import {
   ChromeBadge,
@@ -37,6 +38,11 @@ export default defineBackground(() => {
     google,
     new EventRepository(),
   );
+  const eventWrites = new EventWriteService(
+    service,
+    google,
+    eventSync.repository,
+  );
   const queue = new SerialQueue();
   const reschedule = async () => {
     const { settings } = await repository.read();
@@ -58,11 +64,17 @@ export default defineBackground(() => {
       const reading =
         (command as { type?: unknown } | null)?.type === "GET_STATE";
       const result = reading
-        ? routeCommand(command, service, reschedule, eventSync)
+        ? routeCommand(command, service, reschedule, eventSync, eventWrites)
         : queue
             .run(async () => {
               await ready;
-              return routeCommand(command, service, reschedule, eventSync);
+              return routeCommand(
+                command,
+                service,
+                reschedule,
+                eventSync,
+                eventWrites,
+              );
             })
             .catch(() => ({
               ok: false as const,
@@ -73,6 +85,25 @@ export default defineBackground(() => {
             }));
       void result.then((reply) => {
         sendResponse(reply);
+        if (
+          reply.ok &&
+          [
+            "SAVE_EVENT",
+            "DELETE_EVENT",
+            "RETRY_WRITE",
+            "DISCARD_WRITE",
+            "RESOLVE_WRITE",
+            "RECONNECT",
+            "SET_ENABLED",
+          ].includes((command as { type: string }).type)
+        ) {
+          void queue
+            .run(async () => {
+              await eventWrites.run();
+              await eventSync.run();
+            })
+            .catch(() => undefined);
+        }
         if (
           reply.ok &&
           ["CONNECT", "RECONNECT", "SET_ENABLED"].includes(
@@ -102,6 +133,7 @@ export default defineBackground(() => {
       .run(async () => {
         await ready;
         await service.checkEnabled();
+        await eventWrites.run();
         await eventSync.run();
       })
       .catch(() => undefined);
@@ -115,6 +147,7 @@ export default defineBackground(() => {
           // Keep the next-event badge current even when no network sync is due.
           await service.refreshBadge().catch(() => undefined);
           try {
+            await eventWrites.run();
             await eventSync.run();
           } finally {
             await service.refreshBadge().catch(() => undefined);
@@ -133,6 +166,7 @@ export default defineBackground(() => {
     });
     await reschedule();
     await eventSync.repository.recover();
+    await eventWrites.recover();
     await eventSync.repository.reconcile((await service.snapshot()).accounts);
     await service.refreshBadge();
   })();

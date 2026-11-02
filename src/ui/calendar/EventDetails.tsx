@@ -9,11 +9,19 @@ export function EventDetails({
   onClose,
   timeZone,
   format,
+  onEdit,
+  pending,
+  editingError,
+  preparing,
 }: {
   event: CalendarEvent | null;
   onClose: () => void;
   timeZone: string;
   format: Settings["timeFormat"];
+  onEdit?: (scope: "event" | "series") => void;
+  pending?: boolean;
+  editingError?: string;
+  preparing?: boolean;
 }) {
   return (
     <Dialog.Root
@@ -101,6 +109,42 @@ export function EventDetails({
               >
                 {event.description || "No description."}
               </Dialog.Description>
+              {editingError && (
+                <p className="write-error" role="alert">
+                  {editingError}
+                </p>
+              )}
+              {preparing && <p role="status">Loading event for editing…</p>}
+              {pending ? (
+                <p className="editor-note">
+                  This event has a pending change. Open Pending changes to
+                  review it.
+                </p>
+              ) : onEdit ? (
+                <div className="event-write-actions">
+                  <button
+                    className="write-button primary"
+                    disabled={preparing}
+                    onClick={() => onEdit("event")}
+                  >
+                    {event.recurringEventId ? "Edit occurrence" : "Edit event"}
+                  </button>
+                  {event.recurringEventId && (
+                    <button
+                      className="write-button"
+                      disabled={preparing}
+                      onClick={() => onEdit("series")}
+                    >
+                      Edit series
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="editor-note">
+                  This event is read-only here. Specialized, locked and
+                  non-writable events can be managed in Google Calendar.
+                </p>
+              )}
               {(event.htmlLink || event.meetingLink) && (
                 <div className="event-links">
                   {event.htmlLink && (

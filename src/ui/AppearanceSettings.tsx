@@ -51,6 +51,7 @@ export function AppearanceSettings({
             event.preventDefault();
             const {
               webOAuthClientId: _webClient,
+              defaultWriteCalendar: _writeCalendar,
               connectionCheckMinutes: _interval,
               staleAfterMinutes: _stale,
               calendarVisibility: _visibility,

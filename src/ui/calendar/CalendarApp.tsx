@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import * as Dialog from "@radix-ui/react-dialog";
+import { EventEditor } from "./EventEditor";
+import { EventRepository } from "../../calendar/event-repository";
+import { PendingChanges } from "../PendingChanges";
+import {
+  canEditEvent,
+  overlayWrites,
+  sameWriteTarget,
+  type EditScope,
+} from "../../calendar/write-model";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import FullCalendar, {
   type CalendarRef,
@@ -21,6 +31,7 @@ import {
   Globe2,
   Menu,
   PanelLeftClose,
+  Plus,
   RefreshCw,
   Search,
   Settings2,
@@ -114,6 +125,23 @@ function CalendarBody({
   const [sidebar, setSidebar] = useState(!compact);
   const [query, setQuery] = useState("");
   const [hiddenTypes, setHiddenTypes] = useState<EventType[]>([]);
+  const [editor, setEditor] = useState<{
+    id: string;
+    base?: CalendarEvent;
+    scope: EditScope;
+    seed?: { start: string; allDay: boolean };
+  } | null>(null);
+  const [pendingOpen, setPendingOpen] = useState(false);
+  const [editingError, setEditingError] = useState("");
+  const [preparing, setPreparing] = useState(false);
+  const writeData = useLiveQuery(async () => {
+    try {
+      return { rows: await new EventRepository().pending(), failed: false };
+    } catch {
+      return { rows: [], failed: true };
+    }
+  }, []);
+  const writes = writeData?.rows;
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
   const [tooltip, setTooltip] = useState<{
     event: CalendarEvent;
@@ -142,16 +170,24 @@ function CalendarBody({
   );
   const metadata = useSyncMetadata();
   const clock = useConnectionClock();
-  const preferred = useMemo(
-    () =>
-      preferredCalendarAccounts(
-        state.accounts,
-        settings,
-        metadata,
-        visibleRange,
-      ),
-    [state.accounts, settings, metadata, visibleRange],
-  );
+  const preferred = useMemo(() => {
+    const result = preferredCalendarAccounts(
+      state.accounts,
+      settings,
+      metadata,
+      visibleRange,
+    );
+    for (const row of writes ?? []) {
+      if (
+        state.accounts.some((a) => a.id === row.accountId && a.enabled) &&
+        settings.calendarVisibility[
+          calendarKey(row.accountId, row.calendarId)
+        ] !== false
+      )
+        result.set(row.calendarId, row.accountId);
+    }
+    return result;
+  }, [state.accounts, settings, metadata, visibleRange, writes]);
   const syncStatus = coverageStatus(
     state.accounts,
     settings,
@@ -219,14 +255,22 @@ function CalendarBody({
   const filtered = useMemo(
     () =>
       visibleEvents(
-        rows?.events ?? [],
+        overlayWrites(rows?.events ?? [], writes ?? []),
         settings,
         state.accounts,
         query,
         hiddenTypes,
         preferred,
       ),
-    [rows?.events, settings, state.accounts, query, hiddenTypes, preferred],
+    [
+      rows?.events,
+      writes,
+      settings,
+      state.accounts,
+      query,
+      hiddenTypes,
+      preferred,
+    ],
   );
   const eventMap = useMemo(
     () => new Map(filtered.map((event) => [event.key, event])),
@@ -351,6 +395,36 @@ function CalendarBody({
     }),
     [settings.timeFormat],
   );
+  const startEdit = async (event: CalendarEvent, scope: EditScope) => {
+    if (preparing) return;
+    setPreparing(true);
+    setEditingError("");
+    hidePreview();
+    try {
+      const reply = await sendCommand({
+        type: "PREPARE_EDIT",
+        key: event.key,
+        scope,
+      });
+      if (!reply.edit)
+        throw new Error("The event could not be opened for editing.");
+      setSelected(null);
+      setEditor({ id: crypto.randomUUID(), base: reply.edit, scope });
+    } catch (cause) {
+      setEditingError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not prepare event editing.",
+      );
+    } finally {
+      setPreparing(false);
+    }
+  };
+  const newEvent = (seed?: { start: string; allDay: boolean }) => {
+    hidePreview();
+    setSelected(null);
+    setEditor({ id: crypto.randomUUID(), scope: "event", seed });
+  };
   const reconnectCount = state.accounts.filter(needsReconnect).length;
   const sourceCalendars = state.accounts.flatMap((account, index) =>
     account.calendars.map((item) => ({
@@ -514,6 +588,9 @@ function CalendarBody({
               <h1 aria-live="polite">{title || "Your calendar"}</h1>
             </div>
             <div className="calendar-tools">
+              <IconButton label="Create event" onClick={() => newEvent()}>
+                <Plus size={18} />
+              </IconButton>
               <label className="calendar-search">
                 <Search size={16} />
                 <input
@@ -614,9 +691,14 @@ function CalendarBody({
               </button>
             </div>
           )}
-          {(error || storageError || rows?.failed) && (
+          {(error ||
+            editingError ||
+            storageError ||
+            rows?.failed ||
+            writeData?.failed) && (
             <div className="calendar-notice error-notice" role="alert">
               {error ||
+                editingError ||
                 storageError ||
                 "Local event data could not be opened. Your account settings are still available."}
             </div>
@@ -643,6 +725,9 @@ function CalendarBody({
               weekends={settings.showWeekends}
               events={inputs}
               editable={false}
+              dateClick={(info) =>
+                newEvent({ start: info.dateStr, allDay: info.allDay })
+              }
               eventInteractive
               dayMaxEvents={compact ? true : 3}
               fixedWeekCount
@@ -713,6 +798,15 @@ function CalendarBody({
                 ? " matching filters"
                 : " in local storage"}
             </span>
+            <button
+              className="small-link"
+              onClick={() => {
+                hidePreview();
+                setPendingOpen(true);
+              }}
+            >
+              Pending changes{writes?.length ? ` (${writes.length})` : ""}
+            </button>
             {!compact && (
               <button
                 className="small-link"
@@ -729,9 +823,59 @@ function CalendarBody({
           onClose={() => setSelected(null)}
           timeZone={zone}
           format={settings.timeFormat}
+          preparing={preparing}
+          editingError={editingError}
+          pending={Boolean(
+            selected && writes?.some((row) => sameWriteTarget(row, selected)),
+          )}
+          onEdit={
+            selected && canEditEvent(selected, state.accounts)
+              ? (scope) => void startEdit(selected, scope)
+              : undefined
+          }
         />
+        {editor && (
+          <EventEditor
+            key={editor.id}
+            base={editor.base}
+            scope={editor.scope}
+            seed={editor.seed}
+            accounts={state.accounts}
+            settings={settings}
+            onClose={() => setEditor(null)}
+          />
+        )}
+        <Dialog.Root open={pendingOpen} onOpenChange={setPendingOpen}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="write-overlay" />
+            <Dialog.Content
+              className="write-dialog"
+              aria-describedby="pending-description"
+            >
+              <header className="write-header">
+                <div>
+                  <Dialog.Title>Pending event changes</Dialog.Title>
+                  <Dialog.Description id="pending-description">
+                    Review local changes and resolve Google conflicts.
+                  </Dialog.Description>
+                </div>
+                <Dialog.Close
+                  className="icon-button"
+                  aria-label="Close pending changes"
+                >
+                  <X size={18} />
+                </Dialog.Close>
+              </header>
+              <div className="pending-dialog-body">
+                <PendingChanges accounts={state.accounts} />
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
         {tooltip &&
           !selected &&
+          !editor &&
+          !pendingOpen &&
           createPortal(
             <div
               className="event-hover-card"

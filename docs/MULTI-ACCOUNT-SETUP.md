@@ -22,7 +22,7 @@ Chrome intercepts the redirect. It is not an application server and no calendar 
 
 ## Add and verify
 
-Click **+ Add Google account**, select the second account, and approve the current read-only permissions. Both accounts should remain listed with their own calendars. Choosing an existing account reports **already connected**; it does not claim another account was added or replace its data. Use its **Reconnect** control for renewal.
+Click **+ Add Google account**, select the second account, and approve the current identity/calendar permissions, including event editing in stage 4. Both accounts should remain listed with their own calendars. Choosing an existing account reports **already connected**; it does not claim another account was added or replace its data. Use its **Reconnect** control for renewal.
 
 Check each account separately, then check all. Open the calendar and sync. Confirm both identities remain correct. Continue the restart, token expiry, offline, and revoked-consent scenarios in `STAGE-1-VALIDATION.md`. No successful live result is inferred from synthetic tests.
 

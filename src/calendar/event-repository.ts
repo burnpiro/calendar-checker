@@ -1,3 +1,4 @@
+import { overlayWrites, pendingWriteSchema } from "./write-model";
 import { AppError } from "../shared/errors";
 import type { Account } from "../shared/model";
 import { calendarKey } from "../shared/preferences";
@@ -14,6 +15,15 @@ import {
 
 export class EventRepository {
   constructor(readonly db: CalendarDatabase = getCalendarDatabase()) {}
+  async pending() {
+    try {
+      return (await this.db.outbox.toArray()).map((row) =>
+        pendingWriteSchema.parse(row),
+      );
+    } catch {
+      throw new AppError("storage-error");
+    }
+  }
   async state(
     accountId: string,
     calendarId: string,
@@ -74,6 +84,7 @@ export class EventRepository {
         this.db.events,
         this.db.ranges,
         this.db.syncStates,
+        this.db.outbox,
         async () => {
           const keep = new Set(snapshots.flatMap((range) => range.eventKeys));
           await this.db.events
@@ -93,6 +104,12 @@ export class EventRepository {
             .delete();
           await this.db.ranges.bulkPut(snapshots);
           await this.db.syncStates.put(next);
+          if (!next.invalidated)
+            await this.db.outbox
+              .where("[accountId+calendarId]")
+              .equals([next.accountId, next.calendarId])
+              .filter((row) => row.status === "awaiting-sync")
+              .delete();
         },
       );
     } catch {
@@ -113,7 +130,16 @@ export class EventRepository {
         this.db.events,
         this.db.ranges,
         this.db.syncStates,
+        this.db.editBases,
         async () => {
+          await this.db.editBases
+            .filter(
+              (row) =>
+                !keep.has(
+                  calendarKey(row.event.accountId, row.event.calendarId),
+                ),
+            )
+            .delete();
           for (const table of [
             this.db.events,
             this.db.ranges,
@@ -174,16 +200,20 @@ export class EventRepository {
         this.db.events,
         this.db.ranges,
         this.db.syncStates,
+        this.db.outbox,
         async () => ({
           // Use a whole-second lower bound because normalized instants can omit
           // fractional seconds. Selection compares actual timestamps afterward.
-          events: await this.db.events
-            .where("start")
-            .aboveOrEqual(now.toISOString().slice(0, 19))
-            .filter(
-              (event) => !event.allDay && event.responseStatus !== "declined",
-            )
-            .toArray(),
+          events: overlayWrites(
+            await this.db.events
+              .where("start")
+              .aboveOrEqual(now.toISOString().slice(0, 19))
+              .filter(
+                (event) => !event.allDay && event.responseStatus !== "declined",
+              )
+              .toArray(),
+            await this.pending(),
+          ),
           metadata: {
             states: (await this.db.syncStates.toArray()).map(
               ({ syncToken: _cursor, ...state }) => state,

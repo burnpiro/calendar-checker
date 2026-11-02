@@ -1,0 +1,194 @@
+.write-overlay {
+  position: fixed;
+  inset: 0;
+  background: #17192765;
+  z-index: 60;
+}
+.write-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 24px 70px #14112535;
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  overflow: clip;
+}
+.write-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.write-header h2 {
+  font-size: 18px;
+  font-weight: 650;
+  margin: 0 0 4px;
+}
+.write-header p {
+  color: var(--muted);
+  margin: 0;
+}
+.write-dialog form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: clip;
+}
+.editor-scroll {
+  min-height: 0;
+  overflow-y: auto;
+}
+.editor-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: block;
+}
+.editor-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 16px 20px;
+}
+.editor-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 550;
+}
+.editor-wide {
+  grid-column: 1 / -1;
+}
+.editor-fields input,
+.editor-fields select,
+.editor-fields textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+  font-weight: 400;
+}
+.editor-fields textarea {
+  resize: vertical;
+  min-height: 65px;
+}
+.editor-fields .editor-check {
+  flex-direction: row;
+  align-items: center;
+}
+.editor-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+.editor-fields small,
+.editor-note {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 0;
+}
+.write-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+  background: var(--card);
+  position: relative;
+}
+.write-button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.write-button.primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.write-button.danger,
+.write-error {
+  color: var(--danger);
+}
+.write-error {
+  line-height: 1.6;
+}
+.delete-confirm {
+  padding: 12px;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+}
+.pending-dialog-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.pending-change {
+  padding: 14px 0;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--line);
+}
+.pending-change p {
+  margin: 7px 0;
+  font-size: 11px;
+}
+.pending-change .write-actions {
+  padding: 10px 0 0;
+  border: 0;
+  justify-content: flex-start;
+}
+.conflict-versions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.conflict-versions > div {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.pending-description {
+  white-space: pre-wrap;
+  max-height: 100px;
+  overflow-y: auto;
+}
+.event-write-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+@media (max-width: 450px) {
+  .editor-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .conflict-versions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

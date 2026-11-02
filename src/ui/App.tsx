@@ -9,6 +9,7 @@ import {
 import { useExtensionState } from "./use-extension-state";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { useTheme } from "./use-theme";
+import { WriteSettings } from "./WriteSettings";
 import { SyncSettings } from "./SyncSettings";
 import { AccountChooserSettings } from "./AccountChooserSettings";
 import "./styles.css";
@@ -474,6 +475,13 @@ export function App({ compact = false }: { compact?: boolean }) {
                   busy={busy}
                   run={run}
                 />
+                <WriteSettings
+                  key={`write-${state.settings.defaultWriteCalendar}`}
+                  accounts={state.accounts}
+                  settings={state.settings}
+                  busy={busy}
+                  run={run}
+                />
                 <SyncSettings
                   key={`sync-${JSON.stringify(state.settings)}`}
                   settings={state.settings}
@@ -528,7 +536,8 @@ export function App({ compact = false }: { compact?: boolean }) {
                   </p>
                   <p>
                     Google events are cached locally for offline use. Event
-                    editing, notification sounds, and DND are planned next.
+                    editing works offline through a local queue. Notification
+                    sounds and DND are planned next.
                   </p>
                   <p>
                     Adding another account resets this extension’s cached token

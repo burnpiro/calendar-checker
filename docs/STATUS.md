@@ -21,9 +21,17 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 ## Next work
 
-Stage 4: event creation/editing, writable account/calendar selection, recurrence edit semantics, durable outbox, retry-safe creation, and conflict resolution. Add event-write scope only with that feature and protect pending edits from cache reconciliation/removal.
+Stage 5: desktop/sound reminders, custom sounds, volume/preview, snooze, scheduled/manual DND, dual-zone presentation, and restart/sleep recovery. Add Chrome notifications/offscreen permissions with their implementation.
 
-After reloading the current build, approve the new read-only event scope through Reconnect where required and exercise the live checks in `STAGE-3.md`. Continue the stage 1 two-account/lifecycle matrix before treating multi-account authentication as accepted. First-account connection is user-confirmed; live stage 3 event reads are not yet verified. Custom sounds, notifications, snooze, DND, and secondary zones remain stage 5.
+Reload v0.4.0 and use Reconnect on existing accounts to approve event writing. Continue the real two-account/lifecycle matrix and the stage 4 live write checks. First-account connection is user-confirmed; full live event-read/write and multi-account acceptance remain pending.
+
+## Event writing and durable offline queue · v0.4.0
+
+Implemented: create/edit/confirmed delete forms; enabled account/writable-calendar selection and a configurable default; time-zone/all-day conversion; basic counted repeat rules; single-occurrence and original-master whole-series edits; shared pending-changes UI; independent schema 4 outbox/edit bases; durable offline retries/restart recovery; UUID creation IDs/private operation markers; changed-field PATCH/If-Match protection; explicit Google/local conflict resolution; fresh ACL and pinned identity checks; and account-removal protection for pending work. Existing cache, settings, key and OAuth client configuration are preserved. Runtime event access now uses `calendar.events` for read/write instead of the narrower event-read scope; no new Chrome permission/server is added.
+
+Validation: **169 unit/adapter tests**, TypeScript, formatting, production build, and **13 isolated Chromium tests** pass. New domain/protocol cases cover schema migration, stable IDs, lost create/patch/delete responses, disabled/mismatched accounts, 401 retry bounds, revoked writer rights, specialized/locked restrictions, offline retry/persistence, snapshot cleanup protection, ETag races, remote deletion/collisions, explicit conflict choices and original-master/occurrence targeting. Browser flows exercise offline all-day creation through a second account, complete Chrome restart before sending, pending-work removal protection, explicit conflict comparison/rebase preserving untouched remote fields, series/instance editing/deletion, and bounded editor scrolling with fixed header/actions. Fictional editor/conflict screenshots were inspected. No personal Chrome profile or live Google event was modified.
+
+Limits: no this-and-following series splits, event moves, guest-list editor or specialized-event editor. A series master must have been loaded once before offline whole-series editing. Pending series timing/recurrence refresh uses Google's expansion; existing complex rules and unrelated event fields are preserved by default. See `STAGE-4.md` and ADR 0006. Live Google consent/write/lifecycle verification remains pending.
 
 ## Sidebar outside-click dismissal · v0.3.8
 

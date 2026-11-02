@@ -25,6 +25,12 @@ export const googleEventSchema = z.object({
   end: point.optional(),
   eventType: z.string().optional(),
   etag: z.string().optional(),
+  recurrence: z.array(z.string()).optional(),
+  guestsCanModify: z.boolean().optional(),
+  locked: z.boolean().optional(),
+  extendedProperties: z
+    .object({ private: z.record(z.string(), z.string()).optional() })
+    .optional(),
   updated: z.string().optional(),
   recurringEventId: z.string().optional(),
   originalStartTime: point.optional(),
@@ -33,6 +39,7 @@ export const googleEventSchema = z.object({
   hangoutLink: z.string().optional(),
   organizer: z
     .object({
+      self: z.boolean().optional(),
       email: z.string().optional(),
       displayName: z.string().optional(),
     })
@@ -106,6 +113,10 @@ export function normalizeGoogleEvent(
       start: allDay ? raw.start.date : instant(raw.start),
       end: allDay ? raw.end.date : instant(raw.end),
       etag: raw.etag,
+      recurrence: raw.recurrence,
+      organizerSelf: raw.organizer?.self,
+      guestsCanModify: raw.guestsCanModify,
+      locked: raw.locked,
       updatedAt: raw.updated
         ? Temporal.Instant.from(raw.updated).toString()
         : at,

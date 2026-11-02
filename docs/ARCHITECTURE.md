@@ -12,9 +12,9 @@ MV3 background worker -- native Chrome Identity / optional explicit Google choos
         |             -- toolbar badge / connection alarm / per-calendar sync scheduler
         |
 chrome.storage.local (metadata + preferences + safe diagnostics)
-IndexedDB via Dexie (Google events, ranges, sync state)
+IndexedDB via Dexie (Google events, ranges, sync state, outbox, edit bases)
 
-Later: event writing / durable outbox; offscreen audio / reminders.
+Later: offscreen audio / reminders.
 ```
 
 `entrypoints/background.ts` wires platform APIs, listeners, initialization, scheduling, and a serialized mutation queue. Listeners are registered synchronously at worker creation. Durable state does not depend on worker globals.
@@ -22,6 +22,8 @@ Later: event writing / durable outbox; offscreen audio / reminders.
 `src/background/auth-service.ts` owns account operations and safe failure transitions. Platform adapters are injected so domain tests can exercise real invariants without Google credentials.
 
 `src/background/event-sync.ts` owns read-only event synchronization. It runs worker-serialized operations through `AuthService.withVerifiedToken`, verifies identity before event calls, persists independent calendar failure/backoff state, and keeps cursor advancement atomic with cache replacement. A one-minute scheduler evaluates the configured cadence; startup recovers interrupted jobs.
+
+`src/background/event-writes.ts` owns validated event drafts, ACL checks, durable queue/recovery, stable creation IDs/private operation markers, ETag-conditional PATCH/DELETE, and explicit conflict resolution. Pending work overlays remote snapshots and is never deleted by cache cleanup. Successful writes stay acknowledged in the outbox until a fresh atomic snapshot commit. See `STAGE-4.md` and ADR 0006.
 
 `src/background/chrome-adapters.ts` contains the native/web identity dispatcher, local persistence, and badge adapters. `web-identity.ts` owns validated chooser callbacks and transient per-account/client access. `google.ts` validates direct Google responses, handles pagination, and enforces request timeouts. Raw remote errors are never forwarded to UI or diagnostics.
 
@@ -45,7 +47,7 @@ Calendar event-list popovers use FullCalendar's public `popoverClass` and `dayCe
 - Account key: verified Google `sub` (not email, which can change).
 - Account record: email, enabled state, authorization/check status, calendar summaries/permissions/colors, event-read grant marker, optional web auth method, timestamps, safe error code.
 - Settings: connection interval, event sync interval (both 1–1440 minutes, default 5), stale threshold (1–10080 minutes, default 15), refresh on open, home cache months (0–12 past/future, default 2/6), appearance (including week layout and minimum hour height), primary zone, visibility, and optional public Web OAuth client ID. Retired data-source preferences are ignored on read. Additive defaults preserve old records; worker patches merge individual visibility keys and validate the full result.
-- Event database: `calendar-checker-events`, version 3, upgrading in place. `events` stores normalized Google instances, `ranges` records bounded snapshot membership/coverage, and `syncStates` stores per-calendar cursors/retries. The migration drops the legacy `demoEvents` table and deletes `demo-v1:` seed markers; unrelated `meta` records survive. All-day ends are exclusive; timed records store instants and an original zone. Removing account/calendar metadata reconciles its Google cache; pausing preserves it.
+- Event database: `calendar-checker-events`, version 4, upgrading in place. `events` stores normalized Google instances, `ranges` records bounded snapshot membership/coverage, and `syncStates` stores per-calendar cursors/retries. `outbox` stores independent pending writes/conflict versions; `editBases` retains at most 50 detached series masters. The migration drops the legacy `demoEvents` table and deletes `demo-v1:` seed markers; unrelated `meta` records survive. All-day ends are exclusive; timed records store instants and an original zone. Removing account/calendar metadata reconciles its Google cache/edit bases without dropping pending writes; account removal is blocked while pending rows exist. Pausing preserves work without sending it.
 - Diagnostics: most recent 50 action/time/outcome/code entries, with optional fixed failure step/category, HTTP status, and bounded browser network code. No raw provider messages, tokens, account identifiers, email, or calendar contents.
 - OAuth access tokens: Chrome-managed for existing native accounts; memory-only for web chooser accounts, with bounded silent authorization after expiry/worker restart. No refresh tokens or client secrets. Provider sync cursors are distinct local sync state and never enter UI metadata or diagnostics. Reports include aggregate sync counts and safe settings only.
 
@@ -69,8 +71,8 @@ Enabled accounts requiring reconnection take priority on the toolbar `!` badge. 
 
 Startup reconstructs the badge and ensures the periodic alarm exists. The one-minute sync tick refreshes the badge before and after any due network work; toolbar rendering failures cannot block event sync. Account/settings saves also refresh it, so visibility/zone changes apply immediately. The badge uses cached data offline and does not imply fresh coverage or introduce a notification scheduler. Updating timing settings reschedules the alarm; normal worker wake-ups do not postpone it.
 
-## Event synchronization and future writes
+## Event synchronization and writes
 
 The unexpanded change feed requests only IDs/cursors; bounded expanded queries fetch display data. Google handles recurrence, moved/cancelled exceptions, and DST. No-change feeds validate coverage; changes refresh retained ranges. Coverage absence, invalidation, staleness, offline state, and a successful empty result remain distinct. Shared calendar display prefers the best-covered/freshest authorized copy while retaining account provenance.
 
-Stage 4 must add write scopes, recurring master/edit models, outbox/conflict tables, retry-safe creation, and protection against clearing pending writes. Persist pending edits/conflicts independently of remote snapshots, and extend cleanup deliberately. No stage 3 operation creates or modifies events in Google.
+Stage 4 adds the runtime event-write scope, original recurring master/edit models, independent outbox/conflicts, stable creation IDs/private markers and conditional mutations. Remote read sync does not create changes; draining explicitly saved operations precedes remote synchronization. No application server or additional Chrome permission is used.

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { saveEventSchema } from "../calendar/write-model";
+import { eventSchema, type CalendarEvent } from "../calendar/model";
 import {
   DEFAULT_SETTINGS,
   settingsSchema,
@@ -15,7 +17,7 @@ export const SCOPES = [
   "openid",
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
-  "https://www.googleapis.com/auth/calendar.events.readonly",
+  "https://www.googleapis.com/auth/calendar.events",
 ] as const;
 
 export const calendarSchema = z.object({
@@ -50,6 +52,10 @@ export const errorCodeSchema = z.enum([
   "unexpected",
   "calendar-unavailable",
   "sync-expired",
+  "event-conflict",
+  "event-readonly",
+  "pending-writes",
+  "event-gone",
 ]);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 
@@ -82,6 +88,7 @@ export const accountSchema = z.object({
   errorCode: errorCodeSchema.optional(),
   errorDetails: failureDetailsSchema.optional(),
   eventsReadGranted: z.boolean().optional(),
+  eventsWriteGranted: z.boolean().optional(),
   authMethod: z.literal("web").optional(),
 });
 export type Account = z.infer<typeof accountSchema>;
@@ -97,6 +104,7 @@ export const diagnosticSchema = z.object({
     "remove",
     "settings",
     "event-sync",
+    "event-write",
   ]),
   outcome: z.enum(["success", "failure"]),
   code: errorCodeSchema.optional(),
@@ -154,6 +162,26 @@ export interface DiagnosticsReport {
 }
 
 export const commandSchema = z.discriminatedUnion("type", [
+  saveEventSchema,
+  z.object({
+    type: z.literal("PREPARE_EDIT"),
+    key: z.string().min(1),
+    scope: z.enum(["event", "series"]),
+  }),
+  z.object({
+    type: z.literal("DELETE_EVENT"),
+    id: z.uuid(),
+    base: eventSchema,
+    scope: z.enum(["event", "series"]),
+    sendUpdates: z.enum(["all", "none"]),
+  }),
+  z.object({ type: z.literal("RETRY_WRITE"), id: z.uuid() }),
+  z.object({ type: z.literal("DISCARD_WRITE"), id: z.uuid() }),
+  z.object({
+    type: z.literal("RESOLVE_WRITE"),
+    id: z.uuid(),
+    choice: z.enum(["google", "mine"]),
+  }),
   z.object({ type: z.literal("GET_STATE") }),
   z.object({ type: z.literal("CONNECT") }),
   z.object({ type: z.literal("CHECK_ALL") }),
@@ -186,7 +214,12 @@ export const commandSchema = z.discriminatedUnion("type", [
 ]);
 export type Command = z.infer<typeof commandSchema>;
 export type Reply =
-  | { ok: true; state: Snapshot; diagnostics?: DiagnosticsReport }
+  | {
+      ok: true;
+      state: Snapshot;
+      diagnostics?: DiagnosticsReport;
+      edit?: CalendarEvent;
+    }
   | { ok: false; error: { code: ErrorCode; message: string } };
 
 export function needsReconnect(account: Account): boolean {

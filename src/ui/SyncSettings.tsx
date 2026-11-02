@@ -28,8 +28,8 @@ export function SyncSettings({
       <h2>Event synchronization</h2>
       <p className="muted">
         Events are read directly from Google and saved on this device. Syncing
-        never creates or changes Google events. Chrome may delay background work
-        while asleep.
+        also sends your explicitly queued event changes. Chrome may delay
+        background work while asleep.
       </p>
       <form
         className="settings-form appearance-form"

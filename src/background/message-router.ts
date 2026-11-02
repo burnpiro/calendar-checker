@@ -1,6 +1,7 @@
 import { AppError, asAppError } from "../shared/errors";
 import { commandSchema, type Reply } from "../shared/model";
 import type { AuthService } from "./auth-service";
+import type { EventWriteService } from "./event-writes";
 import type { EventSyncService } from "./event-sync";
 
 export function isTrustedSender(
@@ -18,12 +19,45 @@ export async function routeCommand(
   service: AuthService,
   reschedule: () => Promise<void>,
   eventSync?: EventSyncService,
+  eventWrites?: EventWriteService,
 ): Promise<Reply> {
   try {
     const parsed = commandSchema.safeParse(raw);
     if (!parsed.success) throw new AppError("invalid-request");
     const command = parsed.data;
     switch (command.type) {
+      case "PREPARE_EDIT":
+        if (!eventWrites) throw new AppError("unexpected");
+        return {
+          ok: true,
+          state: await service.snapshot(),
+          edit: await eventWrites.prepare(command.key, command.scope),
+        };
+      case "SAVE_EVENT":
+        if (!eventWrites) throw new AppError("unexpected");
+        await eventWrites.save(command);
+        break;
+      case "DELETE_EVENT":
+        if (!eventWrites) throw new AppError("unexpected");
+        await eventWrites.delete(
+          command.id,
+          command.base,
+          command.scope,
+          command.sendUpdates,
+        );
+        break;
+      case "RETRY_WRITE":
+        if (!eventWrites) throw new AppError("unexpected");
+        await eventWrites.retry(command.id);
+        break;
+      case "DISCARD_WRITE":
+        if (!eventWrites) throw new AppError("unexpected");
+        await eventWrites.discard(command.id);
+        break;
+      case "RESOLVE_WRITE":
+        if (!eventWrites) throw new AppError("unexpected");
+        await eventWrites.resolve(command.id, command.choice);
+        break;
       case "GET_STATE":
         break;
       case "CONNECT":
@@ -45,6 +79,7 @@ export async function routeCommand(
         await service.setEnabled(command.accountId, command.enabled);
         break;
       case "REMOVE":
+        await eventWrites?.assertNoPending(command.accountId);
         await service.remove(command.accountId);
         await eventSync?.repository.reconcile(
           (await service.snapshot()).accounts,
@@ -56,6 +91,7 @@ export async function routeCommand(
         break;
       case "SYNC_EVENTS":
         if (!eventSync) throw new AppError("unexpected");
+        await eventWrites?.run();
         await eventSync.run(command);
         break;
       case "GET_DIAGNOSTICS":

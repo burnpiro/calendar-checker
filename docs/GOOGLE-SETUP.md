@@ -21,7 +21,7 @@ Google Cloud is used to register the extension and authorize Calendar API access
 
 Workspace organizations can restrict third-party OAuth access. An administrator may need to allow the app for a managed account. That is separate from connecting a personal Gmail account.
 
-## 3. Add the read-only scopes
+## 3. Add the calendar scopes
 
 In **Data Access → Add or remove scopes**, add these exact scopes:
 
@@ -30,15 +30,16 @@ openid
 https://www.googleapis.com/auth/userinfo.email
 https://www.googleapis.com/auth/calendar.calendarlist.readonly
 https://www.googleapis.com/auth/calendar.events.readonly
+https://www.googleapis.com/auth/calendar.events
 ```
 
-These identify the authorized account, list its calendars, and read their events. The event scope was added in stage 3; existing accounts may need **Reconnect** to approve it. Keep the same OAuth client and registered extension ID when upgrading. No event-writing permission or application server is needed. Broader write scopes belong to stage 4.
+These identify the authorized account, list its calendars, read events, and allow stage 4 event creation/editing on writable calendars. Existing accounts need **Reconnect** to approve the event-write scope. Keep the same OAuth client and registered extension ID when upgrading. No application server is needed.
 
 Manage this Chrome Extension app's Data Access scopes through the Cloud Console. The similarly named `gcloud iam oauth-clients` commands manage Workforce Identity Federation clients, a different resource; see [Google's distinction](https://docs.cloud.google.com/iam/docs/workforce-manage-oauth-app). [Data Access documentation](https://support.google.com/cloud/answer/15549135) describes selecting scopes, updating the selection, and saving it.
 
 ### Permissions prepared for later stages
 
-At the user's request, the existing Cloud OAuth app also declares `https://www.googleapis.com/auth/calendar.events` for stage 4 event creation/editing on writable calendars. This scope is saved in Data Access; v0.3.0 still requests only its four current read/identity scopes. Add the write scope to runtime authorization and obtain user consent when event-writing functionality is implemented. No calendar administration/sharing or Gmail-content permission is needed for the planned features. See [Calendar scope definitions](https://developers.google.com/workspace/calendar/api/auth).
+At the user's request, the existing Cloud OAuth app also declares `https://www.googleapis.com/auth/calendar.events` for stage 4 event creation/editing on writable calendars. This scope is saved in Data Access; v0.4.0 now requests it at runtime in place of the narrower event-read scope, alongside identity and calendar-list access. The older read-only declaration can stay in Cloud Data Access. Use Reconnect to obtain consent for existing accounts. No calendar administration/sharing or Gmail-content permission is needed for the planned features. See [Calendar scope definitions](https://developers.google.com/workspace/calendar/api/auth).
 
 Stage 5 desktop reminders and background audio need Chrome manifest permissions `notifications` and `offscreen`, respectively. Add those with their implementations; they are not Google OAuth Data Access scopes. Scheduling and local preferences already use `alarms` and `storage`. Custom sound imports, snooze, DND, and display time zones require no additional Google scope.
 

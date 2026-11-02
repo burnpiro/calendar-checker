@@ -2,6 +2,8 @@ import { Dexie, type EntityTable } from "dexie";
 import type { CalendarEvent } from "./model";
 import type { CalendarSyncState, CachedRange } from "./sync-model";
 
+import type { PendingWrite, EditBase } from "./write-model";
+
 interface Meta {
   key: string;
   value: string;
@@ -9,6 +11,8 @@ interface Meta {
 export class CalendarDatabase extends Dexie {
   events!: EntityTable<CalendarEvent, "key">;
   meta!: EntityTable<Meta, "key">;
+  outbox!: EntityTable<PendingWrite, "id">;
+  editBases!: EntityTable<EditBase, "key">;
   syncStates!: EntityTable<CalendarSyncState, "key">;
   ranges!: EntityTable<CachedRange, "key">;
   constructor(name = "calendar-checker-events") {
@@ -31,6 +35,10 @@ export class CalendarDatabase extends Dexie {
           .startsWith("demo-v1:")
           .delete();
       });
+    this.version(4).stores({
+      outbox: "&id, accountId, [accountId+calendarId], status",
+      editBases: "&key",
+    });
   }
 }
 let database: CalendarDatabase | undefined;

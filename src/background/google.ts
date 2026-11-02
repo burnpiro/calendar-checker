@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { EventBody } from "../calendar/write-model";
 import { AppError } from "../shared/errors";
 import type { CalendarSummary, FailureDetails } from "../shared/model";
 import type { GoogleGateway } from "./ports";
@@ -108,13 +109,16 @@ export class GoogleCalendarGateway implements GoogleGateway {
     url: string,
     token: string,
     stage: FailureDetails["stage"],
+    init: RequestInit = {},
   ): Promise<unknown> {
     let response: Response;
     try {
       response = await this.fetcher(url, {
+        ...init,
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/json",
+          ...init.headers,
         },
         credentials: "omit",
         redirect: "error",
@@ -125,6 +129,8 @@ export class GoogleCalendarGateway implements GoogleGateway {
       throw this.transportError(error, stage);
     }
     if (!response.ok) {
+      if (response.status === 412 || response.status === 409)
+        throw new GoogleHttpError(response.status, "event-conflict", { stage });
       if (stage === "calendar-events" && response.status === 410)
         throw new GoogleHttpError(410, "sync-expired", { stage });
       if (stage === "calendar-events" && response.status === 404)
@@ -162,6 +168,7 @@ export class GoogleCalendarGateway implements GoogleGateway {
         );
       throw new GoogleHttpError(response.status, "api-error", { stage });
     }
+    if (response.status === 204) return undefined;
     try {
       return await response.json();
     } catch (error) {
@@ -311,7 +318,7 @@ export class GoogleCalendarGateway implements GoogleGateway {
         timeMin: start,
         timeMax: end,
         fields:
-          "nextPageToken,timeZone,items(id,status,summary,description,location,start,end,eventType,etag,updated,recurringEventId,originalStartTime,iCalUID,htmlLink,hangoutLink,organizer,attendees(self,responseStatus))",
+          "nextPageToken,timeZone,items(id,status,summary,description,location,start,end,eventType,etag,updated,recurringEventId,originalStartTime,iCalUID,htmlLink,hangoutLink,organizer,guestsCanModify,locked,attendees(self,responseStatus))",
       },
       (value) => {
         const parsed = z
@@ -327,5 +334,75 @@ export class GoogleCalendarGateway implements GoogleGateway {
       },
     );
     return { events, timeZone };
+  }
+  private eventUrl(calendarId: string, eventId?: string): string {
+    return `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events${eventId ? `/${encodeURIComponent(eventId)}` : ""}`;
+  }
+  private parseEvent(value: unknown): GoogleEvent {
+    const parsed = googleEventSchema.safeParse(value);
+    if (!parsed.success)
+      throw new AppError("invalid-response", { stage: "calendar-events" });
+    return parsed.data;
+  }
+  async getEvent(
+    token: string,
+    calendarId: string,
+    eventId: string,
+  ): Promise<GoogleEvent> {
+    return this.parseEvent(
+      await this.request(
+        this.eventUrl(calendarId, eventId),
+        token,
+        "calendar-events",
+      ),
+    );
+  }
+  async insertEvent(
+    token: string,
+    calendarId: string,
+    body: EventBody,
+    sendUpdates: "all" | "none",
+  ): Promise<GoogleEvent> {
+    const url = new URL(this.eventUrl(calendarId));
+    url.searchParams.set("sendUpdates", sendUpdates);
+    return this.parseEvent(
+      await this.requestOnce(url.href, token, "calendar-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    );
+  }
+  async patchEvent(
+    token: string,
+    calendarId: string,
+    eventId: string,
+    body: EventBody,
+    etag: string,
+    sendUpdates: "all" | "none",
+  ): Promise<GoogleEvent> {
+    const url = new URL(this.eventUrl(calendarId, eventId));
+    url.searchParams.set("sendUpdates", sendUpdates);
+    return this.parseEvent(
+      await this.requestOnce(url.href, token, "calendar-events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "If-Match": etag },
+        body: JSON.stringify(body),
+      }),
+    );
+  }
+  async deleteEvent(
+    token: string,
+    calendarId: string,
+    eventId: string,
+    etag: string,
+    sendUpdates: "all" | "none",
+  ): Promise<void> {
+    const url = new URL(this.eventUrl(calendarId, eventId));
+    url.searchParams.set("sendUpdates", sendUpdates);
+    await this.requestOnce(url.href, token, "calendar-events", {
+      method: "DELETE",
+      headers: { "If-Match": etag },
+    });
   }
 }

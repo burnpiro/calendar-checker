@@ -115,3 +115,28 @@ describe("local event storage", () => {
     ).toBe(false);
   });
 });
+
+it("upgrades a stage 3 cache in place with empty independent outbox and edit-base tables", async () => {
+  const name = `stage-4-migration-${crypto.randomUUID()}`;
+  const old = new Dexie(name);
+  old.version(3).stores({
+    events: "&key, [accountId+calendarId], start, end, eventType",
+    meta: "&key",
+    syncStates: "&key, accountId, [accountId+calendarId]",
+    ranges: "&key, accountId, [accountId+calendarId]",
+  });
+  const event = makeFixtureMonth("2026-11-01", "UTC")[0]!;
+  await old.table("events").put(event);
+  await old.table("meta").put({ key: "keep", value: "existing" });
+  old.close();
+  const upgraded = database(name);
+  await upgraded.open();
+  expect(upgraded.verno).toBe(4);
+  expect(await upgraded.events.toArray()).toEqual([event]);
+  expect(await upgraded.meta.get("keep")).toEqual({
+    key: "keep",
+    value: "existing",
+  });
+  expect(await upgraded.outbox.count()).toBe(0);
+  expect(await upgraded.editBases.count()).toBe(0);
+});

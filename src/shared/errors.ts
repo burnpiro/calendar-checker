@@ -1,6 +1,14 @@
 import type { ErrorCode, FailureDetails } from "./model";
 
 const MESSAGES: Record<ErrorCode, string> = {
+  "event-conflict":
+    "This event changed in Google. Review the pending change before choosing which version to keep.",
+  "event-readonly":
+    "This event cannot be edited here. Use a writable calendar and a regular event; specialized or locked events can be opened in Google Calendar.",
+  "pending-writes":
+    "Resolve or discard pending event changes for this account or event first. Saved changes have been kept.",
+  "event-gone":
+    "This event was deleted or is no longer accessible in Google. Your pending change has been kept.",
   "calendar-unavailable":
     "This calendar is no longer readable. Cached events have been kept; check its sharing permissions in Google Calendar.",
   "sync-expired":
