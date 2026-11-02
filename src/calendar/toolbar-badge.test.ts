@@ -64,6 +64,78 @@ const badge = (events: CalendarEvent[], at = now, overrides = {}) =>
   );
 
 describe("next-event toolbar badge", () => {
+  it("includes busy-only calendars with their color, day distance and visibility rules", () => {
+    const a = account();
+    a.calendars[0]!.accessRole = "freeBusyReader";
+    const busy = event("2026-11-02T11:00:00Z", {
+      availabilityOnly: true,
+      title: "Busy",
+      locked: true,
+      color: "#348e81",
+    });
+    const select = (overrides = {}) =>
+      nextEventBadge([a], { ...settings, ...overrides }, [busy], metadata, now);
+    expect(select()).toMatchObject({ text: "11:00", color: "#348e81" });
+    expect(select().title).toContain("Next saved busy period: Busy");
+    expect(
+      select({ calendarVisibility: { [calendarKey("a", "calendar")]: false } })
+        .text,
+    ).toBe("");
+    expect(
+      badge([
+        { ...busy, start: "2026-11-03T11:00:00Z", end: "2026-11-03T12:00:00Z" },
+      ]).text,
+    ).toBe("+1d");
+    a.enabled = false;
+    expect(select().text).toBe("");
+  });
+  it("joins midnight busy segments without mutating cached data or announcing an ongoing period again", async () => {
+    const db = new CalendarDatabase(`toolbar-busy-${crypto.randomUUID()}`);
+    try {
+      const blocks = [
+        event("2026-11-02T23:00:00Z", {
+          availabilityOnly: true,
+          title: "Busy",
+          end: "2026-11-03T00:00:00Z",
+        }),
+        event("2026-11-03T00:00:00Z", {
+          availabilityOnly: true,
+          title: "Busy",
+          end: "2026-11-03T01:00:00Z",
+        }),
+        event("2026-11-03T10:00:00Z", {
+          availabilityOnly: true,
+          title: "Busy",
+        }),
+      ];
+      await db.events.bulkPut(blocks);
+      const at = new Date("2026-11-02T23:30:00Z");
+      const data = await new EventRepository(db).toolbarData(at);
+      expect(data.events).toHaveLength(3);
+      const original = structuredClone(data.events);
+      expect(
+        nextEventBadge(
+          [account()],
+          { ...settings, primaryTimeZone: "Europe/Warsaw" },
+          data.events,
+          metadata,
+          at,
+        ).text,
+      ).toBe("11:00");
+      expect(data.events).toEqual(original);
+      expect(
+        nextEventBadge(
+          [account()],
+          settings,
+          blocks.slice(0, 2),
+          metadata,
+          new Date("2026-11-02T22:30:00Z"),
+        ).title,
+      ).toContain("1:00");
+    } finally {
+      await db.delete();
+    }
+  });
   it("shows only the nearest upcoming start time, with details in the tooltip", () => {
     const result = badge([
       event("2026-11-02T16:00:00Z", { color: "#f6bf26" }),

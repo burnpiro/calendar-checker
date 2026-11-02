@@ -23,7 +23,13 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 Stage 6: live Google multi-account/read/write acceptance, real OS notification/audio/native-button and sleep/wake acceptance, accessibility/performance review, and local unpacked/ZIP packaging. Publishing remains a separate request.
 
-Reload v0.5.2 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+Reload v0.5.3 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+
+## Busy periods in the next-event badge · v0.5.3
+
+The toolbar now includes upcoming busy-only availability, showing today's start time or a later +Nd label with the calendar color. Its tooltip identifies a saved busy period. Account/calendar visibility, shared-copy preference and warning priority still apply. Adjacent/overlapping availability segments are joined per account/calendar before choosing a start; ongoing segments are included in the cache read so a UTC-midnight continuation cannot appear as a new upcoming event. Busy periods remain read-only and do not send event reminders. No scope, permission or settings change is needed.
+
+Validation: `npm run check` passes (TypeScript, **220 unit/adapter tests**, formatting and production build), followed by **17 isolated Chromium extension tests**. New checks cover busy-period time/color/day distance, visibility, paused accounts, non-mutating midnight merging, ongoing availability cache reads, and the real Chrome action badge/title after fixture freeBusy synchronization. The user confirmed that the shared busy calendar now appears in the calendar itself; broader live consent/lifecycle/completeness acceptance remains pending.
 
 ## Busy-only shared calendars · v0.5.2
 

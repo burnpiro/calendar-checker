@@ -40,6 +40,7 @@ test("busy-only calendars sync through freeBusy, render read-only blocks and sur
     const date = new Date().toISOString().slice(0, 10);
     await worker.evaluate(
       ({ date }) => {
+        Date.now = () => Date.parse(`${date}T08:45:00Z`);
         chrome.identity.getAuthToken = (async (
           details: chrome.identity.TokenDetails,
         ) => ({
@@ -146,6 +147,15 @@ test("busy-only calendars sync through freeBusy, render read-only blocks and sur
     ).toBeVisible();
     await expect(options.locator(".sync-calendar")).toContainText(
       "Last successful check",
+    );
+    await expect
+      .poll(() => options.evaluate(() => chrome.action.getBadgeText({})))
+      .toBe("09:00");
+    expect(
+      await options.evaluate(() => chrome.action.getBadgeBackgroundColor({})),
+    ).toEqual([52, 142, 129, 255]);
+    expect(await options.evaluate(() => chrome.action.getTitle({}))).toContain(
+      "Next saved busy period: Busy",
     );
     const popup = await context.newPage();
     await popup.clock.setFixedTime(new Date(`${date}T08:45:00Z`));

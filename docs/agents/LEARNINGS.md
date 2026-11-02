@@ -77,6 +77,8 @@ Keep concise, verified implementation facts here. Include the date and supportin
 ## 2026-11-02 · busy-only availability
 
 - Google `calendar.events` does not authorize freeBusy queries; v0.5.2 adds `calendar.events.freebusy` with explicit Reconnect. Keep bounded free/busy polling independent of event change cursors. A nested calendar error in an HTTP 200 response must not establish empty coverage.
-- Availability keys are local UTC-day segments, not Google event IDs. Never edit them, generate event reminders/countdowns from them, or let a busy snapshot acknowledge pending event writes. Prefer detailed shared copies at equal coverage and rebuild snapshots when access mode changes. See ADR 0008.
+- Availability keys are local UTC-day segments, not Google event IDs. Never edit them, generate event reminders from them, or let a busy snapshot acknowledge pending event writes. Prefer detailed shared copies at equal coverage and rebuild snapshots when access mode changes. See ADR 0008.
 
 - The availability scope was explicitly approved by the user and save-confirmed in the existing Cloud project on 2026-11-02. This does not prove an active account grant; reload/Reconnect and live busy-calendar verification remain pending.
+
+- V0.5.3 includes upcoming availability in the next-event badge on user request. Join its day segments per account/calendar before selection and read ongoing availability too, otherwise UTC midnight creates a false next start. Keep the busy-period tooltip explicit; reminders stay disabled for availability.

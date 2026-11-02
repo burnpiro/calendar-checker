@@ -203,13 +203,18 @@ export class EventRepository {
         this.db.outbox,
         async () => ({
           // Use a whole-second lower bound because normalized instants can omit
-          // fractional seconds. Selection compares actual timestamps afterward.
+          // fractional seconds. Include ongoing availability to recognize its
+          // future midnight segments as continuations, not new badge starts.
           events: overlayWrites(
             await this.db.events
-              .where("start")
+              .where("end")
               .aboveOrEqual(now.toISOString().slice(0, 19))
               .filter(
-                (event) => !event.allDay && event.responseStatus !== "declined",
+                (event) =>
+                  !event.allDay &&
+                  event.responseStatus !== "declined" &&
+                  (event.availabilityOnly === true ||
+                    Date.parse(event.start) >= now.getTime()),
               )
               .toArray(),
             await this.pending(),
