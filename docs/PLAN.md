@@ -13,7 +13,7 @@
 - Desktop and sound reminders, custom imported sounds, volume/preview, configurable reminder offsets and snooze.
 - Manual and scheduled Do not disturb, including overnight schedules and an explicit schedule time zone.
 - Primary and optional secondary time zones. Week view has aligned time columns; month hover/details show both zones. Handle DST and all-day dates correctly.
-- Borderless calendar icon; next timed-event badge showing today’s time or +Nd for a later date, with an appearance toggle. Reconnect warnings take priority and retain account-specific popup messages.
+- Borderless calendar icon; event-colored next timed-event badge showing today’s time or +Nd for a later date, with an appearance toggle. Reconnect warnings take priority and retain account-specific popup messages.
 - Popup calendar plus full calendar in a tab or detached window; shared preferences and data.
 
 ## Settings page

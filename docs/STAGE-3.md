@@ -1,6 +1,6 @@
 # Stage 3: Google event reading and offline synchronization
 
-Release: v0.3.5. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
+Release: v0.3.6. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
 
 ## Use the release
 

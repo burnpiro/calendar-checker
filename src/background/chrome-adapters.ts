@@ -16,6 +16,7 @@ import type {
 import { GoogleWebIdentity } from "./web-identity";
 import { EventRepository } from "../calendar/event-repository";
 import {
+  badgeTextColor,
   emptyToolbarBadge,
   nextEventBadge,
   reconnectToolbarBadge,
@@ -131,7 +132,9 @@ export class ChromeBadge implements Badge {
       }
     }
     await chrome.action.setBadgeBackgroundColor({ color: badge.color });
-    await chrome.action.setBadgeTextColor({ color: "#ffffff" });
+    await chrome.action.setBadgeTextColor({
+      color: badgeTextColor(badge.color),
+    });
     await chrome.action.setBadgeText({ text: badge.text });
     await chrome.action.setTitle({ title: badge.title });
   }

@@ -11,6 +11,19 @@ export interface ToolbarBadge {
   color: string;
   title: string;
 }
+/** Choose the more readable black/white foreground using relative luminance. */
+export function badgeTextColor(background: string): string {
+  const [red = 0, green = 0, blue = 0] = [1, 3, 5].map((offset) => {
+    const channel = parseInt(background.slice(offset, offset + 2), 16) / 255;
+    return channel <= 0.04045
+      ? channel / 12.92
+      : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+  const whiteContrast = 1.05 / (luminance + 0.05);
+  const blackContrast = (luminance + 0.05) / 0.05;
+  return blackContrast > whiteContrast ? "#000000" : "#ffffff";
+}
 export const emptyToolbarBadge: ToolbarBadge = {
   text: "",
   color: "#7765d8",
@@ -67,7 +80,7 @@ export function nextEventBadge(
         days === 0
           ? `${String(time.hour).padStart(2, "0")}:${String(time.minute).padStart(2, "0")}`
           : `+${days}d`,
-      color: "#7765d8",
+      color: event.color,
       title: `Calendar Checker — Next saved event: ${event.title.slice(0, 160)}\n${eventWhen(event, zone, settings.timeFormat)}\n${zone}`,
     };
   }

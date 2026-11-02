@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { emptyStore, type Account } from "../shared/model";
 import { calendarKey } from "../shared/preferences";
 import { eventKey, eventSchema, type CalendarEvent } from "./model";
-import { nextEventBadge } from "./toolbar-badge";
+import { badgeTextColor, nextEventBadge } from "./toolbar-badge";
 import { CalendarDatabase } from "./database";
 import { EventRepository } from "./event-repository";
 import { emptySyncState, type SyncMetadata } from "./sync-model";
@@ -65,8 +65,13 @@ const badge = (events: CalendarEvent[], at = now, overrides = {}) =>
 
 describe("next-event toolbar badge", () => {
   it("shows only the nearest upcoming start time, with details in the tooltip", () => {
-    const result = badge([event("2026-11-02T16:00:00Z"), event()]);
+    const result = badge([
+      event("2026-11-02T16:00:00Z", { color: "#f6bf26" }),
+      event(undefined, { color: "#1a237e" }),
+    ]);
     expect(result.text).toBe("14:30");
+    expect(result.color).toBe("#1a237e");
+    expect(badgeTextColor(result.color)).toBe("#ffffff");
     expect(result.title).toContain("Next saved event: Meeting");
     expect(result.title).toContain("UTC");
     expect(badge([event()], now, { timeFormat: "12h" }).text).toBe("14:30");
@@ -77,7 +82,10 @@ describe("next-event toolbar badge", () => {
       const date = new Date(now.getTime() + days * 86400_000)
         .toISOString()
         .slice(0, 10);
-      expect(badge([event(`${date}T14:30:00Z`)]).text).toBe(`+${days}d`);
+      const result = badge([event(`${date}T14:30:00Z`, { color: "#f6bf26" })]);
+      expect(result.text).toBe(`+${days}d`);
+      expect(result.color).toBe("#f6bf26");
+      expect(badgeTextColor(result.color)).toBe("#000000");
     },
   );
   it("uses the selected time zone to determine today and the event time", () => {

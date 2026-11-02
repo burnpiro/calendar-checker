@@ -25,6 +25,12 @@ Stage 4: event creation/editing, writable account/calendar selection, recurrence
 
 After reloading the current build, approve the new read-only event scope through Reconnect where required and exercise the live checks in `STAGE-3.md`. Continue the stage 1 two-account/lifecycle matrix before treating multi-account authentication as accepted. First-account connection is user-confirmed; live stage 3 event reads are not yet verified. Custom sounds, notifications, snooze, DND, and secondary zones remain stage 5.
 
+## Event-colored toolbar badge · v0.3.6
+
+The badge background now matches the selected event's normalized color for both today's time and later-day labels. Text switches between black and white for the higher contrast ratio. Reconnect/storage warning backgrounds stay red.
+
+Validation: **134 unit/adapter tests**, TypeScript, formatting, production build, and **eight isolated Chromium tests** pass. Existing badge coverage now verifies selection of the correct event color, foreground contrast for dark/light colors, native Chrome background/text colors during event changes, and preserved warning color.
+
 ## Full-size icon and next-event badge · v0.3.5
 
 The toolbar icon now uses full-canvas calendar artwork with transparent corners and no enclosing tile/border. The local deterministic generator creates 16/24/32/48/128-pixel assets with supersampling; `action.default_icon` explicitly selects the toolbar resolutions.

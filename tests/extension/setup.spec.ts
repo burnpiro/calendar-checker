@@ -1234,7 +1234,7 @@ test("toolbar badge shows today's next time, later-day distance, visibility and 
       },
     ];
     const events = ["2026-11-02T14:30:00Z", "2026-11-03T09:00:00Z"].map(
-      (start) =>
+      (start, index) =>
         eventSchema.parse({
           key: eventKey("badge-account", "badge-calendar", start),
           source: "google",
@@ -1244,7 +1244,7 @@ test("toolbar badge shows today's next time, later-day distance, visibility and 
           title: "Badge fixture meeting",
           calendarName: "Badge fixture",
           accountName: "badge@example.test",
-          color: "#7765d8",
+          color: index === 0 ? "#1a237e" : "#f6bf26",
           eventType: "default",
           allDay: false,
           start,
@@ -1290,6 +1290,12 @@ test("toolbar badge shows today's next time, later-day distance, visibility and 
     );
     const badge = () => page.evaluate(() => chrome.action.getBadgeText({}));
     await expect.poll(badge).toBe("14:30");
+    expect(
+      await page.evaluate(() => chrome.action.getBadgeBackgroundColor({})),
+    ).toEqual([26, 35, 126, 255]);
+    expect(
+      await page.evaluate(() => chrome.action.getBadgeTextColor({})),
+    ).toEqual([255, 255, 255, 255]);
     expect(await page.evaluate(() => chrome.action.getTitle({}))).toContain(
       "Badge fixture meeting",
     );
@@ -1345,6 +1351,12 @@ test("toolbar badge shows today's next time, later-day distance, visibility and 
       }, at);
     await tick("2026-11-02T15:00:00Z");
     await expect.poll(badge).toBe("+1d");
+    expect(
+      await page.evaluate(() => chrome.action.getBadgeBackgroundColor({})),
+    ).toEqual([246, 191, 38, 255]);
+    expect(
+      await page.evaluate(() => chrome.action.getBadgeTextColor({})),
+    ).toEqual([0, 0, 0, 255]);
     await tick("2026-11-03T08:00:00Z");
     await expect.poll(badge).toBe("09:00");
     await page.evaluate(async (key) => {
@@ -1360,6 +1372,9 @@ test("toolbar badge shows today's next time, later-day distance, visibility and 
       });
     }, STORAGE_KEY);
     await expect.poll(badge).toBe("!");
+    expect(
+      await page.evaluate(() => chrome.action.getBadgeBackgroundColor({})),
+    ).toEqual([180, 35, 53, 255]);
     await page.evaluate(async (key) => {
       const value = (await chrome.storage.local.get(key))[key] as Store;
       value.accounts[0]!.status = "connected";
