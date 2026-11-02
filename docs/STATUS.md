@@ -25,6 +25,12 @@ Stage 4: event creation/editing, writable account/calendar selection, recurrence
 
 After reloading the current build, approve the new read-only event scope through Reconnect where required and exercise the live checks in `STAGE-3.md`. Continue the stage 1 two-account/lifecycle matrix before treating multi-account authentication as accepted. First-account connection is user-confirmed; live stage 3 event reads are not yet verified. Custom sounds, notifications, snooze, DND, and secondary zones remain stage 5.
 
+## Sidebar outside-click dismissal · v0.3.8
+
+The popup and narrow full-calendar windows now show a clickable backdrop behind the slide-out sidebar. Clicking it closes the drawer and consumes the click; clicks within the menu keep it open. The wide calendar's persistent sidebar remains in the page layout without a backdrop.
+
+Validation: **134 unit/adapter tests**, TypeScript, formatting, production build, and **11 isolated Chromium tests** pass. The new browser case verifies popup outside dismissal, internal menu interaction, no click-through to the Week control, the existing close button, persistent desktop behavior, and dismissal after resizing to a narrow window. The fictional empty-calendar backdrop screenshot was inspected.
+
 ## Bounded event panels and current-hour navigation · v0.3.7
 
 Event-list popovers now remain inside the actual browser viewport, including the bottom corners of an 800×600 popup and smaller windows. Their bodies scroll independently so long lists and close controls remain accessible. Measured hover-card placement replaces fixed size estimates; long text wraps inside bounded previews/details. Public FullCalendar hooks and its popover z-index variable preserve modal layering without private CSS selectors.

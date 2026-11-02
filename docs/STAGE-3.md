@@ -1,6 +1,6 @@
 # Stage 3: Google event reading and offline synchronization
 
-Release: v0.3.7. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
+Release: v0.3.8. This stage reads events; event creation/editing and reminder delivery remain stages 4 and 5. There is no application server, telemetry, or cloud preference store.
 
 ## Use the release
 
@@ -21,6 +21,8 @@ Week layout settings in v0.3.4 default to readable hours with a 48-pixel minimum
 V0.3.5 also adds a borderless full-canvas toolbar icon and a next-event badge derived from the cache: today's next timed start (`HH:mm`) or a later calendar-day distance (`+Nd`) in the primary zone. Account/calendar visibility applies; all-day, declined and past-start events are skipped. Settings → Calendar appearance can disable the event badge. Reconnect/storage warnings take priority. The existing minute tick updates it offline and without a due network request; it is not a reminder feature or proof of fresh cache coverage.
 
 V0.3.7 keeps event-list popovers and hover previews within the actual calendar window, including lower corners and smaller viewports. Long lists scroll inside the panel while their close button remains visible. Opening or switching to Week reveals the current hour only if it is offscreen, using the primary zone and configured hours; fit mode and already-visible times keep their position.
+
+V0.3.8 adds a clickable backdrop to the sidebar drawer in the popup and narrow calendar windows. Clicking outside closes it without activating the calendar underneath; clicking inside leaves it open. The desktop calendar retains its persistent sidebar.
 
 ## Sync design
 

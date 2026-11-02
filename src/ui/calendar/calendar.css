@@ -19,6 +19,17 @@
   margin: 0;
   padding: 0;
 }
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: #17192765;
+  z-index: 29;
+}
 .calendar-sidebar {
   width: var(--sidebar-width);
   flex-shrink: 0;
@@ -762,6 +773,9 @@
   padding: 6px 12px;
   font-size: 9px;
 }
+.calendar-popup .sidebar-backdrop {
+  display: block;
+}
 .calendar-popup .calendar-sidebar {
   position: absolute;
   top: 0;
@@ -798,6 +812,9 @@
   }
 }
 @media (max-width: 700px) {
+  .calendar-page .sidebar-backdrop {
+    display: block;
+  }
   .calendar-page .calendar-sidebar {
     position: absolute;
     inset: 0 auto 0 0;

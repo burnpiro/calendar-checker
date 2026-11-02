@@ -1628,3 +1628,66 @@ test("week entry reveals the current hour only when needed and follows the selec
     await rm(profile, { recursive: true, force: true });
   }
 });
+
+test("sidebar backdrop dismisses drawers without activating the calendar behind it", async () => {
+  const profile = await mkdtemp(join(tmpdir(), "calendar-sidebar-backdrop-"));
+  let active: BrowserContext | undefined;
+  try {
+    const { context, id } = await launch(profile);
+    active = context;
+    const popup = await context.newPage();
+    await popup.setViewportSize({ width: 800, height: 600 });
+    await popup.goto(`chrome-extension://${id}/popup.html`);
+    const week = popup.getByRole("button", { name: "Week", exact: true });
+    const weekBounds = await week.boundingBox();
+    expect(weekBounds).not.toBeNull();
+    const sidebar = popup.getByRole("complementary", {
+      name: "Calendar sidebar",
+    });
+    await popup.getByRole("button", { name: "Open sidebar" }).click();
+    await expect(sidebar).toBeVisible();
+    const backdrop = popup.getByRole("button", { name: "Dismiss sidebar" });
+    await expect(backdrop).toBeVisible();
+    await sidebar.getByText("Event types", { exact: true }).click();
+    await expect(sidebar.locator(".type-filters")).toHaveAttribute("open", "");
+    await expect(sidebar).toBeVisible();
+    await popup.screenshot({ path: "test-results/sidebar-backdrop.png" });
+    // The overlay consumes this click rather than switching to the Week view beneath it.
+    await backdrop.click({
+      position: {
+        x: weekBounds!.x + weekBounds!.width / 2,
+        y: weekBounds!.y + weekBounds!.height / 2,
+      },
+    });
+    await expect(sidebar).toHaveCount(0);
+    await expect(week).toHaveAttribute("aria-pressed", "false");
+    await expect(
+      popup.getByRole("button", { name: "Month", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await popup.getByRole("button", { name: "Open sidebar" }).click();
+    await popup.getByRole("button", { name: "Close sidebar" }).click();
+    await expect(sidebar).toHaveCount(0);
+
+    const full = await context.newPage();
+    await full.setViewportSize({ width: 1440, height: 900 });
+    await full.goto(`chrome-extension://${id}/calendar.html`);
+    const fullSidebar = full.getByRole("complementary", {
+      name: "Calendar sidebar",
+    });
+    const fullBackdrop = full.getByRole("button", { name: "Dismiss sidebar" });
+    await expect(fullSidebar).toBeVisible();
+    await expect(fullBackdrop).toBeHidden();
+    await full.getByRole("button", { name: "Today", exact: true }).click();
+    await expect(fullSidebar).toBeVisible();
+    await full.setViewportSize({ width: 640, height: 600 });
+    await expect(fullBackdrop).toBeVisible();
+    await fullBackdrop.click({ position: { x: 620, y: 570 } });
+    await expect(fullSidebar).toHaveCount(0);
+    await expect(
+      full.getByRole("button", { name: "Open sidebar" }),
+    ).toBeVisible();
+  } finally {
+    await active?.close();
+    await rm(profile, { recursive: true, force: true });
+  }
+});

@@ -369,6 +369,14 @@ function CalendarBody({
         className={`calendar-app ${compact ? "calendar-popup" : "calendar-page"} ${fitWeek ? "week-fit" : "week-scroll"} density-${settings.density} ${sidebar ? "sidebar-open" : "sidebar-closed"}`}
       >
         {sidebar && (
+          <button
+            type="button"
+            className="sidebar-backdrop"
+            aria-label="Dismiss sidebar"
+            onClick={() => setSidebar(false)}
+          />
+        )}
+        {sidebar && (
           <aside className="calendar-sidebar" aria-label="Calendar sidebar">
             <div className="sidebar-brand">
               <span className="calendar-logo">
