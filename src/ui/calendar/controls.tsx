@@ -19,7 +19,11 @@ export function IconButton({
         </button>
       </Tooltip.Trigger>
       <Tooltip.Portal>
-        <Tooltip.Content className="control-tooltip" sideOffset={7}>
+        <Tooltip.Content
+          className="control-tooltip"
+          sideOffset={7}
+          collisionPadding={12}
+        >
           {label}
           <Tooltip.Arrow />
         </Tooltip.Content>

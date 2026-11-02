@@ -25,6 +25,14 @@ Stage 4: event creation/editing, writable account/calendar selection, recurrence
 
 After reloading the current build, approve the new read-only event scope through Reconnect where required and exercise the live checks in `STAGE-3.md`. Continue the stage 1 two-account/lifecycle matrix before treating multi-account authentication as accepted. First-account connection is user-confirmed; live stage 3 event reads are not yet verified. Custom sounds, notifications, snooze, DND, and secondary zones remain stage 5.
 
+## Bounded event panels and current-hour navigation · v0.3.7
+
+Event-list popovers now remain inside the actual browser viewport, including the bottom corners of an 800×600 popup and smaller windows. Their bodies scroll independently so long lists and close controls remain accessible. Measured hover-card placement replaces fixed size estimates; long text wraps inside bounded previews/details. Public FullCalendar hooks and its popover z-index variable preserve modal layering without private CSS selectors.
+
+Week entry now reveals the current hour if it is offscreen, with a small amount of context above the hour. It waits for slot sizing, uses the primary zone and configured range, skips fit mode, and leaves an already-visible hour in place. Periodic clock updates and normal manual scrolling do not reset the position.
+
+Validation: **134 unit/adapter tests**, TypeScript, formatting, production build, and **ten isolated Chromium tests** pass. New browser cases cover all four month-grid corners, long-list scrolling, close-button access, hover/detail containment, resizing to 760×500, opening/switching Week at 11:45, an already-visible hour in a larger calendar, fit mode, and a display-zone change. Fictional popup/detail/current-hour screenshots were inspected; no live Google acceptance is inferred.
+
 ## Event-colored toolbar badge · v0.3.6
 
 The badge background now matches the selected event's normalized color for both today's time and later-day labels. Text switches between black and white for the higher contrast ratio. Reconnect/storage warning backgrounds stay red.

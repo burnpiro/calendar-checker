@@ -7,6 +7,7 @@ import {
   test,
   type BrowserContext,
   type Page,
+  type Locator,
 } from "@playwright/test";
 import {
   emptyStore,
@@ -1390,6 +1391,238 @@ test("toolbar badge shows today's next time, later-day distance, visibility and 
     await expect.poll(badge).toBe("09:00");
     await tick("2026-11-03T10:00:00Z");
     await expect.poll(badge).toBe("");
+  } finally {
+    await active?.close();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+async function expectInsideWindow(panel: Locator) {
+  await expect
+    .poll(() =>
+      panel.evaluate((el) => {
+        const rect = el.getBoundingClientRect();
+        return (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.left >= 11 &&
+          rect.top >= 11 &&
+          rect.right <= window.innerWidth - 11 &&
+          rect.bottom <= window.innerHeight - 11
+        );
+      }),
+    )
+    .toBe(true);
+}
+
+test("event lists and hover previews stay inside every popup corner and a smaller viewport", async () => {
+  const profile = await mkdtemp(join(tmpdir(), "calendar-popover-bounds-"));
+  let active: BrowserContext | undefined;
+  try {
+    const { context, id } = await launch(profile);
+    active = context;
+    const page = await context.newPage();
+    await page.clock.setFixedTime(new Date("2026-11-02T11:45:00Z"));
+    await page.goto(`chrome-extension://${id}/options.html`);
+    await page.evaluate(() =>
+      chrome.runtime.sendMessage({
+        namespace: "calendar-checker",
+        command: {
+          type: "UPDATE_SETTINGS",
+          settings: { primaryTimeZone: "UTC" },
+        },
+      }),
+    );
+    const store = emptyStore();
+    Object.assign(store.settings, { primaryTimeZone: "UTC", theme: "dark" });
+    store.accounts = [
+      {
+        id: "viewport-account",
+        email: "viewport@example.test",
+        enabled: true,
+        status: "connected",
+        calendars: [
+          {
+            id: "viewport-calendar",
+            summary: "Viewport fixture",
+            accessRole: "owner",
+            primary: true,
+          },
+        ],
+        connectedAt: "2026-11-02T10:00:00Z",
+        lastCheckedAt: null,
+        lastSuccessfulAt: null,
+      },
+    ];
+    const dates = ["2026-10-26", "2026-11-01", "2026-11-30", "2026-12-06"];
+    const events = dates.flatMap((date, corner) =>
+      Array.from({ length: corner === 3 ? 30 : 6 }, (_, index) =>
+        eventSchema.parse({
+          key: eventKey(
+            "viewport-account",
+            "viewport-calendar",
+            `${date}-${index}`,
+          ),
+          source: "google",
+          accountId: "viewport-account",
+          calendarId: "viewport-calendar",
+          eventId: `${date}-${index}`,
+          title: `Corner ${corner} event ${String(index).padStart(2, "0")} ${"long-title-".repeat(12)}`,
+          calendarName: "Viewport fixture",
+          accountName: "viewport@example.test",
+          color: "#7765d8",
+          eventType: "default",
+          allDay: true,
+          start: date,
+          end: new Date(Date.parse(date) + 86400_000)
+            .toISOString()
+            .slice(0, 10),
+          timeZone: "UTC",
+          updatedAt: "2026-11-02T10:00:00Z",
+          description: "Long detail text. ".repeat(300),
+          location: "Meeting location ".repeat(20),
+        }),
+      ),
+    );
+    await page.evaluate(
+      async ({ key, store, events }) => {
+        await chrome.storage.local.set({ [key]: store });
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open("calendar-checker-events");
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () =>
+            reject(new Error("Fixture database unavailable"));
+        });
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(["events", "syncStates"], "readwrite");
+          for (const event of events) tx.objectStore("events").put(event);
+          tx.objectStore("syncStates").put({
+            key: JSON.stringify(["viewport-account", "viewport-calendar"]),
+            accountId: "viewport-account",
+            calendarId: "viewport-calendar",
+            running: false,
+            invalidated: false,
+            failures: 0,
+            retryAt: "2050-01-01T00:00:00Z",
+          });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(new Error("Fixture cache failed"));
+        });
+        db.close();
+      },
+      { key: STORAGE_KEY, store, events },
+    );
+    await page.setViewportSize({ width: 800, height: 600 });
+    await page.goto(`chrome-extension://${id}/popup.html`);
+    const popup = page.locator(".calendar-event-popover");
+    for (const date of dates) {
+      await page
+        .locator(`.calendar-day-cell[data-date="${date}"] .calendar-more-link`)
+        .click();
+      await expectInsideWindow(popup);
+      await expect(popup.locator(".calendar-popover-close")).toBeInViewport({
+        ratio: 1,
+      });
+      await page.keyboard.press("Escape");
+      await expect(popup).toHaveCount(0);
+    }
+    await page
+      .locator('.calendar-day-cell[data-date="2026-12-06"] .calendar-more-link')
+      .click();
+    const body = popup.locator(".calendar-popover-body");
+    await expect
+      .poll(() => body.evaluate((el) => el.scrollHeight > el.clientHeight))
+      .toBe(true);
+    const last = popup.locator(".calendar-event").last();
+    await last.scrollIntoViewIfNeeded();
+    await expect(last).toBeInViewport({ ratio: 1 });
+    await expect(popup.locator(".calendar-popover-close")).toBeInViewport({
+      ratio: 1,
+    });
+    await last.hover();
+    const preview = page.locator(".event-hover-card");
+    await expect(preview).toBeVisible({ timeout: 2500 });
+    await expectInsideWindow(preview);
+    await page.screenshot({ path: "test-results/popover-bottom-right.png" });
+    await page.setViewportSize({ width: 760, height: 500 });
+    await expectInsideWindow(popup);
+    await last.scrollIntoViewIfNeeded();
+    await last.hover();
+    await expect(preview).toBeVisible({ timeout: 2500 });
+    await expectInsideWindow(preview);
+    await last.click();
+    const details = page.locator(".event-dialog");
+    await expectInsideWindow(details);
+    await expect(
+      details.getByRole("button", { name: "Close event details" }),
+    ).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: "test-results/popover-event-details.png" });
+  } finally {
+    await active?.close();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test("week entry reveals the current hour only when needed and follows the selected zone", async () => {
+  const profile = await mkdtemp(join(tmpdir(), "calendar-current-hour-"));
+  let active: BrowserContext | undefined;
+  try {
+    const { context, id } = await launch(profile);
+    active = context;
+    const settings = await context.newPage();
+    await settings.goto(`chrome-extension://${id}/options.html`);
+    const patch = (value: Record<string, unknown>) =>
+      settings.evaluate(
+        (settings) =>
+          chrome.runtime.sendMessage({
+            namespace: "calendar-checker",
+            command: { type: "UPDATE_SETTINGS", settings },
+          }),
+        value,
+      );
+    await patch({
+      defaultView: "week",
+      weekStartHour: 0,
+      weekEndHour: 24,
+      primaryTimeZone: "UTC",
+    });
+    const popup = await context.newPage();
+    await popup.clock.setFixedTime(new Date("2026-11-02T11:45:00Z"));
+    await popup.setViewportSize({ width: 800, height: 600 });
+    await popup.goto(`chrome-extension://${id}/popup.html`);
+    const current = popup.locator(
+      '.calendar-slot-header[data-time="11:00:00"]',
+    );
+    await expect(current).toBeInViewport({ ratio: 1 });
+    const first = popup.locator(".calendar-slot-header").first();
+    await expect(first).not.toBeInViewport();
+    // A taller calendar already includes 11:45, so it must retain its starting position.
+    const full = await context.newPage();
+    await full.clock.setFixedTime(new Date("2026-11-02T11:45:00Z"));
+    await full.setViewportSize({ width: 1440, height: 1200 });
+    await full.goto(`chrome-extension://${id}/calendar.html`);
+    await expect(
+      full.locator('.calendar-slot-header[data-time="11:00:00"]'),
+    ).toBeInViewport({ ratio: 1 });
+    await expect(full.locator(".calendar-slot-header").first()).toBeInViewport({
+      ratio: 1,
+    });
+    // Manual scrolling stays under user control until Week is entered again.
+    await first.scrollIntoViewIfNeeded();
+    await expect(first).toBeInViewport({ ratio: 1 });
+    await expect(current).not.toBeInViewport();
+    await popup.getByRole("button", { name: "Month", exact: true }).click();
+    await popup.getByRole("button", { name: "Week", exact: true }).click();
+    await expect(current).toBeInViewport({ ratio: 1 });
+    await patch({ weekLayout: "fit" });
+    await expectCalendarFits(popup);
+    await expect(first).toBeInViewport({ ratio: 1 });
+    await expect(current).toBeInViewport({ ratio: 1 });
+    await patch({ weekLayout: "scroll", primaryTimeZone: "Asia/Tokyo" });
+    await expect(
+      popup.locator('.calendar-slot-header[data-time="20:00:00"]'),
+    ).toBeInViewport({ ratio: 1 });
+    await popup.screenshot({ path: "test-results/week-current-hour.png" });
   } finally {
     await active?.close();
     await rm(profile, { recursive: true, force: true });

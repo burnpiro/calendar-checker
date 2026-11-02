@@ -6,7 +6,7 @@
 - Multiple explicitly connected Google accounts, independently enabled or disabled; multiple calendars per account.
 - Modern month and week calendars inspired by the user's reference: readable typography, restrained grid lines, calendar colors, compact toolbar, and collapsible account/calendar sidebar.
 - Account/calendar/search filters and Google's event types: default, birthday, fromGmail, focusTime, outOfOffice, workingLocation. Holidays are generally a calendar filter.
-- Event details on click, basic hover details after one second, and equivalent keyboard access.
+- Event details on click, basic hover details after one second, and equivalent keyboard access. Keep previews/event lists within the actual popup viewport; scroll long lists internally.
 - Create and modify events with account and writable-calendar selection; respect specialized event restrictions and recurring-series semantics.
 - Offline caching with cache coverage and last-success timestamps; explicit stale/offline states.
 - Offline mutations in a durable outbox, retry-safe creation, and version-aware conflict handling.
@@ -14,7 +14,7 @@
 - Manual and scheduled Do not disturb, including overnight schedules and an explicit schedule time zone.
 - Primary and optional secondary time zones. Week view has aligned time columns; month hover/details show both zones. Handle DST and all-day dates correctly.
 - Borderless calendar icon; event-colored next timed-event badge showing today’s time or +Nd for a later date, with an appearance toggle. Reconnect warnings take priority and retain account-specific popup messages.
-- Popup calendar plus full calendar in a tab or detached window; shared preferences and data.
+- Popup calendar plus full calendar in a tab or detached window; shared preferences and data. Entering Week reveals the current hour when it is offscreen, respecting the selected zone/hour range and manual scrolling.
 
 ## Settings page
 

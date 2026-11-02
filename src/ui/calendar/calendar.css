@@ -78,6 +78,8 @@
   color: var(--accent);
 }
 .control-tooltip {
+  max-width: calc(100vw - 24px);
+  overflow-wrap: anywhere;
   border-radius: 6px;
   padding: 6px 9px;
   background: #292c3c;
@@ -527,10 +529,32 @@
   border-radius: 50%;
   background: #3d9d80;
 }
+.calendar-event-popover {
+  --fc-popover-z: 40;
+  width: 320px;
+  min-width: 0;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
+  border-radius: 10px;
+}
+.calendar-event-popover .calendar-popover-heading {
+  flex-shrink: 0;
+}
+.calendar-event-popover .calendar-popover-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.calendar-popover-events {
+  min-width: 0;
+}
 .event-hover-card {
   position: fixed;
-  width: 290px;
-  max-height: 218px;
+  width: min(290px, calc(100vw - 24px));
+  max-height: min(218px, calc(100dvh - 24px));
+  overflow-wrap: anywhere;
   overflow: hidden;
   padding: 15px;
   background: var(--card);
@@ -573,6 +597,7 @@
   animation: appear 0.13s ease-out;
 }
 .event-dialog {
+  overflow-wrap: anywhere;
   position: fixed;
   top: 50%;
   left: 50%;

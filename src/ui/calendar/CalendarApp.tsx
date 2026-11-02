@@ -53,6 +53,8 @@ import { useTheme } from "../use-theme";
 import { IconButton } from "./controls";
 import { MiniCalendar } from "./MiniCalendar";
 import { EventDetails } from "./EventDetails";
+import { useViewportPopovers } from "./use-viewport-popovers";
+import { useCurrentHourScroll } from "./use-current-hour-scroll";
 import { useSyncMetadata, useConnectionClock } from "../use-sync-metadata";
 import {
   coverageStatus,
@@ -103,6 +105,8 @@ function CalendarBody({
   const zone = displayTimeZone(settings.primaryTimeZone);
   const resolvedTheme = useTheme(settings.theme);
   const calendar = useRef<CalendarRef>(null);
+  const viewport = useRef<HTMLDivElement>(null);
+  useViewportPopovers();
   const today = Temporal.Now.plainDateISO(zone).toString();
   const [date, setDate] = useState(today);
   const [title, setTitle] = useState("");
@@ -124,6 +128,17 @@ function CalendarBody({
   const month = date.slice(0, 7) + "-01";
   const [visibleRange, setVisibleRange] = useState(() =>
     monthRange(month, 0, 0),
+  );
+  useCurrentHourScroll(
+    viewport,
+    calendar,
+    view,
+    `${visibleRange.start}/${visibleRange.end}`,
+    zone,
+    fitWeek,
+    settings.weekStartHour,
+    settings.weekEndHour,
+    settings.weekHourHeight,
   );
   const metadata = useSyncMetadata();
   const clock = useConnectionClock();
@@ -266,8 +281,8 @@ function CalendarBody({
         const rect = el.getBoundingClientRect();
         setTooltip({
           event,
-          x: Math.max(12, Math.min(rect.left, window.innerWidth - 310)),
-          y: Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - 230)),
+          x: rect.left,
+          y: rect.bottom + 8,
         });
       }, delay);
     },
@@ -603,7 +618,11 @@ function CalendarBody({
               {syncStatus.message}
             </div>
           )}
-          <div className="calendar-viewport" data-testid="calendar-grid">
+          <div
+            ref={viewport}
+            className="calendar-viewport"
+            data-testid="calendar-grid"
+          >
             <FullCalendar
               ref={calendar}
               plugins={plugins}
@@ -637,20 +656,32 @@ function CalendarBody({
               eventClass={eventClasses}
               eventTitleClass="calendar-event-title"
               eventTimeClass="calendar-event-time"
+              popoverClass="calendar-event-popover"
+              popoverCloseClass="icon-button calendar-popover-close"
+              popoverCloseContent={() => <X size={16} />}
+              dayHeaderClass={(info) =>
+                info.inPopover ? "calendar-popover-heading" : ""
+              }
               moreLinkClass="calendar-more-link"
               moreLinkInnerClass="calendar-more-text"
               dayRowClass="calendar-day-row"
-              dayCellInnerClass="calendar-cell-inner"
+              dayCellInnerClass={(info) =>
+                info.inPopover
+                  ? "calendar-popover-events"
+                  : "calendar-cell-inner"
+              }
               dayCellTopClass="calendar-day-top"
               dayCellTopInnerClass="calendar-day-number"
               dayCellClass={(info) =>
-                `calendar-day-cell ${
-                  info.isToday
-                    ? "calendar-today"
-                    : info.isOther
-                      ? "calendar-other-month"
-                      : ""
-                }`
+                info.inPopover
+                  ? "calendar-popover-body"
+                  : `calendar-day-cell ${
+                      info.isToday
+                        ? "calendar-today"
+                        : info.isOther
+                          ? "calendar-other-month"
+                          : ""
+                    }`
               }
               eventClick={handleClick}
               eventMouseEnter={handleEnter}

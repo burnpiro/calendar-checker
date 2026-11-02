@@ -33,6 +33,10 @@ Later: event writing / durable outbox; offscreen audio / reminders.
 
 Week view defaults to readable hours (`weekLayout: scroll`, `weekHourHeight: 48`, validated to 32–120 pixels). FullCalendar's public `slotMinHeight` is proportional to slot duration, preserving the same minimum per hour for popup hourly slots and full-calendar half-hour slots. With `expandRows`, short hour ranges still fill available space; larger ranges scroll inside the calendar. The optional `fit` layout uses hourly slots and compact time labels on both surfaces, with a zero explicit minimum. Month layout and native popup document dimensions are unchanged. Old settings receive the new defaults without a storage reset.
 
+Calendar event-list popovers use FullCalendar's public `popoverClass` and `dayCell*` hooks (`inPopover`) to cap panel size and scroll the list body independently of its header. `useViewportPopovers` measures the actual rendered popover/hover-card size and shifts it inside `window.innerWidth/innerHeight` with a 12-pixel gutter. It observes panel creation, sizing and repositioning, and viewport resize; observers/animation frames are cleaned up on unmount. Do not use the popup HTML element's requested 800×600 size as its available viewport, or target FullCalendar's hashed classes. The popover's public z-index variable keeps event details above the list.
+
+`useCurrentHourScroll` runs when Week is entered or its visible range/layout/time zone changes. After slot measurements settle, it checks the current time's position against the scroll viewport and calls public `scrollToTime` only when needed, with a little context above the hour. It respects configured hours and fit mode, leaves already-visible current times in place, and does not run on periodic clock ticks or user scrolling.
+
 ## State and ownership
 
 - Store key: `calendar-checker.state.v1`.
