@@ -4,11 +4,13 @@ Calendar Checker source is licensed under **GPL-3.0-only**, with the full licens
 
 ## Privacy review before the first push
 
-- The entire pre-publication reachable Git history was scanned with Gitleaks 8.30.1 using redacted output. No detected secrets were found. This is evidence from an automated scan, not a guarantee that every possible secret pattern is recognized.
-- Personal Google Cloud project references in documentation and personal commit email metadata were removed from the published history. Author names and development history are preserved; commit hashes change during sanitation. The author's public GitHub noreply address is used instead.
+- The entire pre-publication commit history was scanned with Gitleaks 8.30.1 using redacted output. No detected secrets were found. This is evidence from an automated scan, not a guarantee that every possible secret pattern is recognized.
+- Personal Google Cloud project references in documentation and personal commit email metadata were removed from all branch commit histories. Author names and development history are preserved; commit hashes change during sanitation. The author's public GitHub noreply address is used instead.
 - Real OAuth client configuration remains in ignored local environment files. Only the empty `.env.example` template is versioned. All dotenv variants, `.envrc`, local credentials, private keys, generated builds, release ZIPs and browser/test artifacts remain ignored.
 - The committed extension public key is intentional: it fixes the extension ID and OAuth redirect registration. It is not a signing key. Public example addresses and fictional test identities are not personal account data.
 - Public images use isolated fictional fixtures. Production builds do not include fixture events. Do not upload a personally configured release ZIP merely because source publication is authorized.
+
+Only the sanitized publication branch is pushed. Local Codex checkpoint tree refs and a private pre-rewrite backup are retained for recovery; neither is part of the published branch. Never use a mirror/all-refs push for publication.
 
 Before each later push, inspect staged changes and reachable history for secrets and identifiers, run the appropriate checks, and verify ignored configuration with `git check-ignore`. A secret found after publication must be revoked/rotated as well as removed from history.
 
