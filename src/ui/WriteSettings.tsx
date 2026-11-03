@@ -1,5 +1,8 @@
-import { useState } from "react";
-import type { Account, Settings, Command } from "../shared/model";
+import {
+  AutoSaveStatus,
+  useAutoSavePreferences,
+} from "./use-auto-save-preferences";
+import type { Account, Settings } from "../shared/model";
 import { calendarKey } from "../shared/preferences";
 import { writableCalendar } from "../calendar/write-model";
 import { PendingChanges } from "./PendingChanges";
@@ -7,17 +10,18 @@ import { PendingChanges } from "./PendingChanges";
 export function WriteSettings({
   accounts,
   settings,
-  busy,
-  run,
 }: {
   accounts: Account[];
   settings: Settings;
-  busy: boolean;
-  run: (command: Command, notice?: string) => Promise<void>;
 }) {
-  const [defaultCalendar, setDefaultCalendar] = useState(
-    settings.defaultWriteCalendar,
+  const save = useAutoSavePreferences(
+    settings,
+    (s) => ({ defaultWriteCalendar: s.defaultWriteCalendar }),
+    (d) => d,
   );
+  const defaultCalendar = save.draft.defaultWriteCalendar;
+  const setDefaultCalendar = (value: string) =>
+    save.setDraft({ defaultWriteCalendar: value });
   const choices = accounts
     .filter((a) => a.enabled)
     .flatMap((a) =>
@@ -39,16 +43,7 @@ export function WriteSettings({
       </p>
       <form
         className="settings-form appearance-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void run(
-            {
-              type: "UPDATE_SETTINGS",
-              settings: { defaultWriteCalendar: defaultCalendar },
-            },
-            "Default event calendar saved.",
-          );
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <label>
           Default calendar for new events
@@ -70,9 +65,7 @@ export function WriteSettings({
               )}
           </select>
         </label>
-        <button className="button primary" disabled={busy}>
-          Save event preferences
-        </button>
+        <AutoSaveStatus {...save} />
       </form>
       <h3>Pending event changes</h3>
       <PendingChanges accounts={accounts} />

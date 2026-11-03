@@ -2,7 +2,7 @@
 
 A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
 
-## Current release: stage 5 · v0.5.5
+## Current release: stage 5 · v0.5.6
 
 Google event reading/synchronization, event creation/editing, local reminders and dual time zones are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
 
@@ -53,7 +53,7 @@ npm run build
 npm run extension:id
 ```
 
-Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.5.5. The native-popup sizing correction remains covered by an actual toolbar-popup test.
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.5.6. The native-popup sizing correction remains covered by an actual toolbar-popup test.
 
 Without connected accounts, the calendar shows an empty grid and a prompt to connect an account. Settings displays setup instructions and disables Google sign-in until a client ID is configured. Preserve any existing `.env.local` when updating.
 
@@ -61,7 +61,7 @@ For development, `npm run dev` starts WXT. Use the production build above for th
 
 ## Settings organization
 
-Settings opens with connected accounts, followed by calendar display/time zones, notifications/sounds, event defaults, and sync/offline storage. A section navigator stays alongside the page on wide screens and moves above it in smaller windows. Common controls use compact cards and paired fields; technical connection checks, OAuth client setup and diagnostics start collapsed. Notification recovery/all-day rules, DND schedules, calendar overrides and detailed week-layout controls are grouped separately. Custom sounds remain with notifications; cache information stays with sync. Per-account token tests and removal are in **More options**. Each preferences group keeps its own Save button.
+Settings opens with connected accounts, followed by calendar display/time zones, notifications/sounds, event defaults, and sync/offline storage. A section navigator stays alongside the page on wide screens and moves above it in smaller windows. Common controls use compact cards and paired fields; technical connection checks, OAuth client setup and diagnostics start collapsed. Notification recovery/all-day rules, DND schedules, calendar overrides and detailed week-layout controls are grouped separately. Custom sounds remain with notifications; cache information stays with sync. Per-account token tests and removal are in **More options**. All preference sections save valid changes automatically, with local saving/error feedback and retry support. Invalid entries keep their draft text and leave the last valid settings stored. Related controls must form a valid group (for example, the week end must follow its start). The selected navigation item follows the visible section during scrolling; scrolling does not rewrite browser history. Sign-in, event mutations, sound import/deletion, manual sync and test actions remain explicit buttons.
 
 ## Toolbar icon and next event
 
@@ -97,7 +97,7 @@ Changes are saved locally before sending. **Pending changes** in the calendar fo
 
 ## Reminders, sounds and Do not disturb
 
-Automatic reminders start disabled. Enable desktop and/or sound alerts in **Settings → Notifications, sounds and Do not disturb**, choose reminder offsets and save. Import local audio, preview it, set volume, assign calendar-specific sounds, configure snooze presets and notification privacy, and choose missed-reminder recovery behavior. Manual or named-zone weekly DND can skip/defer due alerts, including overnight schedules.
+Automatic reminders start disabled. In **Settings → Notifications, sounds and Do not disturb**, choose privacy, sound and reminder timing, then enable desktop and/or sound alerts. Valid changes save automatically. Import local audio, preview it, set volume, assign calendar-specific sounds, configure snooze presets and notification privacy, and choose missed-reminder recovery behavior. Manual or named-zone weekly DND can skip/defer due alerts, including overnight schedules.
 
 The calendar footer's **Reminders** panel provides snooze/dismiss controls independently of native OS buttons. Reminders work from the local cache and pending edits; display filters do not silence them. Account enablement and reminder-specific calendar overrides do. Chrome must be running, and sleep/OS notification settings can delay or suppress alerts. See [the stage 5 guide](docs/STAGE-5.md) for limits and verification.
 

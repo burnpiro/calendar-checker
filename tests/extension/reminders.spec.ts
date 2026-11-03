@@ -8,6 +8,13 @@ interface NotificationFixture {
   created: { id: string; options: chrome.notifications.NotificationOptions }[];
   cleared: string[];
 }
+
+async function openWeekLayout(page: import("@playwright/test").Page) {
+  const details = page.locator("#appearance .settings-disclosure");
+  if ((await details.getAttribute("open")) === null)
+    await details.locator("summary").click();
+}
+
 const extension = resolve(".output/chrome-mv3");
 async function open(profile: string) {
   const context = await chromium.launchPersistentContext(profile, {
@@ -120,14 +127,14 @@ test("reminders deliver offline, snooze durably, honor DND, and support local au
       updatedAt: now.toISOString(),
     };
     await storeEvent(settings, event);
-    await settings
-      .getByRole("checkbox", { name: "Desktop notifications", exact: true })
-      .check();
     await settings.getByLabel("Notification privacy").selectOption("private");
     await settings.getByLabel("Snooze presets in minutes").fill("5, 12");
     await settings
-      .getByRole("button", { name: "Save reminder preferences", exact: true })
-      .click();
+      .getByRole("checkbox", { name: "Desktop notifications", exact: true })
+      .check();
+    await expect(
+      settings.locator("#notifications .autosave-status"),
+    ).toHaveAttribute("data-save-state", "saved");
     await expect
       .poll(() =>
         first.worker.evaluate(
@@ -180,12 +187,9 @@ test("reminders deliver offline, snooze durably, honor DND, and support local au
     await settings
       .getByRole("checkbox", { name: "Manual Do not disturb", exact: true })
       .check();
-    await settings
-      .getByRole("button", { name: "Save reminder preferences", exact: true })
-      .click();
     await expect(
-      settings.getByText("Reminder preferences saved.", { exact: true }),
-    ).toBeVisible();
+      settings.locator("#notifications .autosave-status"),
+    ).toHaveAttribute("data-save-state", "saved");
     await settings
       .getByRole("button", { name: "Preview selected sound", exact: true })
       .click();
@@ -338,14 +342,12 @@ test("secondary-zone week labels, hover details and preference changes stay insi
     await settings.goto(`chrome-extension://${session.id}/options.html`);
     await settings.getByLabel("Primary time zone").fill("UTC");
     await settings.getByLabel("Secondary time zone").fill("Asia/Tokyo");
-    await settings
-      .locator("#appearance .settings-disclosure > summary")
-      .click();
+    await openWeekLayout(settings);
     await settings.getByLabel("Week view starts at").fill("0");
     await settings.getByLabel("Week view ends at").fill("24");
-    await settings
-      .getByRole("button", { name: "Save calendar preferences", exact: true })
-      .click();
+    await expect(
+      settings.locator("#appearance .autosave-status"),
+    ).toHaveAttribute("data-save-state", "saved");
     const popup = await session.context.newPage();
     await popup.clock.setFixedTime(new Date("2026-11-02T11:00:00Z"));
     await popup.setViewportSize({ width: 800, height: 600 });
@@ -364,13 +366,11 @@ test("secondary-zone week labels, hover details and preference changes stay insi
       )
       .toBe(true);
     await popup.screenshot({ path: "test-results/dual-timezone-week.png" });
-    await settings
-      .locator("#appearance .settings-disclosure > summary")
-      .click();
+    await openWeekLayout(settings);
     await settings.getByLabel("Week view layout").selectOption("fit");
-    await settings
-      .getByRole("button", { name: "Save calendar preferences", exact: true })
-      .click();
+    await expect(
+      settings.locator("#appearance .autosave-status"),
+    ).toHaveAttribute("data-save-state", "saved");
     await expect(
       popup.locator(
         '.calendar-slot-header[data-time="23:00:00"] .calendar-secondary-hour',

@@ -64,7 +64,9 @@
   font-size: 12px;
 }
 .settings-navigation a:hover,
-.settings-navigation a:focus-visible,
+.settings-navigation a:focus-visible {
+  color: var(--accent);
+}
 .settings-navigation a[aria-current="location"] {
   color: var(--accent);
   background: var(--accent-light);
@@ -365,4 +367,21 @@
 }
 :root[data-theme="dark"] .settings-page .status-offline {
   color: #e8bd70;
+}
+.autosave-status {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 24px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.autosave-saving {
+  color: var(--accent);
+}
+.autosave-invalid,
+.autosave-error {
+  color: var(--danger);
 }

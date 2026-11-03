@@ -1,4 +1,8 @@
-import { useState } from "react";
+import {
+  AutoSaveStatus,
+  useAutoSavePreferences,
+} from "./use-auto-save-preferences";
+import { numericPreference } from "./preference-autosave";
 import type { Account, Command, Settings } from "../shared/model";
 import { AppError } from "../shared/errors";
 import { calendarKey } from "../shared/preferences";
@@ -16,10 +20,29 @@ export function SyncSettings({
   busy: boolean;
   run: (command: Command, success?: string) => Promise<void>;
 }) {
-  const [interval, setInterval] = useState(settings.syncIntervalMinutes);
-  const [past, setPast] = useState(settings.cachePastMonths);
-  const [future, setFuture] = useState(settings.cacheFutureMonths);
-  const [refresh, setRefresh] = useState(settings.refreshOnOpen);
+  const save = useAutoSavePreferences(
+    settings,
+    (s) => ({
+      interval: s.syncIntervalMinutes as number | string,
+      past: s.cachePastMonths as number | string,
+      future: s.cacheFutureMonths as number | string,
+      refresh: s.refreshOnOpen,
+    }),
+    (d) => ({
+      syncIntervalMinutes: numericPreference(d.interval),
+      cachePastMonths: numericPreference(d.past),
+      cacheFutureMonths: numericPreference(d.future),
+      refreshOnOpen: d.refresh,
+    }),
+  );
+  const { interval, past, future, refresh } = save.draft;
+  const setInterval = (interval: string) =>
+    save.setDraft((d) => ({ ...d, interval }));
+  const setPast = (past: string) => save.setDraft((d) => ({ ...d, past }));
+  const setFuture = (future: string) =>
+    save.setDraft((d) => ({ ...d, future }));
+  const setRefresh = (refresh: boolean) =>
+    save.setDraft((d) => ({ ...d, refresh }));
   const metadata = useSyncMetadata();
   const clock = useConnectionClock();
   return (
@@ -33,21 +56,7 @@ export function SyncSettings({
       </p>
       <form
         className="settings-form appearance-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void run(
-            {
-              type: "UPDATE_SETTINGS",
-              settings: {
-                syncIntervalMinutes: interval,
-                refreshOnOpen: refresh,
-                cachePastMonths: past,
-                cacheFutureMonths: future,
-              },
-            },
-            "Sync preferences saved.",
-          );
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <label>
           Event sync interval
@@ -59,7 +68,7 @@ export function SyncSettings({
               max={1440}
               required
               value={interval}
-              onChange={(e) => setInterval(Number(e.target.value))}
+              onChange={(e) => setInterval(e.target.value)}
             />{" "}
             minutes
           </span>
@@ -73,7 +82,7 @@ export function SyncSettings({
               max={12}
               required
               value={past}
-              onChange={(e) => setPast(Number(e.target.value))}
+              onChange={(e) => setPast(e.target.value)}
             />
           </span>
         </label>
@@ -86,7 +95,7 @@ export function SyncSettings({
               max={12}
               required
               value={future}
-              onChange={(e) => setFuture(Number(e.target.value))}
+              onChange={(e) => setFuture(e.target.value)}
             />
           </span>
         </label>
@@ -103,9 +112,7 @@ export function SyncSettings({
           keeps the last requested three-month window. Repeated opens within one
           minute reuse the recent check.
         </small>
-        <button className="button primary" disabled={busy}>
-          Save sync preferences
-        </button>
+        <AutoSaveStatus {...save} />
       </form>
       <button
         className="button subtle"

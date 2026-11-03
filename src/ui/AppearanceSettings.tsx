@@ -1,19 +1,35 @@
-import { useState } from "react";
-import { revealInvalidSetting } from "./settings-validation";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getCalendarDatabase } from "../calendar/database";
-import type { Command, Settings } from "../shared/model";
+import type { Settings } from "../shared/model";
+import { numericPreference } from "./preference-autosave";
+import {
+  AutoSaveStatus,
+  useAutoSavePreferences,
+} from "./use-auto-save-preferences";
 
-export function AppearanceSettings({
-  settings,
-  busy,
-  run,
-}: {
-  settings: Settings;
-  busy: boolean;
-  run: (command: Command, notice?: string) => Promise<void>;
-}) {
-  const [draft, setDraft] = useState(settings);
+const appearanceDraft = (settings: Settings) => ({
+  defaultView: settings.defaultView,
+  theme: settings.theme,
+  weekStartsOn: settings.weekStartsOn,
+  timeFormat: settings.timeFormat,
+  density: settings.density,
+  showWeekends: settings.showWeekends,
+  primaryTimeZone: settings.primaryTimeZone,
+  secondaryTimeZone: settings.secondaryTimeZone,
+  weekStartHour: settings.weekStartHour as number | string,
+  weekEndHour: settings.weekEndHour as number | string,
+  weekLayout: settings.weekLayout,
+  weekHourHeight: settings.weekHourHeight as number | string,
+  showEventBadge: settings.showEventBadge,
+});
+export function AppearanceSettings({ settings }: { settings: Settings }) {
+  const save = useAutoSavePreferences(settings, appearanceDraft, (draft) => ({
+    ...draft,
+    weekStartHour: numericPreference(draft.weekStartHour),
+    weekEndHour: numericPreference(draft.weekEndHour),
+    weekHourHeight: numericPreference(draft.weekHourHeight),
+  }));
+  const { draft, setDraft } = save;
   const zones = [
     ...new Set([
       "device",
@@ -35,34 +51,13 @@ export function AppearanceSettings({
           <p className="eyebrow">MAKE IT YOURS</p>
           <h2>Calendar appearance</h2>
           <p className="muted">
-            Shared by the popup and full calendar. Changes appear when saved.
+            Shared by the popup and full calendar. Valid changes save
+            automatically.
           </p>
         </div>
         <form
           className="settings-form appearance-form"
-          onInvalidCapture={revealInvalidSetting}
-          onSubmit={(event) => {
-            event.preventDefault();
-            const {
-              webOAuthClientId: _webClient,
-              defaultWriteCalendar: _writeCalendar,
-              connectionCheckMinutes: _interval,
-              staleAfterMinutes: _stale,
-              calendarVisibility: _visibility,
-              reminders: _reminders,
-              dnd: _dnd,
-              notificationCalendars: _notificationCalendars,
-              syncIntervalMinutes: _sync,
-              refreshOnOpen: _refresh,
-              cachePastMonths: _past,
-              cacheFutureMonths: _future,
-              ...appearance
-            } = draft;
-            void run(
-              { type: "UPDATE_SETTINGS", settings: appearance },
-              "Calendar preferences saved.",
-            );
-          }}
+          onSubmit={(event) => event.preventDefault()}
         >
           <fieldset className="settings-field-group">
             <legend>Display</legend>
@@ -225,7 +220,7 @@ export function AppearanceSettings({
                     onChange={(event) =>
                       setDraft({
                         ...draft,
-                        weekStartHour: Number(event.target.value),
+                        weekStartHour: event.target.value,
                       })
                     }
                   />
@@ -244,7 +239,7 @@ export function AppearanceSettings({
                     onChange={(event) =>
                       setDraft({
                         ...draft,
-                        weekEndHour: Number(event.target.value),
+                        weekEndHour: event.target.value,
                       })
                     }
                   />
@@ -289,7 +284,7 @@ export function AppearanceSettings({
                     onChange={(event) =>
                       setDraft({
                         ...draft,
-                        weekHourHeight: Number(event.target.value),
+                        weekHourHeight: event.target.value,
                       })
                     }
                   />
@@ -315,9 +310,7 @@ export function AppearanceSettings({
             Shows today's next start time in 24-hour format, or +1d, +2d, and so
             on for later dates. Reconnect warnings take priority.
           </small>
-          <button className="button primary" disabled={busy}>
-            Save calendar preferences
-          </button>
+          <AutoSaveStatus {...save} />
         </form>
       </section>
     </>

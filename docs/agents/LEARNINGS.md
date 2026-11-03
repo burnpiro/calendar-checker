@@ -89,3 +89,8 @@ Keep concise, verified implementation facts here. Include the date and supportin
 - Cache information belongs with sync; OAuth setup/connection timing and diagnostics are advanced. Account removal/token tests are under More options. These layout choices add no preference keys, permissions or background behavior.
 
 - V0.5.5: density selectors follow popup CSS so Compact remains visibly distinct in the native popup. Use public eventInnerClass/dayHeaderInnerClass for padding; compact full-calendar months use automatic dayMaxEvents. Keep density independent of saved hour height and popup document sizing.
+
+## 2026-11-03 · Automatic preferences
+
+- V0.5.6 removes preference Save buttons. Keep preference editors mounted; raw numeric empty strings must remain invalid drafts rather than becoming zero. Validate related fields before sending a changed-fields-only worker patch. Preserve late/newer edits, untouched external fields and explicit retry after failure. Operational actions and event writes are not autosaved.
+- A settings change may have an immediate effect: configure reminder privacy before enabling its desktop channel in fixtures and manual setup. Scroll navigation follows viewport bounds; it must not create a history entry for each scroll update.

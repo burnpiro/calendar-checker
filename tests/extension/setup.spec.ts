@@ -19,6 +19,12 @@ import {
 import { browserFetch } from "../../src/background/google";
 import { eventSchema, eventKey } from "../../src/calendar/model";
 
+async function openWeekLayout(page: import("@playwright/test").Page) {
+  const details = page.locator("#appearance .settings-disclosure");
+  if ((await details.getAttribute("open")) === null)
+    await details.locator("summary").click();
+}
+
 const extensionPath = resolve(".output/chrome-mv3");
 interface GoogleFixture {
   version: number;
@@ -218,8 +224,9 @@ test("setup, local settings and background alarms survive a browser restart", as
     await page
       .getByRole("spinbutton", { name: "Warn when data is older than" })
       .fill("27");
-    await page.getByRole("button", { name: "Save settings" }).click();
-    await expect(page.getByRole("status")).toContainText("Settings saved");
+    await expect(
+      page.locator("#connection-settings .autosave-status").first(),
+    ).toHaveAttribute("data-save-state", "saved");
     const alarm = await page.evaluate(() =>
       chrome.alarms.get("calendar-checker.auth-check"),
     );
@@ -227,11 +234,9 @@ test("setup, local settings and background alarms survive a browser restart", as
     await page
       .getByRole("spinbutton", { name: "Event sync interval", exact: true })
       .fill("7");
-    await page
-      .getByRole("button", { name: "Save sync preferences", exact: true })
-      .click();
-    await expect(page.getByRole("status")).toContainText(
-      "Sync preferences saved",
+    await expect(page.locator("#sync .autosave-status")).toHaveAttribute(
+      "data-save-state",
+      "saved",
     );
     expect(
       (
@@ -504,9 +509,9 @@ test("fresh calendar has no preview mode and shares preferences across an offlin
     await settings
       .getByRole("combobox", { name: "Theme", exact: true })
       .selectOption("dark");
-    await settings
-      .getByRole("button", { name: "Save calendar preferences", exact: true })
-      .click();
+    await expect(
+      settings.locator("#appearance .autosave-status"),
+    ).toHaveAttribute("data-save-state", "saved");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await context.close();
     active = undefined;
@@ -962,12 +967,11 @@ test("explicit Google chooser adds a second account without replacing the native
     await page
       .getByRole("textbox", { name: "Web application client ID", exact: true })
       .fill("123456789-fixture.apps.googleusercontent.com");
-    await page
-      .getByRole("button", { name: "Save account chooser", exact: true })
-      .click();
-    await expect(page.getByRole("status")).toContainText(
-      "Google account chooser saved",
-    );
+    await expect(
+      page.locator(
+        "#connection-settings .account-chooser-form .autosave-status",
+      ),
+    ).toHaveAttribute("data-save-state", "saved");
     await page
       .getByRole("button", { name: "+ Add Google account", exact: true })
       .click();
@@ -1077,9 +1081,7 @@ test("week view scrolls at a readable hour height by default and shares the opti
     active = first.context;
     const settings = await active.newPage();
     await settings.goto(`chrome-extension://${first.id}/options.html`);
-    await settings
-      .locator("#appearance .settings-disclosure > summary")
-      .click();
+    await openWeekLayout(settings);
     await expect(
       settings.getByRole("combobox", { name: "Week view layout", exact: true }),
     ).toHaveValue("scroll");
@@ -1101,12 +1103,9 @@ test("week view scrolls at a readable hour height by default and shares the opti
     await settings
       .getByRole("spinbutton", { name: "Week view ends at" })
       .fill("24");
-    await settings
-      .getByRole("button", { name: "Save calendar preferences", exact: true })
-      .click();
-    await expect(settings.getByRole("status")).toContainText(
-      "Calendar preferences saved",
-    );
+    await expect(
+      settings.locator("#appearance .autosave-status"),
+    ).toHaveAttribute("data-save-state", "saved");
     const popup = await active.newPage();
     await popup.clock.setFixedTime(new Date("2026-11-02T23:59:00Z"));
     await popup.setViewportSize({ width: 800, height: 600 });
@@ -1130,21 +1129,17 @@ test("week view scrolls at a readable hour height by default and shares the opti
     await expect.poll(async () => (await metrics(full)).scrollable).toBe(true);
     // Full calendar uses half-hour slots, maintaining the same minimum per hour.
     expect((await metrics(full)).slotHeight * 2).toBeGreaterThanOrEqual(47);
-    await settings
-      .locator("#appearance .settings-disclosure > summary")
-      .click();
+    await openWeekLayout(settings);
     await settings
       .getByRole("spinbutton", { name: "Minimum hour height", exact: true })
       .fill("72");
-    await settings
-      .getByRole("button", { name: "Save calendar preferences", exact: true })
-      .click();
+    await expect(
+      settings.locator("#appearance .autosave-status"),
+    ).toHaveAttribute("data-save-state", "saved");
     await expect
       .poll(async () => (await metrics(popup)).slotHeight)
       .toBeGreaterThanOrEqual(71);
-    await settings
-      .locator("#appearance .settings-disclosure > summary")
-      .click();
+    await openWeekLayout(settings);
     await settings
       .getByRole("combobox", { name: "Week view layout", exact: true })
       .selectOption("fit");
@@ -1154,12 +1149,9 @@ test("week view scrolls at a readable hour height by default and shares the opti
         exact: true,
       }),
     ).toBeDisabled();
-    await settings
-      .getByRole("button", { name: "Save calendar preferences", exact: true })
-      .click();
-    await expect(settings.getByRole("status")).toContainText(
-      "Calendar preferences saved",
-    );
+    await expect(
+      settings.locator("#appearance .autosave-status"),
+    ).toHaveAttribute("data-save-state", "saved");
     await expectCalendarFits(popup);
     await expect(popup.locator(".calendar-slot-header").first()).toBeInViewport(
       { ratio: 1 },
@@ -1177,9 +1169,7 @@ test("week view scrolls at a readable hour height by default and shares the opti
     active = reopened.context;
     const savedSettings = await active.newPage();
     await savedSettings.goto(`chrome-extension://${reopened.id}/options.html`);
-    await savedSettings
-      .locator("#appearance .settings-disclosure > summary")
-      .click();
+    await openWeekLayout(savedSettings);
     await expect(
       savedSettings.getByRole("combobox", {
         name: "Week view layout",
@@ -1200,9 +1190,9 @@ test("week view scrolls at a readable hour height by default and shares the opti
     await savedSettings
       .getByRole("combobox", { name: "Week view layout", exact: true })
       .selectOption("scroll");
-    await savedSettings
-      .getByRole("button", { name: "Save calendar preferences", exact: true })
-      .click();
+    await expect(
+      savedSettings.locator("#appearance .autosave-status"),
+    ).toHaveAttribute("data-save-state", "saved");
     await expect
       .poll(async () => (await metrics(savedPopup)).scrollable)
       .toBe(true);
@@ -1331,9 +1321,10 @@ test("toolbar badge shows today's next time, later-day distance, visibility and 
         exact: true,
       })
       .uncheck();
-    await page
-      .getByRole("button", { name: "Save calendar preferences", exact: true })
-      .click();
+    await expect(page.locator("#appearance .autosave-status")).toHaveAttribute(
+      "data-save-state",
+      "saved",
+    );
     await expect.poll(badge).toBe("");
     await page
       .getByRole("checkbox", {
@@ -1341,9 +1332,10 @@ test("toolbar badge shows today's next time, later-day distance, visibility and 
         exact: true,
       })
       .check();
-    await page
-      .getByRole("button", { name: "Save calendar preferences", exact: true })
-      .click();
+    await expect(page.locator("#appearance .autosave-status")).toHaveAttribute(
+      "data-save-state",
+      "saved",
+    );
     await expect.poll(badge).toBe("14:30");
     const visible = async (show: boolean) =>
       page.evaluate(

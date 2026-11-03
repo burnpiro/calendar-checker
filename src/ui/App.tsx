@@ -14,6 +14,11 @@ import { WriteSettings } from "./WriteSettings";
 import { SyncSettings } from "./SyncSettings";
 import { AccountChooserSettings } from "./AccountChooserSettings";
 import { SettingsNavigation } from "./SettingsNavigation";
+import {
+  AutoSaveStatus,
+  useAutoSavePreferences,
+} from "./use-auto-save-preferences";
+import { numericPreference } from "./preference-autosave";
 import "./styles.css";
 import "./settings.css";
 
@@ -197,35 +202,26 @@ function AccountCard({
   );
 }
 
-function SettingsForm({
-  settings,
-  busy,
-  run,
-}: {
-  settings: Settings;
-  busy: boolean;
-  run: (command: Command, success?: string) => Promise<void>;
-}) {
-  const [interval, setInterval] = useState(
-    settings.connectionCheckMinutes.toString(),
+function SettingsForm({ settings }: { settings: Settings }) {
+  const save = useAutoSavePreferences(
+    settings,
+    (s) => ({
+      interval: s.connectionCheckMinutes.toString(),
+      stale: s.staleAfterMinutes.toString(),
+    }),
+    (d) => ({
+      connectionCheckMinutes: numericPreference(d.interval),
+      staleAfterMinutes: numericPreference(d.stale),
+    }),
   );
-  const [stale, setStale] = useState(settings.staleAfterMinutes.toString());
+  const { interval, stale } = save.draft;
+  const setInterval = (interval: string) =>
+    save.setDraft((d) => ({ ...d, interval }));
+  const setStale = (stale: string) => save.setDraft((d) => ({ ...d, stale }));
   return (
     <form
       className="settings-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void run(
-          {
-            type: "UPDATE_SETTINGS",
-            settings: {
-              connectionCheckMinutes: Number(interval),
-              staleAfterMinutes: Number(stale),
-            },
-          },
-          "Settings saved. Background checks have been rescheduled.",
-        );
-      }}
+      onSubmit={(event) => event.preventDefault()}
     >
       <label>
         Connection check interval{" "}
@@ -266,9 +262,7 @@ function SettingsForm({
           Saved calendar information stays available if a check fails.
         </small>
       </label>
-      <button className="button primary" type="submit" disabled={busy}>
-        Save settings
-      </button>
+      <AutoSaveStatus {...save} />
     </form>
   );
 }
@@ -464,16 +458,10 @@ export function App({ compact = false }: { compact?: boolean }) {
               {!compact && (
                 <>
                   <div id="appearance" className="settings-block">
-                    <AppearanceSettings
-                      key={JSON.stringify(state.settings)}
-                      settings={state.settings}
-                      busy={busy}
-                      run={run}
-                    />
+                    <AppearanceSettings settings={state.settings} />
                   </div>
                   <div id="notifications" className="settings-block">
                     <NotificationSettings
-                      key={`notify-${JSON.stringify([state.settings.reminders, state.settings.dnd, state.settings.notificationCalendars])}`}
                       settings={state.settings}
                       accounts={state.accounts}
                       busy={busy}
@@ -482,16 +470,12 @@ export function App({ compact = false }: { compact?: boolean }) {
                   </div>
                   <div id="event-defaults" className="settings-block">
                     <WriteSettings
-                      key={`write-${state.settings.defaultWriteCalendar}`}
                       accounts={state.accounts}
                       settings={state.settings}
-                      busy={busy}
-                      run={run}
                     />
                   </div>
                   <div id="sync" className="settings-block">
                     <SyncSettings
-                      key={`sync-${JSON.stringify(state.settings)}`}
                       settings={state.settings}
                       accounts={state.accounts}
                       busy={busy}
@@ -519,19 +503,11 @@ export function App({ compact = false }: { compact?: boolean }) {
                             apply immediately.
                           </p>
                         </div>
-                        <SettingsForm
-                          key={`${state.settings.connectionCheckMinutes}-${state.settings.staleAfterMinutes}`}
-                          settings={state.settings}
-                          busy={busy}
-                          run={run}
-                        />
+                        <SettingsForm settings={state.settings} />
                       </section>
                       <AccountChooserSettings
-                        key={`chooser-${state.settings.webOAuthClientId}`}
                         settings={state.settings}
                         extensionId={state.extensionId}
-                        busy={busy}
-                        run={run}
                       />
                     </div>
                   </details>

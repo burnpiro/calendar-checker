@@ -23,7 +23,15 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 Stage 6: live Google multi-account/read/write acceptance, real OS notification/audio/native-button and sleep/wake acceptance, accessibility/performance review, and local unpacked/ZIP packaging. Publishing remains a separate request.
 
-Reload v0.5.5 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+Reload v0.5.6 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+
+## Validated automatic preferences and scroll navigation · v0.5.6
+
+All preference editors now automatically persist valid changes through the existing worker UPDATE_SETTINGS path: display/time zones, reminders/DND/calendar overrides, event defaults, sync/cache, connection timing and the public account chooser ID. Controls retain incomplete/invalid drafts, leave the last valid preferences stored and show local saving/error/retry feedback. Each related preference group validates before saving. Saves serialize per editor and send only changed settings; nested updates preserve untouched external values. A later edit survives an earlier response. Editors remain mounted across shared-state updates so focus, disclosures and invalid input are retained. Operational actions and event creation/editing remain explicit.
+
+Navigation now uses section bounds and the viewport rather than the last clicked anchor. Passive scroll/resize listeners, a content ResizeObserver and disclosure toggles schedule one animation-frame measurement. The section nearest the upper viewport becomes active, with explicit bottom-of-page handling; scroll highlighting does not rewrite the URL/history. Anchor navigation still opens advanced destinations.
+
+Validation: `npm run check` passes (TypeScript, **226 unit/adapter tests**, formatting and production build), followed by **18 isolated Chromium tests**. The new browser case verifies automatic persistence in every preference editor, invalid time zones/numbers/hour pairs/snooze lists/client IDs, draft retention after unrelated changes, DND state and preferences after reload, and viewport-driven navigation without a hash change. Existing native-popup, account, sync, event-write and reminder regressions pass. The Settings screenshot was visually inspected. Fictional fixtures and disposable profiles only; live Google multi-account acceptance is unchanged.
 
 ## Denser Compact calendar · v0.5.5
 

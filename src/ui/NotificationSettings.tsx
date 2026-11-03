@@ -6,16 +6,69 @@ import { sendCommand } from "./client";
 import { dndActive } from "../reminders/planning";
 import { useConnectionClock } from "./use-sync-metadata";
 import { TimePicker } from "./calendar/TimePicker";
-import { settingsSchema } from "../shared/preferences";
 import { ReminderInbox } from "./ReminderInbox";
 import "./reminders.css";
 import { revealInvalidSetting } from "./settings-validation";
+import {
+  AutoSaveStatus,
+  useAutoSavePreferences,
+} from "./use-auto-save-preferences";
+import { numericPreference } from "./preference-autosave";
 const list = (value: string) => {
   const parts = value.split(",").map((v) => v.trim());
   if (parts.some((v) => !/^\d+$/.test(v))) throw new Error();
   return parts.map(Number);
 };
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const notificationDraft = (settings: Settings) => ({
+  reminders: {
+    ...settings.reminders,
+    graceMinutes: settings.reminders.graceMinutes as number | string,
+    allDayHour: settings.reminders.allDayHour as number | string,
+  },
+  dnd: settings.dnd,
+  offsets: settings.reminders.offsets.join(", "),
+  snoozes: settings.reminders.snoozePresets.join(", "),
+  overrides: settings.notificationCalendars,
+  calendarOffsets: Object.fromEntries(
+    Object.entries(settings.notificationCalendars).map(([id, rule]) => [
+      id,
+      rule.offsets?.join(", ") ?? "",
+    ]),
+  ),
+  until: settings.dnd.until
+    ? new Date(
+        Date.parse(settings.dnd.until) -
+          new Date(settings.dnd.until).getTimezoneOffset() * 60000,
+      )
+        .toISOString()
+        .slice(0, 16)
+    : "",
+});
+const notificationPatch = (draft: ReturnType<typeof notificationDraft>) => ({
+  reminders: {
+    ...draft.reminders,
+    offsets: list(draft.offsets),
+    snoozePresets: list(draft.snoozes),
+    graceMinutes: numericPreference(draft.reminders.graceMinutes),
+    allDayHour: numericPreference(draft.reminders.allDayHour),
+  },
+  dnd: {
+    ...draft.dnd,
+    until: draft.until ? new Date(draft.until).toISOString() : null,
+  },
+  notificationCalendars: Object.fromEntries(
+    Object.entries(draft.overrides).map(([id, rule]) => [
+      id,
+      {
+        ...rule,
+        offsets: draft.calendarOffsets[id]?.trim()
+          ? list(draft.calendarOffsets[id]!)
+          : undefined,
+      },
+    ]),
+  ),
+});
 export function NotificationSettings({
   settings,
   accounts,
@@ -27,19 +80,34 @@ export function NotificationSettings({
   busy: boolean;
   run: (command: Command, notice?: string) => Promise<void>;
 }) {
-  const [reminders, setReminders] = useState(settings.reminders);
-  const [dnd, setDnd] = useState(settings.dnd);
-  const [offsets, setOffsets] = useState(reminders.offsets.join(", "));
-  const [snoozes, setSnoozes] = useState(reminders.snoozePresets.join(", "));
-  const [overrides, setOverrides] = useState(settings.notificationCalendars);
-  const [calendarOffsets, setCalendarOffsets] = useState(
-    Object.fromEntries(
-      Object.entries(settings.notificationCalendars).map(([id, rule]) => [
-        id,
-        rule.offsets?.join(", ") ?? "",
-      ]),
-    ),
+  const save = useAutoSavePreferences(
+    settings,
+    notificationDraft,
+    notificationPatch,
   );
+  const {
+    reminders,
+    dnd,
+    offsets,
+    snoozes,
+    overrides,
+    calendarOffsets,
+    until,
+  } = save.draft;
+  const setReminders = (reminders: typeof save.draft.reminders) =>
+    save.setDraft((d) => ({ ...d, reminders }));
+  const setDnd = (dnd: typeof save.draft.dnd) =>
+    save.setDraft((d) => ({ ...d, dnd }));
+  const setOffsets = (offsets: string) =>
+    save.setDraft((d) => ({ ...d, offsets }));
+  const setSnoozes = (snoozes: string) =>
+    save.setDraft((d) => ({ ...d, snoozes }));
+  const setOverrides = (overrides: typeof save.draft.overrides) =>
+    save.setDraft((d) => ({ ...d, overrides }));
+  const setCalendarOffsets = (
+    calendarOffsets: typeof save.draft.calendarOffsets,
+  ) => save.setDraft((d) => ({ ...d, calendarOffsets }));
+  const setUntil = (until: string) => save.setDraft((d) => ({ ...d, until }));
   const sounds = useLiveQuery(async () => {
     try {
       return (await getCalendarDatabase().sounds.toArray())
@@ -59,16 +127,6 @@ export function NotificationSettings({
   const [name, setName] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const clock = useConnectionClock();
-  const [until, setUntil] = useState(
-    dnd.until
-      ? new Date(
-          Date.parse(dnd.until) -
-            new Date(dnd.until).getTimezoneOffset() * 60_000,
-        )
-          .toISOString()
-          .slice(0, 16)
-      : "",
-  );
   const calendars = [
     ...new Map(
       accounts.flatMap((a) =>
@@ -138,42 +196,7 @@ export function NotificationSettings({
       <form
         className="settings-form appearance-form"
         onInvalidCapture={revealInvalidSetting}
-        onSubmit={(e) => {
-          e.preventDefault();
-          setError("");
-          try {
-            const parsedUntil = until ? new Date(until).toISOString() : null;
-            const notificationCalendars = Object.fromEntries(
-              Object.entries(overrides).map(([id, rule]) => [
-                id,
-                {
-                  ...rule,
-                  offsets: calendarOffsets[id]?.trim()
-                    ? list(calendarOffsets[id]!)
-                    : undefined,
-                },
-              ]),
-            );
-            const update = {
-              reminders: {
-                ...reminders,
-                offsets: list(offsets),
-                snoozePresets: list(snoozes),
-              },
-              dnd: { ...dnd, until: parsedUntil },
-              notificationCalendars,
-            };
-            settingsSchema.parse({ ...settings, ...update });
-            void run(
-              { type: "UPDATE_SETTINGS", settings: update },
-              "Reminder preferences saved.",
-            );
-          } catch {
-            setError(
-              "Check the comma-separated reminder/snooze minutes, selected schedule days and DND end time.",
-            );
-          }
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <fieldset className="settings-field-group">
           <legend>Delivery & timing</legend>
@@ -332,7 +355,7 @@ export function NotificationSettings({
                 onChange={(e) =>
                   setReminders({
                     ...reminders,
-                    graceMinutes: Number(e.target.value),
+                    graceMinutes: e.target.value,
                   })
                 }
               />
@@ -365,7 +388,7 @@ export function NotificationSettings({
                 onChange={(e) =>
                   setReminders({
                     ...reminders,
-                    allDayHour: Number(e.target.value),
+                    allDayHour: e.target.value,
                   })
                 }
               />
@@ -613,9 +636,7 @@ export function NotificationSettings({
             {error}
           </p>
         )}
-        <button className="button primary" disabled={busy || uploading}>
-          Save reminder preferences
-        </button>
+        <AutoSaveStatus {...save} />
       </form>
       <div className="reminder-actions">
         <button

@@ -14,7 +14,7 @@ The native Chrome token API can return the same remembered account even after it
 
 4. Create the client. Copy only its **Client ID**. The extension never needs the client secret. No JavaScript origin or hosted redirect page is needed for the Chrome-intercepted flow.
 5. Keep Calendar API enabled and the project's current identity/calendar-list/event-read scopes. If the OAuth app is in Testing, add both Google accounts under **Audience → Test users**.
-6. In the extension, open **Settings → Google account chooser**, paste the public ID, and choose **Save account chooser**. Alternatively, set `WXT_GOOGLE_WEB_CLIENT_ID` in the existing `.env.local`, rebuild, and reload. Preserve `WXT_GOOGLE_CLIENT_ID` and the extension key.
+6. In the extension, open **Settings → Connection & setup → Google account chooser**, paste the public ID, and wait for **Saved automatically**. Alternatively, set `WXT_GOOGLE_WEB_CLIENT_ID` in the existing `.env.local`, rebuild, and reload. Preserve `WXT_GOOGLE_CLIENT_ID` and the extension key.
 
 The user's Web client ID is already set in this workspace's ignored `.env.local`. Reload the v0.3.3 build. The Settings field should already be filled unless an explicit saved setting overrides it; the saved setting takes precedence over the build default.
 

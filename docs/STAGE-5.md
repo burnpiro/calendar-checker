@@ -6,7 +6,7 @@ Release: v0.5.0. All settings, sounds, reminder history and snoozes stay in the 
 
 Rebuild and reload at `chrome://extensions`. Chrome now needs the `notifications` and `offscreen` extension permissions; re-enable the extension if Chrome requests approval for the updated permissions. Existing OAuth client IDs, accounts, event cache, outbox and preferences are retained. Dexie schema 5 adds independent `reminders` and `sounds` tables.
 
-In **Settings → Notifications, sounds and Do not disturb**, enable **Desktop notifications**, **Sound notifications**, or both. Both start disabled so an upgrade cannot unexpectedly send alerts. Save preferences. Use **Test desktop notification** and **Preview selected sound** to check your device; these explicit tests bypass automatic-reminder/DND switches. Chrome/OS notification permissions and volume can still prevent output. Sound previews use the selected, possibly unsaved, volume; automatic reminders use saved preferences.
+In **Settings → Notifications, sounds and Do not disturb**, choose privacy, sound and reminder timing, then enable **Desktop notifications**, **Sound notifications**, or both. Both start disabled so an upgrade cannot unexpectedly send alerts. Valid preferences save automatically; invalid drafts keep the previous valid settings. Use **Test desktop notification** and **Preview selected sound** to check your device; these explicit tests bypass automatic-reminder/DND switches. Chrome/OS notification permissions and volume can still prevent output. Sound previews use the selected, possibly unsaved, volume; automatic reminders use saved preferences.
 
 ## Reminder controls
 

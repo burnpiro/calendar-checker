@@ -1,18 +1,24 @@
-import { useState } from "react";
-import type { Command, Settings } from "../shared/model";
+import {
+  AutoSaveStatus,
+  useAutoSavePreferences,
+} from "./use-auto-save-preferences";
+import type { Settings } from "../shared/model";
 
 export function AccountChooserSettings({
   settings,
   extensionId,
-  busy,
-  run,
 }: {
   settings: Settings;
   extensionId: string;
-  busy: boolean;
-  run: (command: Command, notice?: string) => Promise<void>;
 }) {
-  const [clientId, setClientId] = useState(settings.webOAuthClientId);
+  const save = useAutoSavePreferences(
+    settings,
+    (s) => ({ webOAuthClientId: s.webOAuthClientId }),
+    (d) => ({ webOAuthClientId: d.webOAuthClientId.trim() }),
+  );
+  const clientId = save.draft.webOAuthClientId;
+  const setClientId = (value: string) =>
+    save.setDraft({ webOAuthClientId: value });
   return (
     <section className="settings-section">
       <p className="eyebrow">GOOGLE SIGN-IN</p>
@@ -24,16 +30,7 @@ export function AccountChooserSettings({
       </p>
       <form
         className="settings-form account-chooser-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void run(
-            {
-              type: "UPDATE_SETTINGS",
-              settings: { webOAuthClientId: clientId.trim() },
-            },
-            "Google account chooser saved. Use Add Google account to choose an account.",
-          );
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <label>
           Web application client ID
@@ -60,9 +57,7 @@ export function AccountChooserSettings({
           Background access depends on your Google sign-in session. If it
           expires, use Reconnect. Saved events remain available.
         </p>
-        <button className="button primary" disabled={busy}>
-          Save account chooser
-        </button>
+        <AutoSaveStatus {...save} />
       </form>
     </section>
   );
