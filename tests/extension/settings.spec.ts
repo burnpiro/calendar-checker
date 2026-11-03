@@ -25,6 +25,21 @@ test("preferences autosave only valid input and navigation follows manual scroll
     const page = await context.newPage();
     await page.setViewportSize({ width: 1360, height: 900 });
     await page.goto(`chrome-extension://${id}/options.html`);
+    await expect(
+      page.getByRole("combobox", { name: "Theme", exact: true }),
+    ).toBeVisible();
+    await page.evaluate(async () => {
+      const reply = await chrome.runtime.sendMessage({
+        namespace: "calendar-checker",
+        command: {
+          type: "UPDATE_SETTINGS",
+          settings: {
+            webOAuthClientId: "123456789-fixture.apps.googleusercontent.com",
+          },
+        },
+      });
+      if (!reply?.ok) throw new Error("Unable to initialize fixture settings");
+    });
     const saved = <K extends keyof Settings>(key: K) =>
       page.evaluate(
         async ({ storage, key }) => {
@@ -89,21 +104,6 @@ test("preferences autosave only valid input and navigation follows manual scroll
     await expect
       .poll(async () => (await saved("reminders"))?.snoozePresets)
       .toEqual([7, 15]);
-    await page
-      .getByRole("link", { name: "Connection & setup", exact: true })
-      .click();
-    await page
-      .getByLabel("Web application client ID", { exact: true })
-      .fill("invalid-client");
-    await expect(
-      page.locator(".account-chooser-form .autosave-status"),
-    ).toHaveAttribute("data-save-state", "invalid");
-    await page
-      .getByLabel("Web application client ID", { exact: true })
-      .fill("123456789-fixture.apps.googleusercontent.com");
-    await expect
-      .poll(() => saved("webOAuthClientId"))
-      .toBe("123456789-fixture.apps.googleusercontent.com");
     await page.evaluate(async (storage) => {
       const state = (await chrome.storage.local.get(storage))[storage] as Store;
       state.accounts = [
@@ -178,6 +178,13 @@ test("preferences autosave only valid input and navigation follows manual scroll
       page.getByLabel("Manual Do not disturb", { exact: true }),
     ).toBeChecked();
     await expect(page.getByText(/Currently active ·/)).toBeVisible();
+    expect(await saved("webOAuthClientId")).toBe(
+      "123456789-fixture.apps.googleusercontent.com",
+    );
+    await page
+      .getByRole("link", { name: "Connection & setup", exact: true })
+      .click();
+    await page.screenshot({ path: "test-results/connection-preferences.png" });
   } finally {
     await context?.close();
     await rm(profile, { recursive: true, force: true });

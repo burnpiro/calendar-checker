@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="All your Google calendars in one calm Chrome extension. Month and week views, local storage, event editing, custom reminders and two time zones."
+      content="Free, privacy-first Google Calendar extension. Zero subscriptions or hidden payments. Local-only app storage, no backend or analytics, and direct authorized Google access."
     />
     <meta name="theme-color" content="#f6f5f0" />
     <meta
@@ -14,7 +14,7 @@
     />
     <meta
       property="og:description"
-      content="Your Google calendars, together on your device. An open-source Chrome extension with local storage, thoughtful reminders and a clearer view of your day."
+      content="Free, privacy-first calendars. Zero subscriptions. No hidden payments. Local-only app storage with no backend or analytics; direct authorized Google access only."
     />
     <meta property="og:type" content="website" />
     <link rel="icon" href="assets/icon.png" />
@@ -44,7 +44,9 @@
           <p class="eyebrow">
             <span class="status-dot"></span> A little more room for your day
           </p>
-          <span class="release-label">Chrome extension · Open source</span>
+          <span class="release-label"
+            >Free · Open source · Chrome extension</span
+          >
         </div>
         <div class="hero-copy">
           <h1 id="hero-title">
@@ -52,9 +54,9 @@
           </h1>
           <div>
             <p class="hero-lead">
-              Work, personal, and everything between. Bring your Google
-              calendars together in Chrome, with thoughtful reminders and a home
-              on your device.
+              Bring your Google calendars together in a privacy-first Chrome
+              extension. Your app data stays on your device, with no application
+              backend, analytics or telemetry.
             </p>
             <div class="hero-actions">
               <a class="button primary" href="#get-started"
@@ -64,7 +66,11 @@
               >
             </div>
             <p class="hero-note">
-              Local storage. No application server. Yours to configure.
+              Free to use. Zero subscriptions. No hidden payments.
+            </p>
+            <p class="hero-note">
+              Local-only app storage. Direct Google access, with your
+              permission.
             </p>
           </div>
         </div>
@@ -98,7 +104,8 @@
           ><span>Your saved calendar stays close</span>
         </p>
         <p>
-          <strong>GPL-3.0</strong><span>Open source, inspectable code</span>
+          <strong>Free &amp; open source</strong
+          ><span>No subscriptions or hidden payments</span>
         </p>
       </section>
       <section class="everyday wrap" aria-labelledby="everyday-title">
@@ -376,9 +383,16 @@
             <p class="eyebrow">A home on your device</p>
             <h2 id="privacy-title">Your calendar.<br />Your local space.</h2>
             <p>
-              Calendar Checker talks directly to Google's APIs. Your settings,
-              saved events, pending edits and custom sounds stay in your Chrome
-              profile.
+              Privacy comes first. Your settings, cached events, pending edits,
+              reminders and custom sounds are stored only in your local Chrome
+              profile. Calendar Checker has no application server or external
+              database and sends no calendar data to the developer.
+            </p>
+            <p>
+              The extension connects directly to Google only for sign-in and the
+              calendar operations you authorize. Your original events stay in
+              your Google accounts; the extension's app data stays on your
+              device.
             </p>
             <a class="text-link" href="privacy.html"
               >Read the privacy policy <span aria-hidden="true">↗</span></a
@@ -389,21 +403,22 @@
               <span>01</span>
               <p>
                 <strong>Explicit access</strong>You choose which Google accounts
-                to authorize.
+                to authorize. No automatic discovery of your signed-in accounts.
               </p>
             </div>
             <div>
               <span>02</span>
               <p>
-                <strong>Direct connection</strong>OAuth and calendar requests go
-                to Google.
+                <strong>Google only</strong>Sign-in and calendar requests go
+                directly to Google, with no application server in between.
               </p>
             </div>
             <div>
               <span>03</span>
               <p>
-                <strong>Local storage</strong>No application backend, telemetry
-                or cloud preference sync.
+                <strong>Local storage</strong>Only chrome.storage.local and
+                IndexedDB. No cloud preference sync, analytics, telemetry or
+                advertising.
               </p>
             </div>
             <div class="source-note">

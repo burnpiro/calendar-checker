@@ -193,9 +193,6 @@
 .settings-page .disclosure-body .settings-form {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.settings-page .disclosure-body .account-chooser-form {
-  grid-template-columns: 1fr;
-}
 .settings-page .disclosure-body .settings-form > button {
   grid-column: 1 / -1;
 }

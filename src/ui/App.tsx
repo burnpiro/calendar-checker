@@ -12,7 +12,6 @@ import { useTheme } from "./use-theme";
 import { NotificationSettings } from "./NotificationSettings";
 import { WriteSettings } from "./WriteSettings";
 import { SyncSettings } from "./SyncSettings";
-import { AccountChooserSettings } from "./AccountChooserSettings";
 import { SettingsNavigation } from "./SettingsNavigation";
 import {
   AutoSaveStatus,
@@ -489,9 +488,7 @@ export function App({ compact = false }: { compact?: boolean }) {
                   >
                     <summary>
                       <span>Connection & setup</span>
-                      <small>
-                        Advanced · account checks and Google OAuth configuration
-                      </small>
+                      <small>Advanced · background account checks</small>
                     </summary>
                     <div className="disclosure-body">
                       <section className="settings-section">
@@ -505,10 +502,6 @@ export function App({ compact = false }: { compact?: boolean }) {
                         </div>
                         <SettingsForm settings={state.settings} />
                       </section>
-                      <AccountChooserSettings
-                        settings={state.settings}
-                        extensionId={state.extensionId}
-                      />
                     </div>
                   </details>
                   <details

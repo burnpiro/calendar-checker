@@ -2,6 +2,14 @@
 
 Last updated: 2026-11-03.
 
+## Settings cleanup and privacy wording · v0.6.0
+
+Removed the **GOOGLE SIGN-IN / Google account chooser** section, its unused component and styling. Existing saved Web client IDs and connected accounts are preserved; build-time `WXT_GOOGLE_WEB_CLIENT_ID` remains supported. Setup documentation and errors now point to the build configuration guide. Browser coverage still exercises adding a second account and now verifies that unrelated preference edits/reload retain the previously saved client ID.
+
+The README, Pages introduction/share descriptions and privacy section now emphasize privacy-first local-only app storage, no application backend/external database, no analytics/telemetry/advertising and no data collection by the developer. The text explicitly distinguishes authorized direct Google sign-in/calendar operations and the original Google-hosted events from the extension's local data. The README and Pages also state **Free to use. Zero subscriptions. No hidden payments.**
+
+Validation: `npm run check` passes (239 unit/adapter tests, TypeScript, formatting, production build and 3 release-auditor tests). All **21 isolated extension browser tests** pass, including saved-client preservation, multi-account chooser behavior and actual popup sizing. The updated test initializes preferences through the worker because a fresh profile's default snapshot is not necessarily persisted yet. Follow-up TypeScript/format checks pass. Both **desktop/mobile website checks** pass, including four accessibility scans and resource isolation. The connection preferences screenshot was inspected. Next concrete task: publish and verify the requested Pages/README update; the existing live Google/OS gates remain open.
+
 ## Public source and GitHub Pages · v0.6.0
 
 GPL-3.0-only application license added to source/package metadata and copied into production builds; dependency notices are preserved. The environment ignore rules cover dotenv variants, `.envrc`, local credential files and generated archives. Gitleaks 8.30.1 found no detected secrets across the original 29-commit history. Documentation project identifiers and personal commit email metadata were sanitized across all branch commit histories before the first push; the extension public identity key is intentionally preserved.

@@ -50,9 +50,6 @@ select {
   background: var(--card);
   color: var(--text);
 }
-.settings-form.account-chooser-form input {
-  max-width: 100%;
-}
 .settings-form .check-setting {
   display: flex;
   align-items: center;

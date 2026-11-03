@@ -1,6 +1,12 @@
 # Calendar Checker
 
-A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
+A privacy-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3).
+
+**Free to use. Zero subscriptions. No hidden payments.**
+
+**Your app data stays on your device.** Account metadata, preferences, cached events, pending edits, reminder history and custom sounds are stored only in your local Chrome profile, using `chrome.storage.local` and IndexedDB. There is no application backend, external database, analytics, telemetry or advertising. Calendar Checker does not send your data to the developer or third-party data collection services.
+
+The extension connects directly to **Google only** for the sign-in and calendar operations you authorize. Your original Google Calendar events remain in your Google accounts; Calendar Checker's own settings and offline data stay local. Google access does not pass through an application server.
 
 [Feature tour and screenshots](https://burnpiro.github.io/calendar-checker/) · [Privacy policy](https://burnpiro.github.io/calendar-checker/privacy.html) · [GPL-3.0 license](LICENSE)
 
@@ -69,7 +75,7 @@ Stage 6 adds accessibility/keyboard checks, a crowded offline-calendar performan
 
 ## Settings organization
 
-Settings opens with connected accounts, followed by calendar display/time zones, notifications/sounds, event defaults, and sync/offline storage. A section navigator stays alongside the page on wide screens and moves above it in smaller windows. Common controls use compact cards and paired fields; technical connection checks, OAuth client setup and diagnostics start collapsed. Notification recovery/all-day rules, DND schedules, calendar overrides and detailed week-layout controls are grouped separately. Custom sounds remain with notifications; cache information stays with sync. Per-account token tests and removal are in **More options**. All preference sections save valid changes automatically, with local saving/error feedback and retry support. Invalid entries keep their draft text and leave the last valid settings stored. Related controls must form a valid group (for example, the week end must follow its start). The selected navigation item follows the visible section during scrolling; scrolling does not rewrite browser history. Sign-in, event mutations, sound import/deletion, manual sync and test actions remain explicit buttons.
+Settings opens with connected accounts, followed by calendar display/time zones, notifications/sounds, event defaults, and sync/offline storage. A section navigator stays alongside the page on wide screens and moves above it in smaller windows. Common controls use compact cards and paired fields; technical connection checks and diagnostics start collapsed. Notification recovery/all-day rules, DND schedules, calendar overrides and detailed week-layout controls are grouped separately. Custom sounds remain with notifications; cache information stays with sync. Per-account token tests and removal are in **More options**. All preference sections save valid changes automatically, with local saving/error feedback and retry support. Invalid entries keep their draft text and leave the last valid settings stored. Related controls must form a valid group (for example, the week end must follow its start). The selected navigation item follows the visible section during scrolling; scrolling does not rewrite browser history. Sign-in, event mutations, sound import/deletion, manual sync and test actions remain explicit buttons.
 
 ## Toolbar icon and next event
 
@@ -135,7 +141,7 @@ WXT_GOOGLE_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
 
 Then run `npm run build` and reload the extension in `chrome://extensions`. Keep the actual value supplied by Google; the example above is descriptive and is deliberately rejected by build-time validation. Never paste a client secret into this project.
 
-Use **Add Google account** once for each account. To force an explicit chooser for a second account, configure the optional Web application OAuth client in **Settings → Google account chooser**. See [multi-account setup](docs/MULTI-ACCOUNT-SETUP.md). Existing native connections remain usable; new chooser accounts use short-lived access with session-dependent silent renewal. A lost Google session requires Reconnect. The native chooser failed the user's second-account attempt; the user has now confirmed basic two-account connection/sync through the configured alternative. Renewal/revocation acceptance remains pending. Choosing an existing identity now reports it as already connected.
+Use **Add Google account** once for each account. To force an explicit chooser for a second account, configure the optional Web application OAuth client through `WXT_GOOGLE_WEB_CLIENT_ID` in `.env.local`, then rebuild and reload. See [multi-account setup](docs/MULTI-ACCOUNT-SETUP.md). Existing native connections remain usable; new chooser accounts use short-lived access with session-dependent silent renewal. A lost Google session requires Reconnect. The native chooser failed the user's second-account attempt; the user has now confirmed basic two-account connection/sync through the configured alternative. Renewal/revocation acceptance remains pending. Choosing an existing identity now reports it as already connected.
 
 ## Commands
 

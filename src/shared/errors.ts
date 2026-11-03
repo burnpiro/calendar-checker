@@ -29,9 +29,9 @@ const MESSAGES: Record<ErrorCode, string> = {
   "permission-required":
     "Calendar access was not granted. Reconnect and allow the requested permissions.",
   "account-already-connected":
-    "That Google account is already connected. No new account was added. Choose a different account. If no chooser opens, configure Google account chooser in Settings.",
+    "That Google account is already connected. No new account was added. Choose a different account. If no chooser opens, follow docs/MULTI-ACCOUNT-SETUP.md to configure the account chooser.",
   "chooser-setup-required":
-    "Configure a Web application OAuth client in Settings → Google account chooser. Check that its authorized redirect URI matches this extension.",
+    "Configure the Web application OAuth client using docs/MULTI-ACCOUNT-SETUP.md, then rebuild and reload. Check that its authorized redirect URI matches this extension.",
   "account-mismatch":
     "Google returned a different account. No calendar data was loaded or replaced. Reconnect the intended account.",
   network:

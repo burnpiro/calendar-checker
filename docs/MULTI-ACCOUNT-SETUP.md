@@ -14,9 +14,9 @@ The native Chrome token API can return the same remembered account even after it
 
 4. Create the client. Copy only its **Client ID**. The extension never needs the client secret. No JavaScript origin or hosted redirect page is needed for the Chrome-intercepted flow.
 5. Keep Calendar API enabled and the project's current identity/calendar-list/event-read scopes. If the OAuth app is in Testing, add both Google accounts under **Audience → Test users**.
-6. In the extension, open **Settings → Connection & setup → Google account chooser**, paste the public ID, and wait for **Saved automatically**. Alternatively, set `WXT_GOOGLE_WEB_CLIENT_ID` in the existing `.env.local`, rebuild, and reload. Preserve `WXT_GOOGLE_CLIENT_ID` and the extension key.
+6. Set `WXT_GOOGLE_WEB_CLIENT_ID` to the public client ID in the existing `.env.local`, rebuild, and reload. Preserve `WXT_GOOGLE_CLIENT_ID` and the extension key.
 
-If you configure the public Web client ID in your ignored `.env.local`, the Settings field uses it as a build default. An explicit saved setting takes precedence.
+The public Web client ID comes from the ignored `.env.local` build default. Previously saved client IDs remain in use and take precedence over build defaults. The Settings page no longer exposes a client-ID editor.
 
 Chrome intercepts the redirect. It is not an application server and no calendar information is hosted there.
 
@@ -32,6 +32,6 @@ Web chooser access uses short-lived tokens in worker memory. There is no stored 
 
 - `redirect_uri_mismatch`: check the exact URI on the **Web application** client, extension ID, and trailing slash.
 - Access denied/test-user restriction: confirm the second account is in the project's testing audience.
-- Already connected: select a different account in Google's chooser. Confirm Settings has the Web application client ID, not the native Chrome Extension ID.
+- Already connected: select a different account in Google's chooser. Confirm the configured Web application client ID is distinct from the native Chrome Extension client ID.
 - Wrong account on reconnect: the identity check rejects it before calendar access; reconnect and select the intended account.
 - Generate diagnostics for fixed failure codes; never share tokens, callback URLs, client secrets, or unredacted account data.

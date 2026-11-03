@@ -20,7 +20,7 @@ V0.5.2 adds the narrow read-only availability scope `calendar.events.freebusy`, 
 
 ## Explicit account onboarding
 
-With a Web application client configured in Settings (or `WXT_GOOGLE_WEB_CLIENT_ID`), Add Google account uses an explicit Google chooser through `launchWebAuthFlow` with `prompt=select_account`. The user supplied a public client ID on 2026-11-02; it is stored only in this workspace's ignored local build configuration. Follow `MULTI-ACCOUNT-SETUP.md` and ADR 0005 for the exact redirect, security checks, legacy-flow tradeoff, and live acceptance requirements.
+With a Web application client configured through `WXT_GOOGLE_WEB_CLIENT_ID` (or a previously saved local client ID), Add Google account uses an explicit Google chooser through `launchWebAuthFlow` with `prompt=select_account`. The user supplied a public client ID on 2026-11-02; it is stored only in this workspace's ignored local build configuration. Follow `MULTI-ACCOUNT-SETUP.md` and ADR 0005 for the exact redirect, security checks, legacy-flow tradeoff, and live acceptance requirements.
 
 Existing accounts keep native Chrome-managed tokens. Web-connected accounts persist only an `authMethod: web` marker and use account-pinned silent authorization (`login_hint=sub`, `prompt=none`) after their memory-only token expires or the worker restarts. There is no refresh token or guarantee of silent renewal; a lost Google session requires explicit reconnect. No token enters persistent storage or UI. The public client ID is a locally validated setting and is excluded from diagnostic exports.
 

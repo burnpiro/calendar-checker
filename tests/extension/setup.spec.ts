@@ -933,7 +933,8 @@ test("explicit Google chooser adds a second account without replacing the native
     const page = await context.newPage();
     await page.goto(`chrome-extension://${id}/options.html`);
     const store = emptyStore();
-    store.settings.webOAuthClientId = "";
+    store.settings.webOAuthClientId =
+      "123456789-fixture.apps.googleusercontent.com";
     const at = new Date().toISOString();
     store.accounts = [
       {
@@ -961,17 +962,6 @@ test("explicit Google chooser adds a second account without replacing the native
     await expect(
       page.locator("article").filter({ hasText: "native@example.test" }),
     ).toBeVisible();
-    await page
-      .getByRole("link", { name: "Connection & setup", exact: true })
-      .click();
-    await page
-      .getByRole("textbox", { name: "Web application client ID", exact: true })
-      .fill("123456789-fixture.apps.googleusercontent.com");
-    await expect(
-      page.locator(
-        "#connection-settings .account-chooser-form .autosave-status",
-      ),
-    ).toHaveAttribute("data-save-state", "saved");
     await page
       .getByRole("button", { name: "+ Add Google account", exact: true })
       .click();
