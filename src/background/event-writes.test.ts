@@ -158,7 +158,14 @@ function harness(accounts = [account()]) {
     now: () => now,
   });
   const cache = new EventRepository(db);
-  const writes = new EventWriteService(auth, google, cache, () => now);
+  const openEvent = vi.fn(async (_url: string) => {});
+  const writes = new EventWriteService(
+    auth,
+    google,
+    cache,
+    () => now,
+    openEvent,
+  );
   const sync = new EventSyncService(auth, google, cache, () => now);
   const event = normalizeGoogleEvent(
     raw,
@@ -183,6 +190,7 @@ function harness(accounts = [account()]) {
     auth,
     cache,
     writes,
+    openEvent,
     sync,
     google,
     identity,
@@ -196,6 +204,206 @@ function harness(accounts = [account()]) {
 }
 
 describe("durable event writing", () => {
+  it("persists every event option offline and sends it with a stable Meet request", async () => {
+    const h = harness();
+    const command = h.command();
+    Object.assign(command.draft, {
+      colorId: "11",
+      transparency: "transparent",
+      visibility: "private",
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: "email", minutes: 60 },
+          { method: "popup", minutes: 10 },
+        ],
+      },
+      attendees: [{ email: "guest@example.test", optional: true }],
+      guestsCanModify: false,
+      guestsCanInviteOthers: false,
+      guestsCanSeeOtherGuests: false,
+      conference: "create",
+    });
+    await h.writes.save(command);
+    h.db.close();
+    await h.db.open();
+    const row = (await h.cache.pending())[0]!;
+    expect(row.patch).toMatchObject({
+      colorId: "11",
+      transparency: "transparent",
+      visibility: "private",
+      attendees: command.draft.attendees,
+      reminders: command.draft.reminders,
+      conferenceData: {
+        createRequest: {
+          requestId: command.id,
+          conferenceSolutionKey: { type: "hangoutsMeet" },
+        },
+      },
+    });
+    expect(row.event).toMatchObject({
+      color: "#d50000",
+      conferenceStatus: "pending",
+      attendeeCount: 1,
+    });
+    await h.writes.run();
+    expect(h.google.insertEvent.mock.calls[0]![2]).toMatchObject(row.patch);
+    expect((await h.db.outbox.get(command.id))?.status).toBe("awaiting-sync");
+  });
+  it("acknowledges a lost Meet creation response and opens only Google's returned link once", async () => {
+    const h = harness();
+    const command = h.command();
+    command.draft.conference = "create";
+    command.openAfterSave = true;
+    h.google.insertEvent.mockImplementationOnce(
+      async (_token, _calendar, body) => {
+        h.remote.set(body.id!, {
+          ...body,
+          id: body.id!,
+          etag: '"created"',
+          htmlLink: "https://calendar.google.com/calendar/event?eid=fixture",
+          conferenceData: {
+            createRequest: { status: { statusCode: "pending" } },
+          },
+        } as GoogleEvent);
+        throw new AppError("network");
+      },
+    );
+    await h.writes.save(command);
+    await h.writes.run();
+    expect(h.openEvent).not.toHaveBeenCalled();
+    h.advance();
+    await h.writes.run();
+    await h.writes.run();
+    expect(h.google.insertEvent).toHaveBeenCalledTimes(1);
+    expect(h.openEvent).toHaveBeenCalledExactlyOnceWith(
+      "https://calendar.google.com/calendar/event?eid=fixture",
+    );
+    expect((await h.db.outbox.get(command.id))?.event.conferenceStatus).toBe(
+      "pending",
+    );
+    expect((await h.db.outbox.get(command.id))?.openAfterSave).toBe(false);
+  });
+  it("preserves guest responses and conference data on text edits, and explicitly clears selected fields", async () => {
+    const h = harness();
+    const base = {
+      ...h.event,
+      attendees: [
+        { email: "guest@example.test", responseStatus: "accepted" as const },
+      ],
+      attendeeCount: 1,
+      colorId: "3",
+      conferenceType: "hangoutsMeet",
+      meetingLink: "https://meet.google.com/fixture",
+    };
+    const draft = eventDraft(base);
+    expect(changedBody(base, { ...draft, title: "Only title" })).toEqual({
+      summary: "Only title",
+    });
+    const command = {
+      ...h.command(true),
+      base,
+      draft: {
+        ...draft,
+        attendees: [],
+        colorId: "",
+        conference: "remove" as const,
+      },
+    };
+    await h.writes.save(command);
+    expect((await h.cache.pending())[0]!.patch).toEqual({
+      attendees: [],
+      colorId: null,
+      conferenceData: null,
+    });
+  });
+  it("rejects incomplete guest replacement and organizer-only actions on an attendee's copy", async () => {
+    const h = harness();
+    for (const base of [
+      { ...h.event, attendees: undefined },
+      { ...h.event, attendeesOmitted: true },
+      { ...h.event, organizerSelf: false, guestsCanModify: true },
+    ]) {
+      await expect(
+        h.writes.save({
+          ...h.command(true),
+          base,
+          draft: {
+            ...eventDraft(base),
+            attendees: [{ email: "new@example.test" }],
+          },
+        }),
+      ).rejects.toMatchObject({ code: "event-readonly" });
+    }
+    const base = { ...h.event, organizerSelf: false, guestsCanModify: true };
+    await expect(
+      h.writes.save({
+        ...h.command(true),
+        base,
+        draft: { ...eventDraft(base), conference: "create" },
+      }),
+    ).rejects.toMatchObject({ code: "event-readonly" });
+  });
+  it("retains a Meet request if fresh calendar capabilities prohibit creation", async () => {
+    const h = harness();
+    const command = h.command();
+    command.draft.conference = "create";
+    await h.writes.save(command);
+    h.google.listCalendars.mockResolvedValue([
+      {
+        ...h.stored().accounts[0]!.calendars[0]!,
+        allowedConferenceSolutionTypes: [],
+      },
+    ]);
+    await h.writes.run();
+    expect(h.google.insertEvent).not.toHaveBeenCalled();
+    expect((await h.db.outbox.get(command.id))?.status).toBe("failed");
+  });
+  it("never automatically opens an event link on a non-Google origin", async () => {
+    const h = harness();
+    const command = h.command();
+    command.openAfterSave = true;
+    const insert = h.google.insertEvent.getMockImplementation()!;
+    h.google.insertEvent.mockImplementationOnce(async (...args) => ({
+      ...(await insert(...args)),
+      htmlLink: "https://untrusted.example.test/event",
+    }));
+    await h.writes.save(command);
+    await h.writes.run();
+    expect(h.openEvent).not.toHaveBeenCalled();
+    expect((await h.db.outbox.get(command.id))?.status).toBe("awaiting-sync");
+  });
+  it("keeps event colors through snapshot label updates", async () => {
+    const h = harness();
+    h.remote.set(raw.id, { ...raw, colorId: "11" });
+    await h.sync.run({ reason: "manual" });
+    expect((await h.db.events.get(h.event.key))?.color).toBe("#d50000");
+    expect((await h.db.events.get(h.event.key))?.colorId).toBe("11");
+  });
+  it("validates notification limits and duplicate guests without accepting partial data", () => {
+    const h = harness();
+    const draft = h.command().draft;
+    for (const patch of [
+      { attendees: [{ email: "A@example.test" }, { email: "a@example.test" }] },
+      {
+        reminders: {
+          useDefault: false,
+          overrides: [{ method: "popup", minutes: -1 }],
+        },
+      },
+      {
+        reminders: {
+          useDefault: false,
+          overrides: Array.from({ length: 6 }, () => ({
+            method: "email",
+            minutes: 10,
+          })),
+        },
+      },
+      { colorId: "100" },
+    ])
+      expect(draftSchema.safeParse({ ...draft, ...patch }).success).toBe(false);
+  });
   it("does not acknowledge a real pending write with a busy-only snapshot after an access downgrade", async () => {
     const h = harness();
     const command = h.command();

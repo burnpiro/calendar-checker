@@ -1,3 +1,4 @@
+import { eventColor } from "./event-options";
 import { overlayWrites, pendingWriteSchema } from "./write-model";
 import { AppError } from "../shared/errors";
 import type { Account } from "../shared/model";
@@ -97,7 +98,11 @@ export class EventRepository {
             await this.db.events
               .where("[accountId+calendarId]")
               .equals([next.accountId, next.calendarId])
-              .modify(labels);
+              .modify((event) => {
+                event.calendarName = labels.calendarName;
+                event.accountName = labels.accountName;
+                event.color = eventColor(event.colorId, labels.color);
+              });
           await this.db.ranges
             .where("[accountId+calendarId]")
             .equals([next.accountId, next.calendarId])

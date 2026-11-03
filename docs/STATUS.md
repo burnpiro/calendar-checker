@@ -23,7 +23,13 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 Stage 6: live Google multi-account/read/write acceptance, real OS notification/audio/native-button and sleep/wake acceptance, accessibility/performance review, and local unpacked/ZIP packaging. Publishing remains a separate request.
 
-Reload v0.5.6 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+Reload v0.5.7 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+
+## Complete event editor · v0.5.7
+
+Event creation/editing now includes color, Busy/Free, default/public/private visibility, per-account Google notification/email overrides, guests/optional attendance/permissions and Google Meet create/replace/remove. Repeats add intervals, weekdays and count/until/never endings. Save & open queues a creation then opens its returned Google event URL when delivered. Existing guests/RSVPs and conference data are preserved by unchanged-field omission; partial guest lists and organizer-only changes are guarded. New metadata remains optional for legacy cache/outbox compatibility. Event colors now survive sync label refresh. Conflict comparisons show the added fields. Google notifications remain separate from extension sound/desktop rules. No permissions/scopes, servers or dependencies were added.
+
+Validation: `npm run check` passes (TypeScript, **239 unit/adapter tests**, formatting and production build), followed by **19 isolated Chromium tests**. The complete-editor browser flow queues all added options offline, sends them through the bundled worker to fictional Google endpoints, opens the returned event link, reloads the metadata and edits only its title without resending guests/conference/reminders. Native popup sizing and existing account/sync/write/reminder regressions pass. Light-theme editor screenshots were visually inspected at 800×600; header/actions remain visible while fields scroll. Live guest invitations, per-account Google reminders, Meet eligibility/asynchronous outcomes and Google visibility effects still require disposable real-account acceptance; fixtures do not establish those outcomes. Next concrete task remains the stage 6 live matrix.
 
 ## Validated automatic preferences and scroll navigation · v0.5.6
 

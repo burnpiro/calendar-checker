@@ -25,6 +25,11 @@ const pageSchema = z.object({
         accessRole: z.string(),
         primary: z.boolean().optional(),
         timeZone: z.string().optional(),
+        conferenceProperties: z
+          .object({
+            allowedConferenceSolutionTypes: z.array(z.string()).optional(),
+          })
+          .optional(),
         backgroundColor: z
           .string()
           .regex(/^#[0-9a-f]{6}$/i)
@@ -220,6 +225,8 @@ export class GoogleCalendarGateway implements GoogleGateway {
           summary: item.summaryOverride ?? item.summary ?? item.id,
           accessRole: item.accessRole,
           primary: item.primary ?? false,
+          allowedConferenceSolutionTypes:
+            item.conferenceProperties?.allowedConferenceSolutionTypes,
           ...(item.timeZone ? { timeZone: item.timeZone } : {}),
           ...(item.backgroundColor
             ? { backgroundColor: item.backgroundColor }
@@ -322,7 +329,7 @@ export class GoogleCalendarGateway implements GoogleGateway {
         timeMin: start,
         timeMax: end,
         fields:
-          "nextPageToken,timeZone,items(id,status,summary,description,location,start,end,eventType,etag,updated,recurringEventId,originalStartTime,iCalUID,htmlLink,hangoutLink,organizer,guestsCanModify,locked,attendees(self,responseStatus))",
+          "nextPageToken,timeZone,items(id,status,summary,description,location,start,end,eventType,etag,updated,recurringEventId,originalStartTime,iCalUID,htmlLink,hangoutLink,organizer,guestsCanModify,locked,colorId,transparency,visibility,reminders,conferenceData,attendees,attendeesOmitted,guestsCanInviteOthers,guestsCanSeeOtherGuests)",
       },
       (value) => {
         const parsed = z
@@ -428,6 +435,8 @@ export class GoogleCalendarGateway implements GoogleGateway {
   ): Promise<GoogleEvent> {
     const url = new URL(this.eventUrl(calendarId));
     url.searchParams.set("sendUpdates", sendUpdates);
+    if ("conferenceData" in body)
+      url.searchParams.set("conferenceDataVersion", "1");
     return this.parseEvent(
       await this.requestOnce(url.href, token, "calendar-events", {
         method: "POST",
@@ -446,6 +455,8 @@ export class GoogleCalendarGateway implements GoogleGateway {
   ): Promise<GoogleEvent> {
     const url = new URL(this.eventUrl(calendarId, eventId));
     url.searchParams.set("sendUpdates", sendUpdates);
+    if ("conferenceData" in body)
+      url.searchParams.set("conferenceDataVersion", "1");
     return this.parseEvent(
       await this.requestOnce(url.href, token, "calendar-events", {
         method: "PATCH",

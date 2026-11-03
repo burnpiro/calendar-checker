@@ -2,14 +2,14 @@
 
 A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
 
-## Current release: stage 5 · v0.5.6
+## Current release: stage 5 · v0.5.7
 
 Google event reading/synchronization, event creation/editing, local reminders and dual time zones are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
 
 - FullCalendar Standard month and week views, Today/previous/next navigation, and a mini date navigator.
 - A collapsible calendar sidebar with calendars grouped under account email headings, independent calendar visibility, local text/type filters, and account reconnect warnings. In the popup and narrow windows, a clickable backdrop closes the slide-out sidebar when you click outside it.
 - Event details on click and basic previews after one second of hover; keyboard focus also exposes a preview. Event lists and previews stay within the visible window, with long lists scrolling internally.
-- Create/edit/delete ordinary events, choose writable account/calendar destinations, edit one recurring occurrence or its whole series, and preserve existing guests/meeting links.
+- Create/edit/delete ordinary events, choose writable account/calendar destinations, edit one recurring occurrence or its whole series, with guest invitations, Google Meet, event colors, Busy/Free, visibility and Google notifications.
 - A durable offline outbox, retry-safe creation, conditional edits, explicit conflict resolution, and a shared pending-changes panel.
 - Optional desktop/sound reminders, imported local sounds, snooze, missed-reminder recovery, per-calendar overrides, and manual/scheduled Do not disturb.
 - Optional secondary time zone with aligned week labels and exact dual-zone event details/previews.
@@ -53,7 +53,7 @@ npm run build
 npm run extension:id
 ```
 
-Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.5.6. The native-popup sizing correction remains covered by an actual toolbar-popup test.
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.5.7. The native-popup sizing correction remains covered by an actual toolbar-popup test.
 
 Without connected accounts, the calendar shows an empty grid and a prompt to connect an account. Settings displays setup instructions and disables Google sign-in until a client ID is configured. Preserve any existing `.env.local` when updating.
 
@@ -91,9 +91,9 @@ Choose **Fit all hours · no vertical scroll** to shrink the configured hour ran
 
 ## Create, edit and review pending changes
 
-Click **Create event** (+) or an empty date/time to create a one-hour timed event in a writable calendar. All-day mode is an explicit choice. Choose hours/minutes on the clock face or type an exact time; the time-zone selector opens the full supported list and filters by region/city text, starting from your configured primary zone. Open an event's details to edit it; recurring events offer **Edit occurrence** and **Edit series**. The editor supports title, dates/time zone, all-day dates, location, description, basic repeating rules and confirmed deletion. Existing guests and meeting data are preserved; guest-update behavior is selectable. Specialized Google event types remain read-only here.
+Click **Create event** (+) or an empty date/time to create a one-hour timed event in a writable calendar. All-day mode is an explicit choice. Choose hours/minutes on the clock face or type an exact time; the time-zone selector opens the full supported list and filters by region/city text, starting from your configured primary zone. Open an event's details to edit it; recurring events offer **Edit occurrence** and **Edit series**. The editor supports title, dates/time zone, all-day dates, location, description and confirmed deletion. Repeats support daily/weekly/monthly/yearly intervals, selected weekdays, and a count, end date or no end. Choose an event color, Busy/Free and default/public/private visibility. Add up to 200 guests with optional attendance and guest permissions; unchanged guests keep their responses. Select whether Google sends invitations/updates. Add, replace or remove a Google Meet link where the calendar permits it; creation happens after Google receives the event. Existing conferences are kept by default. Google Calendar notifications can use calendar defaults, none, or up to five notification/email offsets (0–40320 minutes). These are separate from the extension’s local reminder rules. Specialized Google event types remain read-only here.
 
-Changes are saved locally before sending. **Pending changes** in the calendar footer or **Settings → Event editing** shows offline/retrying work and conflicts. Choose the Google version or explicitly apply your changed fields; a newer remote edit conflicts again. Account removal is blocked until pending work is resolved/discarded. New creation IDs prevent duplicates after lost responses. Settings also chooses a default account/calendar. See [stage 4 behavior and limitations](docs/STAGE-4.md), including series master caching, unsupported this-and-following splits, and guest-list/calendar-move limitations.
+**Save & open in Google** saves through the same queue and opens Google’s returned event link after the write succeeds, including after reconnecting from offline. **Save event** stays in the extension. Changes are saved locally before sending. **Pending changes** in the calendar footer or **Settings → Event editing** shows offline/retrying work and conflicts. Choose the Google version or explicitly apply your changed fields; a newer remote edit conflicts again. Account removal is blocked until pending work is resolved/discarded. New creation IDs prevent duplicates after lost responses. Settings also chooses a default account/calendar. See [stage 4 behavior and limitations](docs/STAGE-4.md), including series master caching, unsupported this-and-following splits, and organizer/guest-list/calendar-move limitations.
 
 ## Reminders, sounds and Do not disturb
 

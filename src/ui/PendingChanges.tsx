@@ -1,3 +1,4 @@
+import { EVENT_COLORS } from "../calendar/event-options";
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { EventRepository } from "../calendar/event-repository";
@@ -82,6 +83,9 @@ export function PendingChanges({ accounts }: { accounts: Account[] }) {
               </p>
             )}
             {row.error && <p className="write-error">{row.error}</p>}
+            {row.openAfterSave && (
+              <p>Google Calendar will open when this event is saved online.</p>
+            )}
             {row.retryAt && (
               <p>Next retry after {new Date(row.retryAt).toLocaleString()}.</p>
             )}
@@ -116,6 +120,57 @@ export function PendingChanges({ accounts }: { accounts: Account[] }) {
                           <p>{event.location || "No location"}</p>
                           <p className="pending-description">
                             {event.description || "No description"}
+                          </p>
+                          <p>
+                            {event.transparency === "transparent"
+                              ? "Free"
+                              : "Busy"}{" "}
+                            · {event.visibility ?? "default"} visibility ·{" "}
+                            {EVENT_COLORS.find(
+                              ([id]) => id === event.colorId,
+                            )?.[1] ?? "Calendar default"}{" "}
+                            color
+                          </p>
+                          <p>
+                            Notifications:{" "}
+                            {event.reminders?.useDefault !== false
+                              ? "Calendar defaults"
+                              : event.reminders.overrides
+                                  ?.map(
+                                    (r) =>
+                                      `${r.method === "popup" ? "Notification" : "Email"} ${r.minutes} min before`,
+                                  )
+                                  .join(", ") || "None"}
+                          </p>
+                          <p className="pending-description">
+                            Guests:{" "}
+                            {event.attendees
+                              ?.map(
+                                (a) =>
+                                  `${a.email ?? a.displayName ?? "Guest"}${a.optional ? " (optional)" : ""}`,
+                              )
+                              .join(", ") ||
+                              (event.attendeeCount
+                                ? `${event.attendeeCount} (list unavailable)`
+                                : "None")}
+                          </p>
+                          <p>
+                            Guest permissions: modify{" "}
+                            {event.guestsCanModify ? "yes" : "no"}, invite{" "}
+                            {event.guestsCanInviteOthers === false
+                              ? "no"
+                              : "yes"}
+                            , view guests{" "}
+                            {event.guestsCanSeeOtherGuests === false
+                              ? "no"
+                              : "yes"}
+                          </p>
+                          <p>
+                            Conference:{" "}
+                            {event.meetingLink ??
+                              (event.conferenceStatus === "pending"
+                                ? "Google Meet requested"
+                                : (event.conferenceType ?? "None"))}
                           </p>
                           {event.recurrence?.length ? (
                             <p>{event.recurrence.join(" · ")}</p>

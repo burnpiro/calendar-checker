@@ -94,3 +94,9 @@ Keep concise, verified implementation facts here. Include the date and supportin
 
 - V0.5.6 removes preference Save buttons. Keep preference editors mounted; raw numeric empty strings must remain invalid drafts rather than becoming zero. Validate related fields before sending a changed-fields-only worker patch. Preserve late/newer edits, untouched external fields and explicit retry after failure. Operational actions and event writes are not autosaved.
 - A settings change may have an immediate effect: configure reminder privacy before enabling its desktop channel in fixtures and manual setup. Scroll navigation follows viewport bounds; it must not create a history entry for each scroll update.
+
+## 2026-11-03 · Extended event editor
+
+- V0.5.7: event-specific Google reminders are separate from the extension’s local notification rules. Keep optional new metadata compatible with schema-5 cache/outbox rows and do not default absent write fields into unintended PATCHes.
+- Preserve guest response/comment/resource metadata when editing unchanged addresses. Never replace a partial or unavailable guest list. Guest permissions and conference changes require organizer access in this editor. Google Meet requests use the durable operation UUID, with conferenceDataVersion=1 only for explicit conference changes.
+- Snapshot label refresh must preserve event color IDs instead of painting every event with its calendar color. Save/open uses the provider’s returned Google URL, never a guessed account-index or template URL; record the one-shot intent durably and keep automatic opening limited to Google Calendar origins.

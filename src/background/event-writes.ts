@@ -1,3 +1,5 @@
+import { validNewRecurrence } from "../calendar/recurrence";
+import { eventColor } from "../calendar/event-options";
 import { Temporal } from "temporal-polyfill";
 import { AppError, asAppError, isReconnectError } from "../shared/errors";
 import type { CalendarEvent } from "../calendar/model";
@@ -30,6 +32,7 @@ export class EventWriteService {
     private readonly google: EventWriteGateway,
     readonly repository = new EventRepository(),
     private readonly now = () => new Date(),
+    private readonly openEvent: (url: string) => Promise<void> = async () => {},
   ) {}
   get db() {
     return this.repository.db;
@@ -192,17 +195,51 @@ export class EventWriteService {
       JSON.stringify(recurrence) !== JSON.stringify(base?.recurrence ?? []) &&
       recurrence.length
     ) {
-      const match =
-        recurrence.length === 1 &&
-        recurrence[0]!.match(
-          /^RRULE:FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY);COUNT=([1-9][0-9]{0,3})$/,
-        );
-      if (!match || Number(match[2]) > 1000)
+      if (!validNewRecurrence(recurrence))
         throw new AppError("invalid-request");
     }
     const patch = base
       ? changedBody(base, command.draft)
       : eventBody(command.draft);
+    if (!base && patch.colorId === null) delete patch.colorId;
+    const guestFields = [
+      "attendees",
+      "guestsCanModify",
+      "guestsCanInviteOthers",
+      "guestsCanSeeOtherGuests",
+    ] as const;
+    if (
+      base &&
+      guestFields.some((key) => key in patch) &&
+      (base.organizerSelf === false ||
+        base.attendeesOmitted ||
+        !base.attendees ||
+        base.attendees?.some((a) => !a.email) ||
+        (base.attendees?.length ?? 0) > 200)
+    )
+      throw new AppError("event-readonly");
+    if (command.draft.conference === "create") {
+      if (
+        calendar.allowedConferenceSolutionTypes &&
+        !calendar.allowedConferenceSolutionTypes.includes("hangoutsMeet")
+      )
+        throw new AppError("event-readonly");
+      patch.conferenceData = {
+        createRequest: {
+          requestId: command.id,
+          conferenceSolutionKey: { type: "hangoutsMeet" },
+        },
+      };
+    } else if (command.draft.conference === "remove" && base) {
+      patch.conferenceData = null;
+    }
+    if (
+      base &&
+      "conferenceData" in patch &&
+      (base.organizerSelf === false ||
+        (base.conferenceType && base.conferenceType !== "hangoutsMeet"))
+    )
+      throw new AppError("event-readonly");
     if (base && !Object.keys(patch).length) return;
     const at = this.now().toISOString();
     const eventId = base?.eventId ?? command.id.replaceAll("-", "");
@@ -216,7 +253,30 @@ export class EventWriteService {
       eventId,
       calendarName: calendar.summary,
       accountName: account.email,
-      color: base?.color ?? calendar.backgroundColor ?? "#7765d8",
+      color:
+        command.draft.colorId !== undefined
+          ? eventColor(
+              command.draft.colorId,
+              calendar.backgroundColor ?? "#7765d8",
+            )
+          : (base?.color ?? calendar.backgroundColor ?? "#7765d8"),
+      ...(command.draft.conference === "remove"
+        ? {
+            meetingLink: undefined,
+            conferenceType: undefined,
+            conferenceStatus: undefined,
+          }
+        : {}),
+      ...(command.draft.conference === "create"
+        ? {
+            meetingLink: undefined,
+            conferenceType: "hangoutsMeet",
+            conferenceStatus: "pending",
+          }
+        : {}),
+      ...(command.draft.attendees
+        ? { attendeeCount: command.draft.attendees.length }
+        : {}),
       eventType: "default",
       organizerSelf: base?.organizerSelf ?? true,
       updatedAt: at,
@@ -233,6 +293,7 @@ export class EventWriteService {
         event,
         patch,
         sendUpdates: command.sendUpdates,
+        openAfterSave: command.openAfterSave,
         status: "queued",
         createdAt: at,
         attempted: false,
@@ -343,6 +404,7 @@ export class EventWriteService {
         await this.db.outbox.put({
           ...row,
           ...(remote ? { event: remote } : {}),
+          openAfterSave: false,
           status: "awaiting-sync",
           retryAt: undefined,
           error: undefined,
@@ -350,6 +412,17 @@ export class EventWriteService {
         });
       },
     );
+    // Claim the one-shot UI action before opening: a worker restart must not open repeated tabs.
+    if (row.openAfterSave && remote?.htmlLink) {
+      const url = new URL(remote.htmlLink);
+      if (
+        url.protocol === "https:" &&
+        ["calendar.google.com", "www.google.com"].includes(url.hostname) &&
+        (url.hostname === "calendar.google.com" ||
+          url.pathname.startsWith("/calendar/"))
+      )
+        await this.openEvent(url.href).catch(() => undefined);
+    }
   }
   private async attempt(
     row: PendingWrite,
@@ -474,6 +547,12 @@ export class EventWriteService {
             const calendars = await this.google.listCalendars(token);
             const calendar = calendars.find((c) => c.id === initial.calendarId);
             if (!calendar || !writableCalendar(calendar.accessRole))
+              throw new AppError("event-readonly");
+            if (
+              initial.patch.conferenceData &&
+              calendar.allowedConferenceSolutionTypes &&
+              !calendar.allowedConferenceSolutionTypes.includes("hangoutsMeet")
+            )
               throw new AppError("event-readonly");
             const current = await this.db.outbox.get(initial.id);
             if (current) await this.attempt(current, token, verified, calendar);

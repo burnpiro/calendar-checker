@@ -15,6 +15,7 @@ import {
   type Account,
 } from "../../src/shared/model";
 import { calendarKey } from "../../src/shared/preferences";
+import type { EventBody } from "../../src/calendar/write-model";
 import type { GoogleEvent } from "../../src/calendar/google-events";
 
 interface WriteFixture {
@@ -26,6 +27,9 @@ interface WriteFixture {
     calendar: string;
     id: string;
     ifMatch?: string;
+    body?: EventBody;
+    conferenceDataVersion?: string | null;
+    sendUpdates?: string | null;
   }>;
 }
 const month = new Date().toISOString().slice(0, 7);
@@ -196,6 +200,9 @@ async function installFixture(worker: Worker, fixture = initialFixture()) {
           calendar,
           id: target,
           ifMatch: headers["If-Match"],
+          body,
+          conferenceDataVersion: url.searchParams.get("conferenceDataVersion"),
+          sendUpdates: url.searchParams.get("sendUpdates"),
         });
         if (method === "POST" && fixture.events[target])
           return respond({}, 409);
@@ -216,10 +223,26 @@ async function installFixture(worker: Worker, fixture = initialFixture()) {
           ...resolveEvent(target),
           ...body,
           id: target,
+          htmlLink: `https://calendar.google.com/calendar/event?eid=${target}`,
           eventType: "default",
           organizer: { self: true },
           etag: `"written-${++fixture.version}"`,
         };
+        if (value.conferenceData?.createRequest) {
+          value.conferenceData = {
+            conferenceSolution: { key: { type: "hangoutsMeet" } },
+            createRequest: {
+              ...value.conferenceData.createRequest,
+              status: { statusCode: "success" },
+            },
+            entryPoints: [
+              {
+                entryPointType: "video",
+                uri: "https://meet.google.com/fixture-meet",
+              },
+            ],
+          };
+        }
         for (const point of [value.start, value.end])
           if (point)
             for (const key of Object.keys(point))
@@ -702,6 +725,249 @@ test("new events default to one hour with a clock picker and an unfiltered searc
         exact: true,
       }),
     ).toBeVisible();
+  } finally {
+    await active?.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("complete event options persist offline, sync to Google and open the saved event", async () => {
+  const root = await mkdtemp(join(tmpdir(), "calendar-complete-editor-"));
+  let active: BrowserContext | undefined;
+  try {
+    const extension = await copyExtension(root);
+    const session = await open(join(root, "profile"), extension);
+    active = session.context;
+    await seed(session.worker);
+    await active.route("https://calendar.google.com/**", (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: "<title>Fixture Google event</title>",
+      }),
+    );
+    const page = await active.newPage();
+    await page.setViewportSize({ width: 800, height: 600 });
+    await page.goto(`chrome-extension://${session.id}/popup.html`);
+    await expect(
+      page.locator(".calendar-event").filter({ hasText: "Original meeting" }),
+    ).toBeVisible();
+    await session.worker.evaluate(() => {
+      (
+        globalThis as unknown as { writeFixture: WriteFixture }
+      ).writeFixture.offline = true;
+    });
+    await active.setOffline(true);
+    await page
+      .getByRole("button", { name: "Create event", exact: true })
+      .click();
+    const editor = page.getByRole("dialog", { name: "New event", exact: true });
+    await editor
+      .getByLabel("Title", { exact: true })
+      .fill("Complete offline event");
+    await editor
+      .getByLabel("Account and calendar")
+      .selectOption(calendarKey("b", "b-calendar"));
+    await editor.getByLabel("Starts", { exact: true }).fill(day);
+    await editor.getByLabel("Location", { exact: true }).fill("Meeting room");
+    await editor
+      .getByLabel("Description", { exact: true })
+      .fill("Notes kept offline");
+    await editor.getByLabel("Repeats", { exact: true }).selectOption("WEEKLY");
+    await editor.getByLabel("Repeat every", { exact: true }).fill("2");
+    await editor.getByLabel("Mon", { exact: true }).check();
+    await editor.getByLabel("Wed", { exact: true }).check();
+    await editor.getByLabel("Number of occurrences", { exact: true }).fill("4");
+    await editor.getByLabel("Event color", { exact: true }).selectOption("11");
+    await editor
+      .getByLabel("Show as", { exact: true })
+      .selectOption("transparent");
+    await editor
+      .getByLabel("Visibility", { exact: true })
+      .selectOption("private");
+    await editor
+      .getByLabel("Video conferencing", { exact: true })
+      .selectOption("create");
+    await editor
+      .getByLabel("Use calendar default notifications", { exact: true })
+      .uncheck();
+    await editor
+      .getByRole("button", { name: "Add notification", exact: true })
+      .click();
+    await editor
+      .getByLabel("Notification 1", { exact: true })
+      .selectOption("email");
+    await editor.getByLabel("Minutes before", { exact: true }).fill("30");
+    await editor.getByRole("button", { name: "Guests", exact: true }).click();
+    await editor
+      .getByRole("button", { name: "Add guest", exact: true })
+      .click();
+    await editor
+      .getByLabel("Guest 1 email", { exact: true })
+      .fill("guest@example.test");
+    await editor.getByLabel("Optional", { exact: true }).check();
+    await editor
+      .getByLabel("Guests can invite others", { exact: true })
+      .uncheck();
+    await editor
+      .getByLabel("Guests can see guest list", { exact: true })
+      .uncheck();
+    await expect(
+      editor.getByRole("button", { name: "Save event", exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+    await page.screenshot({
+      path: "test-results/event-editor-complete-options.png",
+    });
+    await editor
+      .getByLabel("Event color", { exact: true })
+      .scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: "test-results/event-editor-colors-notifications.png",
+    });
+    await editor.getByLabel("Title", { exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: "test-results/event-editor-complete-dates.png",
+    });
+    await editor
+      .getByRole("button", { name: "Save & open in Google", exact: true })
+      .click();
+    await expect(editor).toHaveCount(0);
+    const settings = await active.newPage();
+    await settings.goto(`chrome-extension://${session.id}/options.html`);
+    await expect(
+      settings.getByText("Complete offline event", { exact: true }),
+    ).toBeVisible();
+    expect(
+      (
+        await session.worker.evaluate(
+          () =>
+            (globalThis as unknown as { writeFixture: WriteFixture })
+              .writeFixture.writes,
+        )
+      ).length,
+    ).toBe(0);
+    await active.setOffline(false);
+    await session.worker.evaluate(() => {
+      (
+        globalThis as unknown as { writeFixture: WriteFixture }
+      ).writeFixture.offline = false;
+    });
+    const opened = active.waitForEvent("page");
+    await settings
+      .getByRole("button", { name: "Retry now", exact: true })
+      .click();
+    const googlePage = await opened;
+    await expect(googlePage).toHaveURL(
+      /^https:\/\/calendar.google.com\/calendar\/event\?eid=/,
+    );
+    await expect(
+      settings.getByText("No pending event changes.", { exact: true }),
+    ).toBeVisible();
+    const fixture = await session.worker.evaluate(
+      () =>
+        (globalThis as unknown as { writeFixture: WriteFixture }).writeFixture,
+    );
+    const write = fixture.writes.find((w) => w.method === "POST")!;
+    expect(write).toMatchObject({
+      calendar: "b-calendar",
+      conferenceDataVersion: "1",
+      sendUpdates: "all",
+      body: {
+        summary: "Complete offline event",
+        colorId: "11",
+        transparency: "transparent",
+        visibility: "private",
+        location: "Meeting room",
+        description: "Notes kept offline",
+        attendees: [{ email: "guest@example.test", optional: true }],
+        guestsCanInviteOthers: false,
+        guestsCanSeeOtherGuests: false,
+        reminders: {
+          useDefault: false,
+          overrides: [{ method: "email", minutes: 30 }],
+        },
+        recurrence: ["RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;COUNT=4"],
+        conferenceData: {
+          createRequest: { conferenceSolutionKey: { type: "hangoutsMeet" } },
+        },
+      },
+    });
+    const event = fixture.events[write.id]!;
+    expect(event.conferenceData?.entryPoints?.[0]?.uri).toBe(
+      "https://meet.google.com/fixture-meet",
+    );
+    await settings.reload();
+    await page.reload();
+    await page
+      .getByRole("searchbox", { name: "Search events" })
+      .fill("Complete offline event");
+    await page
+      .locator(".calendar-event")
+      .filter({ hasText: "Complete offline event" })
+      .click();
+    const details = page.getByRole("dialog", {
+      name: "Complete offline event",
+      exact: true,
+    });
+    await expect(
+      details.getByRole("link", { name: "Join meeting ↗" }),
+    ).toHaveAttribute("href", "https://meet.google.com/fixture-meet");
+    await details
+      .getByRole("button", { name: "Edit series", exact: true })
+      .click();
+    const edit = page.getByRole("dialog", {
+      name: "Edit recurring series",
+      exact: true,
+    });
+    await expect(edit.getByLabel("Event color", { exact: true })).toHaveValue(
+      "11",
+    );
+    await expect(edit.getByLabel("Show as", { exact: true })).toHaveValue(
+      "transparent",
+    );
+    await expect(edit.getByLabel("Visibility", { exact: true })).toHaveValue(
+      "private",
+    );
+    await expect(
+      edit.getByLabel("Use calendar default notifications", { exact: true }),
+    ).not.toBeChecked();
+    await edit.getByRole("button", { name: "Guests", exact: true }).click();
+    await expect(edit.getByLabel("Guest 1 email", { exact: true })).toHaveValue(
+      "guest@example.test",
+    );
+    await expect(edit.getByLabel("Optional", { exact: true })).toBeChecked();
+    await edit
+      .getByLabel("Title", { exact: true })
+      .fill("Retitled advanced event");
+    await edit.getByRole("button", { name: "Save event", exact: true }).click();
+    await expect
+      .poll(async () =>
+        session.worker.evaluate(
+          () =>
+            (
+              globalThis as unknown as { writeFixture: WriteFixture }
+            ).writeFixture.writes.filter((w) => w.method === "PATCH").length,
+        ),
+      )
+      .toBe(1);
+    const patch = await session.worker.evaluate(() =>
+      (
+        globalThis as unknown as { writeFixture: WriteFixture }
+      ).writeFixture.writes.find((w) => w.method === "PATCH")!,
+    );
+    expect(Object.keys(patch.body!).sort()).toEqual([
+      "extendedProperties",
+      "summary",
+    ]);
+    await page
+      .getByRole("button", { name: "Create event", exact: true })
+      .click();
+    const fresh = page.getByRole("dialog", { name: "New event", exact: true });
+    await expect(fresh.getByLabel("Event color", { exact: true })).toHaveValue(
+      "",
+    );
+    await expect(
+      fresh.getByLabel("Use calendar default notifications", { exact: true }),
+    ).toBeChecked();
   } finally {
     await active?.close();
     await rm(root, { recursive: true, force: true });

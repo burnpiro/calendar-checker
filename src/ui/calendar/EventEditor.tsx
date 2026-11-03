@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { X, Users } from "lucide-react";
+import { repeatRule, WEEKDAYS } from "../../calendar/recurrence";
+import { EventOptions } from "./EventOptions";
+import { eventDraft } from "../../calendar/write-model";
+import { revealInvalidSetting } from "../settings-validation";
 import { TimePicker } from "./TimePicker";
 import { TimeZonePicker } from "./TimeZonePicker";
 import { initialEventRange, movedEventEnd } from "./editor-time";
@@ -69,13 +73,49 @@ export function EventEditor({
   const [repeat, setRepeat] = useState(
     base?.recurrence?.length ? "keep" : "none",
   );
-  const [count, setCount] = useState(10);
+  const [count, setCount] = useState<number | string>(10);
+  const [interval, setInterval] = useState<number | string>(1);
+  const [repeatEnds, setRepeatEnds] = useState<"count" | "until" | "never">(
+    "count",
+  );
+  const [repeatUntil, setRepeatUntil] = useState("");
+  const [weekdays, setWeekdays] = useState<string[]>([]);
+  const [options, setOptions] = useState(() =>
+    base
+      ? eventDraft(base)
+      : {
+          title: "",
+          description: "",
+          location: "",
+          allDay: false,
+          start: "",
+          end: "",
+          timeZone: zone,
+          recurrence: [],
+          colorId: "",
+          transparency: "opaque" as const,
+          visibility: "default" as const,
+          reminders: { useDefault: true },
+          attendees: [],
+          guestsCanModify: false,
+          guestsCanInviteOthers: true,
+          guestsCanSeeOtherGuests: true,
+          conference: "keep" as const,
+        },
+  );
   const [sendUpdates, setSendUpdates] = useState<"all" | "none">("all");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [dirty, setDirty] = useState(false);
   const confirmation = useRef<HTMLDivElement>(null);
+  const errorMessage = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) {
+      errorMessage.current?.scrollIntoView({ block: "nearest" });
+      errorMessage.current?.focus({ preventScroll: true });
+    }
+  }, [error]);
   useEffect(() => {
     if (confirmDelete) {
       confirmation.current?.scrollIntoView({ block: "nearest" });
@@ -117,7 +157,7 @@ export function EventEditor({
       .toInstant()
       .toString();
   };
-  const save = async (deleting = false) => {
+  const save = async (deleting = false, openAfterSave = false) => {
     setError("");
     if (!chosen) {
       setError("Connect an enabled account with a writable calendar first.");
@@ -137,6 +177,7 @@ export function EventEditor({
         let draft;
         try {
           draft = draftSchema.parse({
+            ...options,
             title,
             description,
             location,
@@ -149,11 +190,21 @@ export function EventEditor({
                 ? (base?.recurrence ?? [])
                 : repeat === "none"
                   ? []
-                  : [`RRULE:FREQ=${repeat};COUNT=${count}`],
+                  : repeatRule({
+                      frequency: repeat,
+                      interval: interval === "" ? NaN : Number(interval),
+                      ends: repeatEnds,
+                      count: count === "" ? NaN : Number(count),
+                      until: repeatUntil,
+                      weekdays,
+                      allDay,
+                      timeZone: zone,
+                      start: convert(start, "start"),
+                    }),
           });
         } catch {
           throw new Error(
-            "Check the title, time zone and dates. The end must follow the start. Times skipped or repeated by daylight saving need an unambiguous time or zone.",
+            "Check the title, guests, notifications, repeat rule, time zone and dates. The end must follow the start. Times skipped or repeated by daylight saving need an unambiguous time or zone.",
           );
         }
         await sendCommand({
@@ -164,6 +215,7 @@ export function EventEditor({
           scope,
           base,
           draft,
+          openAfterSave,
           sendUpdates,
         });
       }
@@ -220,6 +272,8 @@ export function EventEditor({
             </button>
           </header>
           <form
+            id="event-editor-form"
+            onInvalidCapture={revealInvalidSetting}
             onSubmit={(e) => {
               e.preventDefault();
               void save();
@@ -346,6 +400,7 @@ export function EventEditor({
                       <label>
                         Repeats
                         <select
+                          aria-label="Repeats"
                           value={repeat}
                           onChange={(e) => setRepeat(e.target.value)}
                         >
@@ -360,17 +415,108 @@ export function EventEditor({
                         </select>
                       </label>
                       {!["none", "keep"].includes(repeat) && (
-                        <label>
-                          Number of occurrences
-                          <input
-                            type="number"
-                            min={1}
-                            max={1000}
-                            required
-                            value={count}
-                            onChange={(e) => setCount(Number(e.target.value))}
-                          />
-                        </label>
+                        <>
+                          <label>
+                            Repeat every
+                            <input
+                              type="number"
+                              min={1}
+                              max={99}
+                              required
+                              aria-label="Repeat every"
+                              value={interval}
+                              onChange={(e) => setInterval(e.target.value)}
+                            />
+                            <small>
+                              {repeat === "DAILY"
+                                ? "days"
+                                : repeat === "WEEKLY"
+                                  ? "weeks"
+                                  : repeat === "MONTHLY"
+                                    ? "months"
+                                    : "years"}
+                            </small>
+                          </label>
+                          {repeat === "WEEKLY" && (
+                            <fieldset className="editor-option-group editor-wide">
+                              <legend>Repeat on</legend>
+                              <div className="editor-weekdays">
+                                {WEEKDAYS.map((day, i) => (
+                                  <label className="editor-check" key={day}>
+                                    <input
+                                      type="checkbox"
+                                      checked={weekdays.includes(day)}
+                                      onChange={(e) =>
+                                        setWeekdays(
+                                          e.target.checked
+                                            ? [...weekdays, day]
+                                            : weekdays.filter((d) => d !== day),
+                                        )
+                                      }
+                                    />
+                                    {
+                                      [
+                                        "Mon",
+                                        "Tue",
+                                        "Wed",
+                                        "Thu",
+                                        "Fri",
+                                        "Sat",
+                                        "Sun",
+                                      ][i]
+                                    }
+                                  </label>
+                                ))}
+                              </div>
+                              <small>
+                                Leave empty to use the event's starting weekday.
+                              </small>
+                            </fieldset>
+                          )}
+                          <label>
+                            Repeat ends
+                            <select
+                              aria-label="Repeat ends"
+                              value={repeatEnds}
+                              onChange={(e) =>
+                                setRepeatEnds(
+                                  e.target.value as typeof repeatEnds,
+                                )
+                              }
+                            >
+                              <option value="count">
+                                After a number of occurrences
+                              </option>
+                              <option value="until">On a date</option>
+                              <option value="never">Never</option>
+                            </select>
+                          </label>
+                          {repeatEnds === "count" && (
+                            <label>
+                              Number of occurrences
+                              <input
+                                type="number"
+                                min={1}
+                                max={1000}
+                                required
+                                value={count}
+                                onChange={(e) => setCount(e.target.value)}
+                              />
+                            </label>
+                          )}
+                          {repeatEnds === "until" && (
+                            <label>
+                              Repeat until
+                              <input
+                                type="date"
+                                min={start.slice(0, 10)}
+                                required
+                                value={repeatUntil}
+                                onChange={(e) => setRepeatUntil(e.target.value)}
+                              />
+                            </label>
+                          )}
+                        </>
                       )}
                     </>
                   )}
@@ -405,7 +551,16 @@ export function EventEditor({
                       onChange={(e) => setDescription(e.target.value)}
                     />
                   </label>
-                  {base && (
+                  <EventOptions
+                    value={options}
+                    base={base}
+                    calendar={chosen?.calendar}
+                    onChange={(value) => {
+                      setOptions(value);
+                      markDirty();
+                    }}
+                  />
+                  {(base || Boolean(options.attendees?.length)) && (
                     <label className="editor-wide">
                       Guest updates
                       <select
@@ -414,14 +569,16 @@ export function EventEditor({
                           setSendUpdates(e.target.value as "all" | "none")
                         }
                       >
-                        <option value="all">Notify existing guests</option>
+                        <option value="all">
+                          Send invitations and guest updates
+                        </option>
                         <option value="none">
                           Do not request guest updates
                         </option>
                       </select>
                       <small>
-                        Existing guests and meeting links are preserved. Google
-                        may still send some service emails.
+                        Google may still send service emails when updates are
+                        disabled. Unchanged guests keep their responses.
                       </small>
                     </label>
                   )}
@@ -433,7 +590,12 @@ export function EventEditor({
                     </p>
                   )}
                   {error && (
-                    <p className="write-error editor-wide" role="alert">
+                    <p
+                      ref={errorMessage}
+                      tabIndex={-1}
+                      className="write-error editor-wide"
+                      role="alert"
+                    >
                       {error}
                     </p>
                   )}
@@ -465,6 +627,50 @@ export function EventEditor({
               </fieldset>
             </div>
             <footer className="write-actions">
+              <button
+                type="button"
+                className="write-button editor-guests-trigger"
+                disabled={busy}
+                onClick={() => {
+                  const panel = document.getElementById(
+                    "editor-guests",
+                  ) as HTMLDetailsElement;
+                  panel.open = true;
+                  panel.scrollIntoView({ block: "start" });
+                  panel
+                    .querySelector<HTMLInputElement>("input")
+                    ?.focus({ preventScroll: true });
+                }}
+              >
+                <Users size={14} />
+                Guests
+              </button>
+              {!base && (
+                <button
+                  type="submit"
+                  className="write-button"
+                  disabled={busy || !chosen}
+                  onClick={(e) => {
+                    const form = e.currentTarget.form;
+                    if (form?.reportValidity()) {
+                      e.preventDefault();
+                      void save(false, true);
+                    }
+                  }}
+                >
+                  Save &amp; open in Google
+                </button>
+              )}
+              {base?.htmlLink && (
+                <a
+                  className="write-button"
+                  href={base.htmlLink}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open in Google
+                </a>
+              )}
               {base && (
                 <button
                   type="button"

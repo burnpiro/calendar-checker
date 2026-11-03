@@ -1,4 +1,12 @@
 import { z } from "zod";
+import {
+  eventColorSchema,
+  eventRemindersSchema,
+  draftAttendeesSchema,
+  attendeeSchema,
+  availabilitySchema,
+  visibilitySchema,
+} from "./event-options";
 import { Temporal } from "temporal-polyfill";
 import { isTimeZone } from "../shared/preferences";
 import { eventSchema, type CalendarEvent } from "./model";
@@ -15,6 +23,15 @@ export const draftSchema = z
     timeZone: z
       .string()
       .refine((zone) => zone !== "device" && isTimeZone(zone)),
+    colorId: eventColorSchema.optional(),
+    transparency: availabilitySchema.optional(),
+    visibility: visibilitySchema.optional(),
+    reminders: eventRemindersSchema.optional(),
+    attendees: draftAttendeesSchema.optional(),
+    guestsCanModify: z.boolean().optional(),
+    guestsCanInviteOthers: z.boolean().optional(),
+    guestsCanSeeOtherGuests: z.boolean().optional(),
+    conference: z.enum(["keep", "create", "remove"]).optional(),
     recurrence: z.array(z.string().max(2048)).max(20).default([]),
   })
   .superRefine((draft, ctx) => {
@@ -58,6 +75,7 @@ export const saveEventSchema = z.object({
   scope: z.enum(["event", "series"]),
   base: eventSchema.optional(),
   draft: draftSchema,
+  openAfterSave: z.boolean().optional(),
   sendUpdates: z.enum(["all", "none"]),
 });
 export type SaveEvent = z.infer<typeof saveEventSchema>;
@@ -71,6 +89,7 @@ export interface PendingWrite {
   base?: CalendarEvent;
   event: CalendarEvent;
   patch: EventBody;
+  openAfterSave?: boolean;
   sendUpdates: "all" | "none";
   status:
     "queued" | "sending" | "retry" | "conflict" | "failed" | "awaiting-sync";
@@ -86,6 +105,20 @@ export interface EditBase {
   event: CalendarEvent;
 }
 export interface EventBody {
+  colorId?: string | null;
+  transparency?: "opaque" | "transparent";
+  visibility?: "default" | "public" | "private" | "confidential";
+  reminders?: z.infer<typeof eventRemindersSchema>;
+  attendees?: z.infer<typeof attendeeSchema>[];
+  guestsCanModify?: boolean;
+  guestsCanInviteOthers?: boolean;
+  guestsCanSeeOtherGuests?: boolean;
+  conferenceData?: {
+    createRequest: {
+      requestId: string;
+      conferenceSolutionKey: { type: "hangoutsMeet" };
+    };
+  } | null;
   summary?: string;
   description?: string;
   location?: string;
@@ -119,6 +152,25 @@ export const pendingWriteSchema: z.ZodType<PendingWrite> = z
     base: eventSchema.optional(),
     event: eventSchema,
     patch: z.object({
+      colorId: z.string().nullable().optional(),
+      transparency: availabilitySchema.optional(),
+      visibility: visibilitySchema.optional(),
+      reminders: eventRemindersSchema.optional(),
+      attendees: z.array(attendeeSchema).optional(),
+      guestsCanModify: z.boolean().optional(),
+      guestsCanInviteOthers: z.boolean().optional(),
+      guestsCanSeeOtherGuests: z.boolean().optional(),
+      conferenceData: z
+        .object({
+          createRequest: z.object({
+            requestId: z.string().min(1),
+            conferenceSolutionKey: z.object({
+              type: z.literal("hangoutsMeet"),
+            }),
+          }),
+        })
+        .nullable()
+        .optional(),
       summary: z.string().optional(),
       description: z.string().optional(),
       location: z.string().optional(),
@@ -130,6 +182,7 @@ export const pendingWriteSchema: z.ZodType<PendingWrite> = z
         .object({ private: z.record(z.string(), z.string()) })
         .optional(),
     }),
+    openAfterSave: z.boolean().optional(),
     sendUpdates: z.enum(["all", "none"]),
     status: z.enum([
       "queued",
@@ -170,6 +223,20 @@ export function eventDraft(event: CalendarEvent): EventDraft {
     end: event.end,
     timeZone: event.timeZone,
     recurrence: event.recurrence ?? [],
+    colorId: event.colorId ?? "",
+    transparency: event.transparency ?? "opaque",
+    visibility: event.visibility ?? "default",
+    reminders: event.reminders ?? { useDefault: true },
+    ...(event.attendees &&
+    !event.attendeesOmitted &&
+    event.attendees.length <= 200 &&
+    event.attendees.every((a) => a.email)
+      ? { attendees: event.attendees as z.infer<typeof draftAttendeesSchema> }
+      : {}),
+    guestsCanModify: event.guestsCanModify ?? false,
+    guestsCanInviteOthers: event.guestsCanInviteOthers ?? true,
+    guestsCanSeeOtherGuests: event.guestsCanSeeOtherGuests ?? true,
+    conference: "keep",
   };
 }
 export function eventBody(draft: EventDraft): EventBody {
@@ -184,6 +251,22 @@ export function eventBody(draft: EventDraft): EventBody {
       ? { date: draft.end, dateTime: null, timeZone: null }
       : { date: null, dateTime: draft.end, timeZone: draft.timeZone },
     recurrence: draft.recurrence,
+    ...(draft.colorId !== undefined ? { colorId: draft.colorId || null } : {}),
+    ...(draft.transparency !== undefined
+      ? { transparency: draft.transparency }
+      : {}),
+    ...(draft.visibility !== undefined ? { visibility: draft.visibility } : {}),
+    ...(draft.reminders ? { reminders: draft.reminders } : {}),
+    ...(draft.attendees ? { attendees: draft.attendees } : {}),
+    ...(draft.guestsCanModify !== undefined
+      ? { guestsCanModify: draft.guestsCanModify }
+      : {}),
+    ...(draft.guestsCanInviteOthers !== undefined
+      ? { guestsCanInviteOthers: draft.guestsCanInviteOthers }
+      : {}),
+    ...(draft.guestsCanSeeOtherGuests !== undefined
+      ? { guestsCanSeeOtherGuests: draft.guestsCanSeeOtherGuests }
+      : {}),
   };
 }
 export function changedBody(base: CalendarEvent, draft: EventDraft): EventBody {
@@ -195,8 +278,19 @@ export function changedBody(base: CalendarEvent, draft: EventDraft): EventBody {
     "description",
     "location",
     "recurrence",
+    "colorId",
+    "transparency",
+    "visibility",
+    "reminders",
+    "attendees",
+    "guestsCanModify",
+    "guestsCanInviteOthers",
+    "guestsCanSeeOtherGuests",
   ] as const) {
-    if (JSON.stringify(before[key]) !== JSON.stringify(after[key]))
+    if (
+      after[key] !== undefined &&
+      JSON.stringify(before[key]) !== JSON.stringify(after[key])
+    )
       Object.assign(patch, { [key]: after[key] });
   }
   if (
@@ -262,6 +356,33 @@ export function overlayWrites(
         if (sameWriteTarget(row, event))
           result.set(event.key, {
             ...event,
+            ...Object.fromEntries(
+              [
+                "colorId",
+                "transparency",
+                "visibility",
+                "reminders",
+                "attendees",
+                "guestsCanModify",
+                "guestsCanInviteOthers",
+                "guestsCanSeeOtherGuests",
+              ]
+                .filter((key) => key in row.patch)
+                .map((key) => [key, row.event[key as keyof CalendarEvent]]),
+            ),
+            ...(row.patch.attendees
+              ? { attendeeCount: row.event.attendeeCount }
+              : {}),
+            ...("conferenceData" in row.patch
+              ? {
+                  meetingLink: row.event.meetingLink,
+                  conferenceType: row.event.conferenceType,
+                  conferenceStatus: row.event.conferenceStatus,
+                }
+              : {}),
+            ...(row.patch.colorId !== undefined
+              ? { color: row.event.color }
+              : {}),
             ...(row.patch.summary !== undefined
               ? { title: row.event.title }
               : {}),

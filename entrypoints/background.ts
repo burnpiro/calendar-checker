@@ -47,6 +47,10 @@ export default defineBackground(() => {
     service,
     google,
     eventSync.repository,
+    () => new Date(),
+    async (url) => {
+      await chrome.tabs.create({ url });
+    },
   );
   const reminderPlatform = new ReminderPlatform();
   const reminders = new ReminderService(

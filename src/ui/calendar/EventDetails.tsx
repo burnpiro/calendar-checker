@@ -124,6 +124,23 @@ export function EventDetails({
                   ? "Only availability is shared. Google does not provide event titles or details; overlapping events may appear as one busy period."
                   : event.description || "No description."}
               </Dialog.Description>
+              {!event.availabilityOnly && (
+                <p className="editor-note">
+                  {event.transparency === "transparent" ? "Free" : "Busy"} ·{" "}
+                  {event.visibility ?? "default"} visibility
+                </p>
+              )}
+              {event.conferenceStatus === "pending" && (
+                <p className="editor-note">
+                  Google is creating the meeting link. Sync again shortly.
+                </p>
+              )}
+              {event.conferenceStatus === "failure" && (
+                <p className="write-error">
+                  Google could not create this meeting link. Edit the event to
+                  request a new Google Meet.
+                </p>
+              )}
               {editingError && (
                 <p className="write-error" role="alert">
                   {editingError}

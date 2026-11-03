@@ -364,3 +364,111 @@ describe("Google event write HTTP protocol", () => {
     });
   });
 });
+
+describe("extended event metadata", () => {
+  it("retains guest responses, reminder methods, privacy and async conference state", async () => {
+    const raw = {
+      id: "extended",
+      summary: "Extended event",
+      start: { dateTime: "2026-11-03T08:00:00Z" },
+      end: { dateTime: "2026-11-03T09:00:00Z" },
+      colorId: "11",
+      transparency: "transparent",
+      visibility: "private",
+      reminders: {
+        useDefault: false,
+        overrides: [{ method: "email", minutes: 60 }],
+      },
+      attendees: [
+        {
+          email: "guest@example.test",
+          responseStatus: "accepted",
+          optional: true,
+        },
+      ],
+      conferenceData: { createRequest: { status: { statusCode: "pending" } } },
+    };
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(reply({ items: [raw], timeZone: "UTC" }));
+    const result = await new GoogleCalendarGateway(fetcher).getInstances(
+      "token",
+      calendar.id,
+      "2026-11-01T00:00:00Z",
+      "2026-12-01T00:00:00Z",
+    );
+    expect(
+      normalizeGoogleEvent(result.events[0]!, account, calendar, "UTC", at),
+    ).toMatchObject({
+      color: "#d50000",
+      colorId: "11",
+      visibility: "private",
+      transparency: "transparent",
+      reminders: raw.reminders,
+      attendees: raw.attendees,
+      conferenceStatus: "pending",
+    });
+    const projection = new URL(
+      String(fetcher.mock.calls[0]![0]),
+    ).searchParams.get("fields")!;
+    expect(projection).toContain("conferenceData");
+    expect(projection).toContain("reminders");
+    expect(projection).toContain("attendees,attendeesOmitted");
+  });
+  it("sends conferenceDataVersion for explicit Meet creation/removal and preserves conditional writes", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => reply({ id: "event" }));
+    const gateway = new GoogleCalendarGateway(fetcher);
+    await gateway.insertEvent(
+      "token",
+      "calendar",
+      {
+        conferenceData: {
+          createRequest: {
+            requestId: "stable",
+            conferenceSolutionKey: { type: "hangoutsMeet" },
+          },
+        },
+      },
+      "all",
+    );
+    await gateway.patchEvent(
+      "token",
+      "calendar",
+      "event",
+      { conferenceData: null },
+      '"etag"',
+      "none",
+    );
+    await gateway.patchEvent(
+      "token",
+      "calendar",
+      "event",
+      { summary: "Title only" },
+      '"etag"',
+      "none",
+    );
+    expect(
+      new URL(String(fetcher.mock.calls[0]![0])).searchParams.get(
+        "conferenceDataVersion",
+      ),
+    ).toBe("1");
+    expect(
+      new URL(String(fetcher.mock.calls[1]![0])).searchParams.get(
+        "conferenceDataVersion",
+      ),
+    ).toBe("1");
+    expect(fetcher.mock.calls[1]![1]?.headers).toMatchObject({
+      "If-Match": '"etag"',
+    });
+    expect(JSON.parse(String(fetcher.mock.calls[1]![1]?.body))).toEqual({
+      conferenceData: null,
+    });
+    expect(
+      new URL(String(fetcher.mock.calls[2]![0])).searchParams.has(
+        "conferenceDataVersion",
+      ),
+    ).toBe(false);
+  });
+});

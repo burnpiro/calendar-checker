@@ -1,4 +1,11 @@
 import { z } from "zod";
+import {
+  attendeeSchema,
+  eventRemindersSchema,
+  availabilitySchema,
+  visibilitySchema,
+  eventColor,
+} from "./event-options";
 import { Temporal } from "temporal-polyfill";
 import type { Account, CalendarSummary } from "../shared/model";
 import { AppError } from "../shared/errors";
@@ -44,13 +51,33 @@ export const googleEventSchema = z.object({
       displayName: z.string().optional(),
     })
     .optional(),
-  attendees: z
-    .array(
-      z.object({
-        self: z.boolean().optional(),
-        responseStatus: z.string().optional(),
-      }),
-    )
+  colorId: z.string().nullable().optional(),
+  transparency: availabilitySchema.optional(),
+  visibility: visibilitySchema.optional(),
+  reminders: eventRemindersSchema.optional(),
+  attendees: z.array(attendeeSchema).optional(),
+  attendeesOmitted: z.boolean().optional(),
+  guestsCanInviteOthers: z.boolean().optional(),
+  guestsCanSeeOtherGuests: z.boolean().optional(),
+  conferenceData: z
+    .object({
+      conferenceSolution: z
+        .object({ key: z.object({ type: z.string().optional() }).optional() })
+        .optional(),
+      createRequest: z
+        .object({
+          status: z
+            .object({ statusCode: z.enum(["pending", "success", "failure"]) })
+            .optional(),
+        })
+        .optional(),
+      entryPoints: z
+        .array(
+          z.object({ entryPointType: z.string(), uri: z.string().optional() }),
+        )
+        .optional(),
+    })
+    .nullable()
     .optional(),
 });
 export type GoogleEvent = z.infer<typeof googleEventSchema>;
@@ -102,7 +129,20 @@ export function normalizeGoogleEvent(
       location: raw.location ?? "",
       calendarName: calendar.summary,
       accountName: account.email,
-      color: calendar.backgroundColor ?? "#7765d8",
+      color: eventColor(
+        raw.colorId ?? undefined,
+        calendar.backgroundColor ?? "#7765d8",
+      ),
+      colorId: raw.colorId ?? undefined,
+      transparency: raw.transparency,
+      visibility: raw.visibility,
+      reminders: raw.reminders,
+      attendees: raw.attendees ?? [],
+      attendeesOmitted: raw.attendeesOmitted,
+      guestsCanInviteOthers: raw.guestsCanInviteOthers,
+      guestsCanSeeOtherGuests: raw.guestsCanSeeOtherGuests,
+      conferenceType: raw.conferenceData?.conferenceSolution?.key?.type,
+      conferenceStatus: raw.conferenceData?.createRequest?.status?.statusCode,
       timeZone: zone,
       eventType: EVENT_TYPES.includes(
         raw.eventType as (typeof EVENT_TYPES)[number],
@@ -125,7 +165,12 @@ export function normalizeGoogleEvent(
         raw.originalStartTime?.date ?? raw.originalStartTime?.dateTime,
       iCalUID: raw.iCalUID,
       htmlLink: safeLink(raw.htmlLink),
-      meetingLink: safeLink(raw.hangoutLink),
+      meetingLink: safeLink(
+        raw.hangoutLink ??
+          raw.conferenceData?.entryPoints?.find(
+            (p) => p.entryPointType === "video",
+          )?.uri,
+      ),
       organizer: raw.organizer?.displayName ?? raw.organizer?.email,
       attendeeCount: raw.attendees?.length,
       responseStatus: raw.attendees?.find((attendee) => attendee.self)

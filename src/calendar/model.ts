@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { Temporal } from "temporal-polyfill";
+import {
+  attendeeSchema,
+  eventRemindersSchema,
+  availabilitySchema,
+  visibilitySchema,
+} from "./event-options";
 import { isTimeZone } from "../shared/preferences";
 
 export const EVENT_TYPES = [
@@ -44,6 +50,16 @@ const identity = {
   calendarName: z.string(),
   accountName: z.string(),
   timeZone: z.string().refine((zone) => zone !== "device" && isTimeZone(zone)),
+  colorId: z.string().optional(),
+  transparency: availabilitySchema.optional(),
+  visibility: visibilitySchema.optional(),
+  reminders: eventRemindersSchema.optional(),
+  attendees: z.array(attendeeSchema).optional(),
+  attendeesOmitted: z.boolean().optional(),
+  guestsCanInviteOthers: z.boolean().optional(),
+  guestsCanSeeOtherGuests: z.boolean().optional(),
+  conferenceType: z.string().optional(),
+  conferenceStatus: z.enum(["pending", "success", "failure"]).optional(),
   etag: z.string().optional(),
   recurrence: z.array(z.string()).optional(),
   organizerSelf: z.boolean().optional(),

@@ -27,6 +27,7 @@ export const calendarSchema = z.object({
   accessRole: z.string(),
   primary: z.boolean(),
   timeZone: z.string().optional(),
+  allowedConferenceSolutionTypes: z.array(z.string()).optional(),
   backgroundColor: z
     .string()
     .regex(/^#[0-9a-f]{6}$/i)
