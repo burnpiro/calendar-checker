@@ -2,7 +2,7 @@
 
 Last updated: 2026-11-03.
 
-## GitHub publication preparation · v0.6.0
+## Public source and GitHub Pages · v0.6.0
 
 GPL-3.0-only application license added to source/package metadata and copied into production builds; dependency notices are preserved. The environment ignore rules cover dotenv variants, `.envrc`, local credential files and generated archives. Gitleaks 8.30.1 found no detected secrets across the original 29-commit history. Documentation project identifiers and personal commit email metadata were sanitized across all branch commit histories before the first push; the extension public identity key is intentionally preserved.
 
@@ -10,7 +10,9 @@ Five 1280 × 800 Chrome Web Store screenshots and an extra website popup capture
 
 Validation: `npm run check` passes (239 unit/adapter tests, TypeScript, formatting, production build and 3 release-auditor tests). The GPL-bearing build contains 25 files. Both desktop (1440 px) and mobile (390 px) website checks pass, including gallery image loads, keyboard selection, dialog focus return, zero horizontal overflow, no third-party resource requests and four WCAG A/AA axe scans. The screenshot generator passes. All 21 isolated Chromium extension regression tests pass, including actual toolbar-popup sizing. Local site and public screenshot layout were visually inspected.
 
-Repository visibility is awaiting the user's selection; nothing has been pushed or deployed yet. The rewritten 30-commit history passes a second Gitleaks scan and explicit branch/tag object and email assertions. A private pre-rewrite backup is outside the repository. Local Codex checkpoint refs are preserved for recovery and must not be pushed; automatic review rejected pruning them. Only the sanitized branch will be uploaded. Next concrete task: push the audited source and enable the requested GitHub Pages site once visibility is confirmed. Existing live Google/OS acceptance gates remain unchanged.
+The user approved a public repository. Source is published at [burnpiro/calendar-checker](https://github.com/burnpiro/calendar-checker), with only the sanitized `main` branch pushed. The pre-publication 31-commit history passes a final Gitleaks scan and explicit branch/tag object and email assertions. A private pre-rewrite backup is outside the repository. Local Codex checkpoint refs are preserved for recovery and must not be pushed; automatic review rejected pruning them.
+
+The [feature website](https://burnpiro.github.io/calendar-checker/) and [privacy policy](https://burnpiro.github.io/calendar-checker/privacy.html) are live. [Pages deployment 41730115889](https://github.com/burnpiro/calendar-checker/actions/runs/41730115889) succeeded. All 11 served HTML/CSS/JS/icon/screenshot files match local SHA-256 hashes. Live browser checks at 1440 px and 390 px pass for all six gallery images, dialog opening/Escape, overflow and the privacy page, with no failed resource requests or JavaScript errors. GitHub confirms public visibility, `main` as default branch and GPL-3.0 license detection. No configured extension ZIP or Chrome Web Store listing was published. Next concrete task: continue the existing real Google/OS acceptance gates in `STAGE-6.md`; source/site publication does not complete those gates.
 
 ## Stage 1
 
@@ -31,7 +33,7 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 ## Next work
 
-Stage 6 remaining live gates: account renewal/restart/expiry/revocation, disposable real Google event/guest/Meet behavior, automatic OS notification/audio/sleep acceptance and VoiceOver/platform review. Basic real two-account connection/sync is now user-confirmed. Local audits and packaging are implemented; publishing remains separate.
+Stage 6 remaining live gates: account renewal/restart/expiry/revocation, disposable real Google event/guest/Meet behavior, automatic OS notification/audio/sleep acceptance and VoiceOver/platform review. Basic real two-account connection/sync is now user-confirmed. Local audits and packaging are implemented; Chrome Web Store submission remains separate.
 
 Reload v0.6.0 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
 

@@ -20,7 +20,7 @@ Before each later push, inspect staged changes and reachable history for secrets
 
 The Pages workflow uploads **only `site/`**. It never uploads the working directory, `.env.local`, `.output/` or test artifacts. It uses commit-pinned official GitHub Actions and scoped deployment permissions. Pushes to `main` that change the site or its workflow deploy it; other source-only pushes do not trigger a site deployment. Manual dispatch is also available.
 
-Configure GitHub repository Settings → Pages → Source as **GitHub Actions**. The project URL is `https://burnpiro.github.io/calendar-checker/`. Repository and website publication status/evidence belongs in `STATUS.md`.
+GitHub repository Settings → Pages → Source is configured as **GitHub Actions**. The project URL is `https://burnpiro.github.io/calendar-checker/`. Repository and website publication status/evidence belongs in `STATUS.md`.
 
 ## Screenshots and verification
 
