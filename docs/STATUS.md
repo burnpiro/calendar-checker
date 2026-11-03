@@ -23,7 +23,13 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 Stage 6: live Google multi-account/read/write acceptance, real OS notification/audio/native-button and sleep/wake acceptance, accessibility/performance review, and local unpacked/ZIP packaging. Publishing remains a separate request.
 
-Reload v0.5.4 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+Reload v0.5.5 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+
+## Denser Compact calendar · v0.5.5
+
+Compact density now tightens event rows, calendar day headings/numbers, toolbar/context/footer, sidebar branding/navigation and account/calendar rows on both surfaces. Popup-specific overrides keep the difference visible at 800×600. Compact full-calendar month cells automatically fit available events rather than stopping at three; Comfortable retains its existing layout. Public FullCalendar eventInner/dayHeaderInner hooks supply local style classes. Week-hour height, scrolling/fit behavior, popup document dimensions and normal-sized event dialogs are preserved. Settings explains the density scope.
+
+Validation: `npm run check` passes (TypeScript, **220 unit/adapter tests**, formatting and production build), followed by **17 isolated Chromium tests**. A disposable-profile comparison measured popup event rows at about 21.6px → 12px, toolbar 48px → 40px; full-calendar rows about 21.6px → 14px, toolbar 84px → 56px and sidebar 252px → 220px. Crowded month cells displayed more event rows, screenshots were inspected, both surfaces had no page overflow, and a real Compact toolbar popup opened at 800×600. Fictional events only; no personal settings were changed.
 
 ## Compact, grouped Settings · v0.5.4
 

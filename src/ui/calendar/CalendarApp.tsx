@@ -749,7 +749,9 @@ function CalendarBody({
               editable={false}
               dateClick={(info) => newEvent({ start: info.dateStr })}
               eventInteractive
-              dayMaxEvents={compact ? true : 3}
+              dayMaxEvents={
+                compact || settings.density === "compact" ? true : 3
+              }
               fixedWeekCount
               expandRows
               nowIndicator
@@ -789,6 +791,7 @@ function CalendarBody({
               slotHeaderClass="calendar-slot-header"
               slotHeaderInnerClass="calendar-slot-label"
               eventClass={eventClasses}
+              eventInnerClass="calendar-event-inner"
               eventTitleClass="calendar-event-title"
               eventTimeClass="calendar-event-time"
               popoverClass="calendar-event-popover"
@@ -796,6 +799,9 @@ function CalendarBody({
               popoverCloseContent={() => <X size={16} />}
               dayHeaderClass={(info) =>
                 info.inPopover ? "calendar-popover-heading" : ""
+              }
+              dayHeaderInnerClass={(info) =>
+                info.inPopover ? "" : "calendar-day-heading"
               }
               moreLinkClass="calendar-more-link"
               moreLinkInnerClass="calendar-more-text"

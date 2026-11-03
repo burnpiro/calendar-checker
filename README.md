@@ -2,7 +2,7 @@
 
 A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
 
-## Current release: stage 5 · v0.5.4
+## Current release: stage 5 · v0.5.5
 
 Google event reading/synchronization, event creation/editing, local reminders and dual time zones are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
 
@@ -53,7 +53,7 @@ npm run build
 npm run extension:id
 ```
 
-Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.5.4. The native-popup sizing correction remains covered by an actual toolbar-popup test.
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.5.5. The native-popup sizing correction remains covered by an actual toolbar-popup test.
 
 Without connected accounts, the calendar shows an empty grid and a prompt to connect an account. Settings displays setup instructions and disables Google sign-in until a client ID is configured. Preserve any existing `.env.local` when updating.
 
@@ -76,6 +76,10 @@ Busy-only calendars participate with a “Busy” tooltip. Contiguous day segmen
 The badge background matches the selected event's color, with black or white text chosen for readability. Dates and times use the calendar's primary time zone. All-day, declined, and already-started events are skipped. Shared calendars use the same preferred cached account as the calendar UI. Hover the icon for the saved event's name, date/time, and zone. Reconnect or storage warnings take priority.
 
 **Settings → Calendar appearance → Show next event on toolbar** enables or disables the event badge (enabled by default). It refreshes on settings/account/cache updates and the existing one-minute scheduler, including offline use; Chrome can delay background alarms. It reflects the bounded local cache, so missing or stale Google data can affect which event is available. The toolbar badge itself does not send reminders.
+
+## Calendar density
+
+**Settings → Calendar appearance → Density** changes the calendar popup and full calendar. **Compact** uses shorter event rows, tighter header/footer and calendar-list spacing, and a narrower sidebar. It lets month cells fit as many events as available space permits; Comfortable retains the full calendar's three-event limit. Compact also applies inside the popup, whose smaller event text and header leave more room for dates and events. Details and editing dialogs retain their normal sizing. The week-hour height and scrolling/fit settings remain independent.
 
 ## Week view layout
 

@@ -519,10 +519,6 @@
 .calendar-event-title {
   font-weight: 500;
 }
-.density-compact .calendar-event {
-  font-size: 10px;
-  line-height: 1.3;
-}
 .calendar-other-month {
   opacity: 0.55;
 }
@@ -855,4 +851,186 @@
     animation: none !important;
     transition: none !important;
   }
+}
+/* Density is independent of popup sizing and the saved week-hour height. */
+.calendar-page.density-compact {
+  --sidebar-width: 220px;
+}
+.density-compact .calendar-toolbar {
+  min-height: 56px;
+  padding: 10px 18px 6px;
+  gap: 10px;
+}
+.density-compact .calendar-navigation {
+  gap: 10px;
+}
+.density-compact .calendar-navigation h1 {
+  font-size: 20px;
+}
+.density-compact .calendar-tools {
+  gap: 7px;
+}
+.density-compact .icon-button {
+  width: 28px;
+  height: 28px;
+}
+.density-compact .date-arrows .icon-button,
+.density-compact .mini-heading .icon-button {
+  width: 24px;
+  height: 24px;
+}
+.density-compact .today-button {
+  padding: 5px 10px;
+}
+.density-compact .view-switch {
+  padding: 2px;
+}
+.density-compact .view-switch button {
+  padding: 4px 8px;
+}
+.density-compact .calendar-search {
+  padding: 5px 8px;
+}
+.density-compact .calendar-context {
+  padding: 0 18px 8px;
+}
+.density-compact .calendar-viewport {
+  padding: 0 14px;
+}
+.density-compact .calendar-day-heading {
+  padding-block: 3px;
+  font-size: 10px;
+  line-height: 14px;
+}
+.density-compact .calendar-day-top {
+  padding-block: 0;
+}
+.density-compact .calendar-day-number {
+  height: 18px;
+  margin-block: 1px;
+  padding-inline: 5px;
+  font-size: 10px;
+  line-height: 18px;
+}
+.density-compact .calendar-event {
+  font-size: 10px;
+  line-height: 1.1;
+  border-radius: 3px;
+}
+.density-compact .calendar-event-inner {
+  padding-block: 0;
+  column-gap: 3px;
+}
+.density-compact .calendar-event-title,
+.density-compact .calendar-event-time {
+  line-height: 12px;
+}
+.density-compact .calendar-event[data-event-shape="row"],
+.density-compact .calendar-event[data-event-shape="all-day"] {
+  min-height: 14px;
+  padding-block: 0;
+}
+.density-compact .calendar-more-link {
+  padding-block: 0;
+  margin-block: 0;
+}
+.density-compact .calendar-more-text {
+  font-size: 9px;
+  line-height: 12px;
+}
+.density-compact .calendar-sidebar {
+  padding: 16px 14px 12px;
+}
+.density-compact .sidebar-brand {
+  margin-bottom: 14px;
+  font-size: 16px;
+  gap: 8px;
+}
+.density-compact .calendar-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+.density-compact .sidebar-brand > div > span {
+  display: none;
+}
+.density-compact .mini-calendar {
+  margin: 3px 0 18px;
+}
+.density-compact .mini-heading {
+  margin-bottom: 8px;
+}
+.density-compact .mini-grid {
+  gap: 1px;
+}
+.density-compact .mini-grid button {
+  width: 22px;
+  height: 22px;
+}
+.density-compact .calendar-list {
+  gap: 10px;
+}
+.density-compact .sidebar-section-title {
+  margin-bottom: 9px;
+}
+.density-compact .calendar-account-group legend {
+  font-size: 10px;
+  padding-bottom: 3px;
+}
+.density-compact .calendar-list-item {
+  padding: 5px 4px;
+  gap: 8px;
+}
+.density-compact .calendar-list-name {
+  font-size: 11px;
+  line-height: 1.3;
+}
+.density-compact .sidebar-bottom {
+  padding-top: 16px;
+}
+.density-compact .sidebar-bottom > span {
+  padding-bottom: 9px;
+}
+.density-compact .sidebar-settings {
+  padding: 8px 5px;
+}
+.density-compact .calendar-footer {
+  padding: 6px 14px;
+  gap: 14px;
+}
+.calendar-popup.density-compact .calendar-toolbar {
+  min-height: 40px;
+  padding: 4px 8px 2px;
+  gap: 6px;
+}
+.calendar-popup.density-compact .calendar-navigation {
+  gap: 4px;
+}
+.calendar-popup.density-compact .calendar-navigation h1 {
+  font-size: 16px;
+}
+.calendar-popup.density-compact .calendar-context {
+  min-height: 24px;
+  padding: 0 10px 3px;
+}
+.calendar-popup.density-compact .calendar-viewport {
+  padding: 0;
+}
+.calendar-popup.density-compact .calendar-event {
+  font-size: 9px;
+}
+.calendar-popup.density-compact .calendar-event-title,
+.calendar-popup.density-compact .calendar-event-time {
+  line-height: 11px;
+}
+.calendar-popup.density-compact .calendar-event[data-event-shape="row"],
+.calendar-popup.density-compact .calendar-event[data-event-shape="all-day"] {
+  min-height: 12px;
+}
+.calendar-popup.density-compact .calendar-sidebar {
+  width: 220px;
+}
+.calendar-popup.density-compact .calendar-footer {
+  padding: 4px 10px;
+  gap: 12px;
 }

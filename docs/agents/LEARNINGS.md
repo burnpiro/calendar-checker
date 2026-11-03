@@ -87,3 +87,5 @@ Keep concise, verified implementation facts here. Include the date and supportin
 
 - Settings uses anchor navigation, everyday groups and native advanced disclosures. Keep forms mounted in closed disclosures; reveal ancestor details on native invalid events so users can fix hidden required controls. Preference components may remount after saves, so integration flows should reopen their disclosure through visible navigation before editing again.
 - Cache information belongs with sync; OAuth setup/connection timing and diagnostics are advanced. Account removal/token tests are under More options. These layout choices add no preference keys, permissions or background behavior.
+
+- V0.5.5: density selectors follow popup CSS so Compact remains visibly distinct in the native popup. Use public eventInnerClass/dayHeaderInnerClass for padding; compact full-calendar months use automatic dayMaxEvents. Keep density independent of saved hour height and popup document sizing.

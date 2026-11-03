@@ -152,6 +152,10 @@ export function AppearanceSettings({
                 <option value="comfortable">Comfortable</option>
                 <option value="compact">Compact</option>
               </select>
+              <small>
+                Compact uses tighter controls, sidebar and event rows in both
+                calendar windows. Week hour height is configured separately.
+              </small>
             </label>
             <label className="check-setting">
               <input
