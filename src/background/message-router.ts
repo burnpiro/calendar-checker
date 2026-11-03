@@ -139,6 +139,10 @@ export async function routeCommand(
             ...command.settings,
           });
         await service.updateSettings(command.settings);
+        if (command.settings.excludeEventDescriptions !== undefined)
+          await eventSync?.repository.applyDescriptionPrivacy(
+            command.settings.excludeEventDescriptions,
+          );
         await reschedule();
         break;
       case "SYNC_EVENTS":

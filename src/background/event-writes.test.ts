@@ -203,6 +203,90 @@ function harness(accounts = [account()]) {
   };
 }
 
+describe("event description privacy", () => {
+  it("purges queued provider copies and conflict/master bases without erasing Google descriptions on title-only edits", async () => {
+    const h = harness();
+    await h.db.events.put(h.event);
+    const command = h.command(true);
+    await h.writes.save(command);
+    await h.auth.updateSettings({ excludeEventDescriptions: true });
+    await h.cache.applyDescriptionPrivacy(true);
+    let row = (await h.db.outbox.toArray())[0]!;
+    expect(row.patch).not.toHaveProperty("description");
+    expect(row.base).toMatchObject({
+      description: "",
+      descriptionOmitted: true,
+      etag: raw.etag,
+    });
+    expect(row.event.description).toBe("");
+    h.remote.set(raw.id, { ...raw, etag: '"v2"' });
+    await h.writes.run();
+    row = (await h.db.outbox.toArray())[0]!;
+    expect(row.status).toBe("conflict");
+    expect(row.remote).toMatchObject({
+      description: "",
+      descriptionOmitted: true,
+    });
+    await h.writes.resolve(row.id, "mine");
+    await h.writes.run();
+    expect(h.remote.get(raw.id)).toMatchObject({
+      summary: "My change",
+      description: raw.description,
+    });
+    expect(JSON.stringify(await h.db.outbox.toArray())).not.toContain(
+      raw.description,
+    );
+    // A previously open editor can still send an old full base; insertion scrubs it too.
+    await h.db.outbox.clear();
+    await h.writes.delete(crypto.randomUUID(), h.event, "event", "none");
+    expect(JSON.stringify(await h.db.outbox.toArray())).not.toContain(
+      raw.description,
+    );
+  });
+  it("keeps explicitly queued descriptions until acknowledgement then drops them from local write copies", async () => {
+    const h = harness();
+    const command = h.command(true);
+    command.draft.description = "My unsynced description";
+    await h.writes.save(command);
+    await h.auth.updateSettings({ excludeEventDescriptions: true });
+    await h.cache.applyDescriptionPrivacy(true);
+    expect((await h.db.outbox.toArray())[0]!.patch.description).toBe(
+      "My unsynced description",
+    );
+    expect(JSON.stringify(await h.db.outbox.toArray())).not.toContain(
+      raw.description,
+    );
+    await h.writes.run();
+    expect(h.remote.get(raw.id)!.description).toBe("My unsynced description");
+    const saved = (await h.db.outbox.toArray())[0]!;
+    expect(saved.status).toBe("awaiting-sync");
+    expect(saved.patch).not.toHaveProperty("description");
+    expect(saved.event).toMatchObject({
+      description: "",
+      descriptionOmitted: true,
+    });
+    expect(JSON.stringify(saved)).not.toContain("My unsynced description");
+  });
+  it("prepares recurring masters with omitted descriptions and preserves a blank draft on unrelated edits", async () => {
+    const h = harness();
+    const master = { ...raw, recurrence: ["RRULE:FREQ=WEEKLY"] };
+    h.remote.set(raw.id, master);
+    await h.db.events.put({ ...h.event, recurringEventId: raw.id });
+    await h.auth.updateSettings({ excludeEventDescriptions: true });
+    const base = await h.writes.prepare(h.event.key, "series");
+    expect(base).toMatchObject({
+      description: "",
+      descriptionOmitted: true,
+      recurrence: master.recurrence,
+    });
+    expect(JSON.stringify(await h.db.editBases.toArray())).not.toContain(
+      raw.description,
+    );
+    const draft = { ...eventDraft(base), title: "Renamed series" };
+    expect(changedBody(base, draft)).not.toHaveProperty("description");
+  });
+});
+
 describe("durable event writing", () => {
   it("persists every event option offline and sends it with a stable Meet request", async () => {
     const h = harness();

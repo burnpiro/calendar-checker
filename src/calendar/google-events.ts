@@ -96,6 +96,7 @@ export function normalizeGoogleEvent(
   calendar: CalendarSummary,
   fallbackZone: string,
   at: string,
+  excludeDescription = false,
 ): CalendarEvent | null {
   if (raw.status === "cancelled") return null;
   try {
@@ -125,7 +126,8 @@ export function normalizeGoogleEvent(
       calendarId: calendar.id,
       eventId: raw.id,
       title: raw.summary || "Busy",
-      description: raw.description ?? "",
+      description: excludeDescription ? "" : (raw.description ?? ""),
+      ...(excludeDescription ? { descriptionOmitted: true } : {}),
       location: raw.location ?? "",
       calendarName: calendar.summary,
       accountName: account.email,

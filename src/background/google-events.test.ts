@@ -472,3 +472,77 @@ describe("extended event metadata", () => {
     ).toBe(false);
   });
 });
+
+describe("description privacy projections", () => {
+  it("excludes descriptions on every list page and on get/insert/patch responses while preserving explicit writes", async () => {
+    const event = {
+      id: "event",
+      description: "Unexpected provider description",
+      recurrence: ["RRULE:FREQ=WEEKLY"],
+      extendedProperties: { private: { calendarCheckerMutation: "operation" } },
+    };
+    let lists = 0;
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = new URL(String(input));
+      return reply(
+        url.pathname.endsWith("/events") && url.searchParams.has("singleEvents")
+          ? {
+              items: [event],
+              timeZone: "UTC",
+              ...(lists++ === 0 ? { nextPageToken: "page2" } : {}),
+            }
+          : event,
+      );
+    });
+    const gateway = new GoogleCalendarGateway(fetcher);
+    const result = await gateway.getInstances(
+      "token",
+      "calendar",
+      at,
+      "2026-12-01T00:00:00Z",
+      true,
+    );
+    expect(result.events).toHaveLength(2);
+    expect(JSON.stringify(result)).not.toContain(event.description);
+    const got = await gateway.getEvent("token", "calendar", "event", true);
+    expect(got).toMatchObject({
+      recurrence: event.recurrence,
+      extendedProperties: event.extendedProperties,
+    });
+    const inserted = await gateway.insertEvent(
+      "token",
+      "calendar",
+      { description: "Explicit draft" },
+      "none",
+      true,
+    );
+    const patched = await gateway.patchEvent(
+      "token",
+      "calendar",
+      "event",
+      { summary: "Rename" },
+      '"etag"',
+      "none",
+      true,
+    );
+    expect(JSON.stringify([got, inserted, patched])).not.toContain(
+      event.description,
+    );
+    for (const [url] of fetcher.mock.calls) {
+      const fields = new URL(String(url)).searchParams.get("fields");
+      expect(fields).toBeTruthy();
+      expect(fields).not.toContain("description");
+      expect(fields).toContain("etag");
+    }
+    const post = fetcher.mock.calls.find(
+      ([, init]) => init?.method === "POST",
+    )!;
+    expect(JSON.parse(String(post[1]?.body))).toEqual({
+      description: "Explicit draft",
+    });
+    const patch = fetcher.mock.calls.find(
+      ([, init]) => init?.method === "PATCH",
+    )!;
+    expect(JSON.parse(String(patch[1]?.body))).toEqual({ summary: "Rename" });
+  });
+});

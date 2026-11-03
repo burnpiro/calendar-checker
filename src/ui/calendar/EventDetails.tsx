@@ -125,7 +125,9 @@ export function EventDetails({
               >
                 {event.availabilityOnly
                   ? "Only availability is shared. Google does not provide event titles or details; overlapping events may appear as one busy period."
-                  : event.description || "No description."}
+                  : event.descriptionOmitted
+                    ? "Description not downloaded because of your privacy setting."
+                    : event.description || "No description."}
               </Dialog.Description>
               {!event.availabilityOnly && (
                 <p className="editor-note">

@@ -30,7 +30,7 @@ Provide a dedicated page accessible from the popup and full calendar. Settings a
 | DND                | Manual, until-time, weekly/overnight schedules, schedule time zone.                                                                                       |
 | Appearance         | Default view, week start, weekends, 12/24-hour clock, visible week hours, readable/fit week layout, minimum hour height, theme, density, default filters. |
 | Time zones         | Primary, optional secondary, follow device.                                                                                                               |
-| Offline storage    | Cache window/retention, storage usage, clear cache with unsynced-write protection.                                                                        |
+| Offline storage    | Cache window/retention, exclude imported descriptions, storage usage, clear cache with unsynced-write protection.                                         |
 
 Preview sound, test notification, and reset controls belong in the appropriate settings sections. Useful user-facing behavior should be configurable; limits and security invariants remain enforced. Do not expose settings for unimplemented functionality as if they work.
 

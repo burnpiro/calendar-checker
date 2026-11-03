@@ -9,6 +9,17 @@ import {
   type BusyInterval,
 } from "../calendar/availability";
 
+const INSTANCE_FIELDS =
+  "id,status,summary,description,location,start,end,eventType,etag,updated,recurringEventId,originalStartTime,iCalUID,htmlLink,hangoutLink,organizer,guestsCanModify,locked,colorId,transparency,visibility,reminders,conferenceData,attendees,attendeesOmitted,guestsCanInviteOthers,guestsCanSeeOtherGuests";
+function responseFields(excludeDescriptions: boolean, master = false): string {
+  return [
+    ...INSTANCE_FIELDS.split(",").filter(
+      (field) => !excludeDescriptions || field !== "description",
+    ),
+    ...(master ? ["recurrence", "extendedProperties"] : []),
+  ].join(",");
+}
+
 const profileSchema = z.object({
   sub: z.string().min(1),
   email: z.email(),
@@ -316,6 +327,7 @@ export class GoogleCalendarGateway implements GoogleGateway {
     calendarId: string,
     start: string,
     end: string,
+    excludeDescriptions = false,
   ): Promise<{ events: GoogleEvent[]; timeZone: string }> {
     const events: GoogleEvent[] = [];
     let timeZone = "UTC";
@@ -328,8 +340,7 @@ export class GoogleCalendarGateway implements GoogleGateway {
         showDeleted: "false",
         timeMin: start,
         timeMax: end,
-        fields:
-          "nextPageToken,timeZone,items(id,status,summary,description,location,start,end,eventType,etag,updated,recurringEventId,originalStartTime,iCalUID,htmlLink,hangoutLink,organizer,guestsCanModify,locked,colorId,transparency,visibility,reminders,conferenceData,attendees,attendeesOmitted,guestsCanInviteOthers,guestsCanSeeOtherGuests)",
+        fields: `nextPageToken,timeZone,items(${responseFields(excludeDescriptions)})`,
       },
       (value) => {
         const parsed = z
@@ -340,7 +351,10 @@ export class GoogleCalendarGateway implements GoogleGateway {
           .safeParse(value);
         if (!parsed.success)
           throw new AppError("invalid-response", { stage: "calendar-events" });
-        events.push(...(parsed.data.items ?? []));
+        for (const event of parsed.data.items ?? []) {
+          if (excludeDescriptions) delete event.description;
+          events.push(event);
+        }
         timeZone = parsed.data.timeZone ?? timeZone;
       },
     );
@@ -408,23 +422,25 @@ export class GoogleCalendarGateway implements GoogleGateway {
   private eventUrl(calendarId: string, eventId?: string): string {
     return `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events${eventId ? `/${encodeURIComponent(eventId)}` : ""}`;
   }
-  private parseEvent(value: unknown): GoogleEvent {
+  private parseEvent(value: unknown, excludeDescriptions = false): GoogleEvent {
     const parsed = googleEventSchema.safeParse(value);
     if (!parsed.success)
       throw new AppError("invalid-response", { stage: "calendar-events" });
+    if (excludeDescriptions) delete parsed.data.description;
     return parsed.data;
   }
   async getEvent(
     token: string,
     calendarId: string,
     eventId: string,
+    excludeDescriptions = false,
   ): Promise<GoogleEvent> {
+    const url = new URL(this.eventUrl(calendarId, eventId));
+    if (excludeDescriptions)
+      url.searchParams.set("fields", responseFields(true, true));
     return this.parseEvent(
-      await this.request(
-        this.eventUrl(calendarId, eventId),
-        token,
-        "calendar-events",
-      ),
+      await this.request(url.href, token, "calendar-events"),
+      excludeDescriptions,
     );
   }
   async insertEvent(
@@ -432,9 +448,12 @@ export class GoogleCalendarGateway implements GoogleGateway {
     calendarId: string,
     body: EventBody,
     sendUpdates: "all" | "none",
+    excludeDescriptions = false,
   ): Promise<GoogleEvent> {
     const url = new URL(this.eventUrl(calendarId));
     url.searchParams.set("sendUpdates", sendUpdates);
+    if (excludeDescriptions)
+      url.searchParams.set("fields", responseFields(true, true));
     if ("conferenceData" in body)
       url.searchParams.set("conferenceDataVersion", "1");
     return this.parseEvent(
@@ -443,6 +462,7 @@ export class GoogleCalendarGateway implements GoogleGateway {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       }),
+      excludeDescriptions,
     );
   }
   async patchEvent(
@@ -452,9 +472,12 @@ export class GoogleCalendarGateway implements GoogleGateway {
     body: EventBody,
     etag: string,
     sendUpdates: "all" | "none",
+    excludeDescriptions = false,
   ): Promise<GoogleEvent> {
     const url = new URL(this.eventUrl(calendarId, eventId));
     url.searchParams.set("sendUpdates", sendUpdates);
+    if (excludeDescriptions)
+      url.searchParams.set("fields", responseFields(true, true));
     if ("conferenceData" in body)
       url.searchParams.set("conferenceDataVersion", "1");
     return this.parseEvent(
@@ -463,6 +486,7 @@ export class GoogleCalendarGateway implements GoogleGateway {
         headers: { "Content-Type": "application/json", "If-Match": etag },
         body: JSON.stringify(body),
       }),
+      excludeDescriptions,
     );
   }
   async deleteEvent(

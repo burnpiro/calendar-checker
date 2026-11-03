@@ -1,3 +1,4 @@
+import { omitWriteDescriptions } from "../calendar/description-privacy";
 import { validNewRecurrence } from "../calendar/recurrence";
 import { eventColor } from "../calendar/event-options";
 import { Temporal } from "temporal-polyfill";
@@ -62,9 +63,12 @@ export class EventWriteService {
       throw new AppError("invalid-request");
   }
   async prepare(key: string, scope: EditScope): Promise<CalendarEvent> {
+    const snapshot = await this.auth.snapshot();
+    await this.repository.applyDescriptionPrivacy(
+      snapshot.settings.excludeEventDescriptions,
+    );
     const base = await this.db.events.get(key);
     if (!base) throw new AppError("event-gone");
-    const snapshot = await this.auth.snapshot();
     if (!canEditEvent(base, snapshot.accounts))
       throw new AppError("event-readonly");
     if (scope === "event") {
@@ -84,6 +88,7 @@ export class EventWriteService {
             token,
             base.calendarId,
             target,
+            snapshot.settings.excludeEventDescriptions,
           );
           const normalized = normalizeGoogleEvent(
             raw,
@@ -91,6 +96,7 @@ export class EventWriteService {
             calendar,
             base.timeZone,
             this.now().toISOString(),
+            snapshot.settings.excludeEventDescriptions,
           );
           if (!normalized) throw new AppError("event-gone");
           return normalized;
@@ -134,6 +140,11 @@ export class EventWriteService {
     return true;
   }
   private async insert(row: PendingWrite, fingerprint: string): Promise<void> {
+    const { settings } = await this.auth.snapshot();
+    await this.repository.applyDescriptionPrivacy(
+      settings.excludeEventDescriptions,
+    );
+    if (settings.excludeEventDescriptions) row = omitWriteDescriptions(row);
     await this.db.transaction("rw", this.db.outbox, this.db.meta, async () => {
       if (await this.accepted(row.id, fingerprint)) return;
       if ((await this.db.outbox.count()) >= 200)
@@ -246,6 +257,9 @@ export class EventWriteService {
     const event = eventSchema.parse({
       ...base,
       ...command.draft,
+      ...(patch.description !== undefined
+        ? { descriptionOmitted: undefined }
+        : {}),
       source: "google",
       key: eventKey(account.id, calendar.id, eventId),
       accountId: account.id,
@@ -394,6 +408,7 @@ export class EventWriteService {
   private async complete(
     row: PendingWrite,
     remote?: CalendarEvent,
+    excludeDescriptions = false,
   ): Promise<void> {
     await this.db.transaction(
       "rw",
@@ -401,7 +416,7 @@ export class EventWriteService {
       this.db.syncStates,
       async () => {
         await this.invalidate(row);
-        await this.db.outbox.put({
+        const saved: PendingWrite = {
           ...row,
           ...(remote ? { event: remote } : {}),
           openAfterSave: false,
@@ -409,7 +424,10 @@ export class EventWriteService {
           retryAt: undefined,
           error: undefined,
           remote: undefined,
-        });
+        };
+        await this.db.outbox.put(
+          excludeDescriptions ? omitWriteDescriptions(saved) : saved,
+        );
       },
     );
     // Claim the one-shot UI action before opening: a worker restart must not open repeated tabs.
@@ -429,6 +447,7 @@ export class EventWriteService {
     token: string,
     account: Parameters<typeof normalizeGoogleEvent>[1],
     calendar: Parameters<typeof normalizeGoogleEvent>[2],
+    excludeDescriptions = false,
   ): Promise<void> {
     let raw: GoogleEvent | undefined;
     const normalize = (value: GoogleEvent) =>
@@ -438,10 +457,16 @@ export class EventWriteService {
         calendar,
         row.event.timeZone,
         this.now().toISOString(),
+        excludeDescriptions,
       );
     if (row.kind !== "create" || row.attempted) {
       try {
-        raw = await this.google.getEvent(token, row.calendarId, row.eventId);
+        raw = await this.google.getEvent(
+          token,
+          row.calendarId,
+          row.eventId,
+          excludeDescriptions,
+        );
       } catch (error) {
         if (
           !(error instanceof GoogleHttpError) ||
@@ -455,7 +480,7 @@ export class EventWriteService {
         ? (normalize(raw) ?? undefined)
         : undefined;
     if (row.kind === "delete" && !remote) {
-      await this.complete(row);
+      await this.complete(row, undefined, excludeDescriptions);
       return;
     }
     if (
@@ -464,7 +489,7 @@ export class EventWriteService {
     ) {
       // The previous response may have been lost. The marker acknowledges our exact operation.
       if (remote) {
-        await this.complete(row, remote);
+        await this.complete(row, remote, excludeDescriptions);
         return;
       }
     }
@@ -503,7 +528,7 @@ export class EventWriteService {
         row.base!.etag!,
         row.sendUpdates,
       );
-      await this.complete(sending);
+      await this.complete(sending, undefined, excludeDescriptions);
     } else {
       const result =
         row.kind === "create"
@@ -512,6 +537,7 @@ export class EventWriteService {
               row.calendarId,
               { ...body, id: row.eventId },
               row.sendUpdates,
+              excludeDescriptions,
             )
           : await this.google.patchEvent(
               token,
@@ -520,15 +546,19 @@ export class EventWriteService {
               body,
               row.base!.etag!,
               row.sendUpdates,
+              excludeDescriptions,
             );
       if (result.id !== row.eventId) throw new AppError("invalid-response");
       const saved = normalize(result);
       if (!saved) throw new AppError("invalid-response");
-      await this.complete(sending, saved);
+      await this.complete(sending, saved, excludeDescriptions);
     }
   }
   async run(): Promise<void> {
     const snapshot = await this.auth.snapshot();
+    await this.repository.applyDescriptionPrivacy(
+      snapshot.settings.excludeEventDescriptions,
+    );
     if (!snapshot.oauthConfigured) return;
     const rows = (await this.repository.pending()).sort((a, b) =>
       a.createdAt.localeCompare(b.createdAt),
@@ -555,7 +585,14 @@ export class EventWriteService {
             )
               throw new AppError("event-readonly");
             const current = await this.db.outbox.get(initial.id);
-            if (current) await this.attempt(current, token, verified, calendar);
+            if (current)
+              await this.attempt(
+                current,
+                token,
+                verified,
+                calendar,
+                snapshot.settings.excludeEventDescriptions,
+              );
           },
           "event-write",
         );

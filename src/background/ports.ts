@@ -34,6 +34,7 @@ export interface EventGateway {
     calendarId: string,
     start: string,
     end: string,
+    excludeDescriptions?: boolean,
   ): Promise<{ events: GoogleEvent[]; timeZone: string }>;
 }
 export interface Repository {
@@ -49,12 +50,14 @@ export interface EventWriteGateway {
     token: string,
     calendarId: string,
     eventId: string,
+    excludeDescriptions?: boolean,
   ): Promise<GoogleEvent>;
   insertEvent(
     token: string,
     calendarId: string,
     body: EventBody,
     sendUpdates: "all" | "none",
+    excludeDescriptions?: boolean,
   ): Promise<GoogleEvent>;
   patchEvent(
     token: string,
@@ -63,6 +66,7 @@ export interface EventWriteGateway {
     body: EventBody,
     etag: string,
     sendUpdates: "all" | "none",
+    excludeDescriptions?: boolean,
   ): Promise<GoogleEvent>;
   deleteEvent(
     token: string,

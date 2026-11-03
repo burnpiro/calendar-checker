@@ -27,15 +27,17 @@ export function SyncSettings({
       past: s.cachePastMonths as number | string,
       future: s.cacheFutureMonths as number | string,
       refresh: s.refreshOnOpen,
+      excludeDescriptions: s.excludeEventDescriptions,
     }),
     (d) => ({
       syncIntervalMinutes: numericPreference(d.interval),
       cachePastMonths: numericPreference(d.past),
       cacheFutureMonths: numericPreference(d.future),
       refreshOnOpen: d.refresh,
+      excludeEventDescriptions: d.excludeDescriptions,
     }),
   );
-  const { interval, past, future, refresh } = save.draft;
+  const { interval, past, future, refresh, excludeDescriptions } = save.draft;
   const setInterval = (interval: string) =>
     save.setDraft((d) => ({ ...d, interval }));
   const setPast = (past: string) => save.setDraft((d) => ({ ...d, past }));
@@ -107,10 +109,37 @@ export function SyncSettings({
           />{" "}
           Refresh when opening the calendar
         </label>
+        <label className="check-setting">
+          <input
+            type="checkbox"
+            checked={excludeDescriptions}
+            aria-describedby="description-privacy-help"
+            onChange={(e) =>
+              save.setDraft((d) => ({
+                ...d,
+                excludeDescriptions: e.target.checked,
+              }))
+            }
+          />{" "}
+          Exclude event descriptions
+        </label>
+        <small id="description-privacy-help">
+          Do not download descriptions from Google. Removes previously cached
+          descriptions, including saved editing and conflict copies.
+          Descriptions you explicitly write stay in pending changes until saved
+          to Google. Titles, locations, guests and other event details are still
+          cached.
+        </small>
         <small>
-          The home cache surrounds the current month. Browsing outside it also
-          keeps the last requested three-month window. Repeated opens within one
-          minute reuse the recent check.
+          Setting both month counts to 0 still caches the current month; it does
+          not disable offline storage. Viewing the calendar can also keep a
+          three-month browsing window.
+        </small>
+        <small>
+          The home cache surrounds the current month. The last requested
+          three-month browsing window is retained when it does not fit inside
+          the home cache. Repeated opens within one minute reuse the recent
+          check.
         </small>
         <AutoSaveStatus {...save} />
       </form>

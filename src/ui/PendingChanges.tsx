@@ -119,7 +119,9 @@ export function PendingChanges({ accounts }: { accounts: Account[] }) {
                           </p>
                           <p>{event.location || "No location"}</p>
                           <p className="pending-description">
-                            {event.description || "No description"}
+                            {event.descriptionOmitted
+                              ? "Description not downloaded (privacy setting)"
+                              : event.description || "No description"}
                           </p>
                           <p>
                             {event.transparency === "transparent"

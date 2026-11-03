@@ -44,6 +44,7 @@ const identity = {
   availabilityOnly: z.literal(true).optional(),
   title: z.string().min(1),
   description: z.string().default(""),
+  descriptionOmitted: z.literal(true).optional(),
   location: z.string().default(""),
   eventType: z.enum(EVENT_TYPES),
   color: z.string().regex(/^#[0-9a-f]{6}$/i),

@@ -387,7 +387,10 @@ export function overlayWrites(
               ? { title: row.event.title }
               : {}),
             ...(row.patch.description !== undefined
-              ? { description: row.event.description }
+              ? {
+                  description: row.event.description,
+                  descriptionOmitted: row.event.descriptionOmitted,
+                }
               : {}),
             ...(row.patch.location !== undefined
               ? { location: row.event.location }

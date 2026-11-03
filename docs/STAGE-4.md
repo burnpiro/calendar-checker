@@ -32,6 +32,12 @@ Ambiguous or nonexistent daylight-saving times are rejected when entering a new 
 
 All fields use the existing validated local queue, ETags, identity verification and conflict controls. New optional record fields preserve existing schema-5 cache/outbox rows without replacing data or adding a new store. Guest emails and provider metadata stay out of diagnostics. Existing events from older caches may need one successful sync before guest editing is available.
 
+## Description privacy
+
+With **Exclude event descriptions** enabled, existing imported descriptions are removed from cached events, recurring master bases and pending/conflict snapshots. Missing descriptions are labelled as omitted, not empty Google fields. Blank description drafts for these events leave the Google field unchanged when editing other details. GETs, master retrievals and write responses exclude descriptions, including conflict and uncertain-write recovery reads; operation markers and ETags remain available.
+
+Explicit local description changes are preserved in the durable queue until acknowledgement, including failed/conflicting work. They are the intentional exception to description-free local snapshots. Acknowledged write rows drop their description patch and copies. A stale editor opened before the preference changed cannot reintroduce an unchanged provider description through its base or preview. No operation or receipt is discarded by the privacy cleanup. Cleanup removes fields from application records; it is not a forensic disk-erasure guarantee.
+
 ## Pending changes and conflicts
 
 **Save event** commits to the local queue first. The calendar overlays pending events on its remote snapshot. Pending changes are shared across popup/full calendar/Settings and survive Chrome restarts. The footer's **Pending changes** button and Settings show queued, sending, retrying, conflicting, failed and saved-to-Google/refreshing states.

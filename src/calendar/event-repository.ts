@@ -1,3 +1,8 @@
+import {
+  DESCRIPTION_PRIVACY_KEY,
+  omitDescription,
+  omitWriteDescriptions,
+} from "./description-privacy";
 import { eventColor } from "./event-options";
 import { overlayWrites, pendingWriteSchema } from "./write-model";
 import { AppError } from "../shared/errors";
@@ -16,6 +21,45 @@ import {
 
 export class EventRepository {
   constructor(readonly db: CalendarDatabase = getCalendarDatabase()) {}
+  async applyDescriptionPrivacy(exclude: boolean): Promise<void> {
+    try {
+      await this.db.transaction(
+        "rw",
+        [
+          this.db.events,
+          this.db.editBases,
+          this.db.outbox,
+          this.db.syncStates,
+          this.db.meta,
+        ],
+        async () => {
+          const value = exclude ? "excluded" : "included";
+          const previous = await this.db.meta.get(DESCRIPTION_PRIVACY_KEY);
+          if (previous?.value === value) return;
+          if (exclude) {
+            await this.db.events.toCollection().modify((event) => {
+              Object.assign(event, omitDescription(event));
+            });
+            await this.db.editBases.toCollection().modify((row) => {
+              row.event = omitDescription(row.event);
+            });
+            await this.db.outbox.toCollection().modify((row) => {
+              Object.assign(row, omitWriteDescriptions(row));
+            });
+          }
+          // Re-enable descriptions even if Google's change feed reports no changes.
+          // Keep cursors/coverage and the last usable offline snapshot intact.
+          if (previous || exclude)
+            await this.db.syncStates
+              .toCollection()
+              .modify({ invalidated: true });
+          await this.db.meta.put({ key: DESCRIPTION_PRIVACY_KEY, value });
+        },
+      );
+    } catch {
+      throw new AppError("storage-error");
+    }
+  }
   async pending() {
     try {
       return (await this.db.outbox.toArray()).map((row) =>
@@ -86,6 +130,7 @@ export class EventRepository {
         this.db.ranges,
         this.db.syncStates,
         this.db.outbox,
+        this.db.meta,
         async () => {
           const keep = new Set(snapshots.flatMap((range) => range.eventKeys));
           await this.db.events
@@ -93,7 +138,12 @@ export class EventRepository {
             .equals([next.accountId, next.calendarId])
             .filter((event) => !keep.has(event.key))
             .delete();
-          await this.db.events.bulkPut(normalized);
+          const exclude =
+            (await this.db.meta.get(DESCRIPTION_PRIVACY_KEY))?.value ===
+            "excluded";
+          await this.db.events.bulkPut(
+            exclude ? normalized.map(omitDescription) : normalized,
+          );
           if (labels)
             await this.db.events
               .where("[accountId+calendarId]")

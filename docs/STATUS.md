@@ -1,6 +1,16 @@
 # Implementation status
 
-Last updated: 2026-11-03.
+Last updated: 2026-11-04.
+
+## Event description privacy · v0.6.0
+
+Implemented **Settings → Sync & offline storage → Exclude event descriptions**, an autosaved preference that defaults off. Enabling it removes imported descriptions from event rows, detached series bases and outbox/conflict copies, while retaining all other event fields, ETags, coverage, cursors, receipts and pending operations. Paginated instance reads, individual/master reads and mutation responses use description-free Google projections; normalization and the persistence boundary guard unexpected returned content. Details, conflict review and editing distinguish omitted descriptions from empty fields. Explicit user-authored description patches remain durable until acknowledgement and are then removed from local write copies. A title-only edit or blank omitted-description draft preserves Google's description.
+
+Cleanup and its content-free policy marker are one IndexedDB transaction. Failed cleanup reports a storage error, retains the durable preference for retry/startup recovery and does not commit a partial purge. Re-enabling downloads invalidates snapshots without discarding offline coverage/cursors, forcing a fetch even for unchanged feeds. No permission, scope, dependency or database index change. See ADR 0011.
+
+The cache controls now explicitly explain that **0 past / 0 future does not disable the cache**: the current UTC month remains, and calendar viewing can retain a surrounding three-month browsing slot. Query padding, reminders and the durable outbox remain unchanged. There is no cache-off mode.
+
+Validation: `npm run check` passes with **246 unit/adapter tests**, TypeScript, formatting, production build and **3 release-auditor tests**. **22 isolated Chromium tests** pass, including the new real-worker Settings/IndexedDB test for offline removal, other-data retention, 0/0 clarification and full browser restart persistence. Unit evidence also covers privacy field masks over pagination/get/insert/patch, unexpected provider fields, rollback/retry, unchanged-feed repopulation, conflict rebasing, series masters and preserving explicitly pending descriptions. The privacy Settings screenshot was inspected. After the final omitted-description conflict label, the rebuilt privacy/restart and conflict browser flows were rerun and both passed. Live Google acceptance is not inferred from fixtures. Next concrete task: reload the built unpacked extension and enable the option if wanted; continue the existing live acceptance matrices. Changes are local until a requested push.
 
 ## Settings cleanup and privacy wording · v0.6.0
 

@@ -10,6 +10,7 @@ import {
   coverageStatus,
   preferredCalendarAccounts,
 } from "../calendar/coverage";
+import { routeCommand } from "./message-router";
 import { visibleEvents } from "../calendar/presentation";
 import { emptyStore, type Account, type Store } from "../shared/model";
 import { AppError } from "../shared/errors";
@@ -96,6 +97,7 @@ function harness(accounts = [account("a")]) {
         _calendar: string,
         _start: string,
         _end: string,
+        _excludeDescriptions = false,
       ) => ({ events: [structuredClone(raw)], timeZone: "Europe/Warsaw" }),
     ),
   };
@@ -133,6 +135,119 @@ function harness(accounts = [account("a")]) {
 }
 
 describe("Google event synchronization", () => {
+  it("rolls back a failed privacy purge and retries it while retaining the durable preference", async () => {
+    const h = harness();
+    h.google.getInstances.mockResolvedValue({
+      events: [{ ...raw, description: "Sensitive provider notes" }],
+      timeZone: "UTC",
+    });
+    await h.sync.run({ reason: "manual" });
+    await h.db.editBases.put({
+      key: "master",
+      event: (await h.db.events.toArray())[0]!,
+    });
+    const fail = () => {
+      throw new Error("Simulated storage failure");
+    };
+    h.db.editBases.hook("updating", fail);
+    const command = {
+      type: "UPDATE_SETTINGS",
+      settings: { excludeEventDescriptions: true },
+    };
+    const failed = await routeCommand(command, h.auth, async () => {}, h.sync);
+    expect(failed).toMatchObject({
+      ok: false,
+      error: { code: "storage-error" },
+    });
+    expect(h.stored().settings.excludeEventDescriptions).toBe(true);
+    expect((await h.db.events.toArray())[0]!.description).toBe(
+      "Sensitive provider notes",
+    );
+    expect((await h.db.meta.get("privacy:event-descriptions"))!.value).toBe(
+      "included",
+    );
+    h.db.editBases.hook("updating").unsubscribe(fail);
+    expect(
+      (await routeCommand(command, h.auth, async () => {}, h.sync)).ok,
+    ).toBe(true);
+    expect(
+      JSON.stringify([
+        await h.db.events.toArray(),
+        await h.db.editBases.toArray(),
+      ]),
+    ).not.toContain("Sensitive provider notes");
+    h.db.close();
+    await h.db.open();
+    expect((await h.db.meta.get("privacy:event-descriptions"))!.value).toBe(
+      "excluded",
+    );
+    expect((await h.db.events.toArray())[0]!.description).toBe("");
+  });
+  it("0/0 keeps the current month plus requested browsing coverage instead of disabling the cache", async () => {
+    const h = harness();
+    await h.auth.updateSettings({ cachePastMonths: 0, cacheFutureMonths: 0 });
+    await h.sync.run({ reason: "view", month: "2026-11-01" });
+    expect(await h.cache.ranges("a", "a-calendar")).toMatchObject([
+      { kind: "browse", start: "2026-10-01", end: "2027-01-01" },
+      { kind: "home", start: "2026-11-01", end: "2026-12-01" },
+    ]);
+    expect(await h.db.events.count()).toBeGreaterThan(0);
+  });
+  it("enabling description privacy purges offline copies and re-enabling downloads refreshes unchanged feeds", async () => {
+    const h = harness();
+    h.google.getInstances.mockResolvedValue({
+      events: [{ ...raw, description: "Sensitive provider notes" }],
+      timeZone: "UTC",
+    });
+    await h.sync.run({ reason: "manual" });
+    expect((await h.db.events.toArray())[0]!.description).toBe(
+      "Sensitive provider notes",
+    );
+    await h.db.editBases.put({
+      key: "master",
+      event: (await h.db.events.toArray())[0]!,
+    });
+    const cursor = (await h.cache.state("a", "a-calendar")).syncToken;
+    const reply = await routeCommand(
+      { type: "UPDATE_SETTINGS", settings: { excludeEventDescriptions: true } },
+      h.auth,
+      async () => {},
+      h.sync,
+    );
+    expect(reply.ok).toBe(true);
+    expect(
+      JSON.stringify([
+        await h.db.events.toArray(),
+        await h.db.editBases.toArray(),
+      ]),
+    ).not.toContain("Sensitive provider notes");
+    expect((await h.cache.state("a", "a-calendar")).syncToken).toBe(cursor);
+    await h.sync.run({ reason: "manual" });
+    expect(h.google.getInstances.mock.lastCall?.[4]).toBe(true);
+    expect((await h.db.events.toArray())[0]).toMatchObject({
+      description: "",
+      descriptionOmitted: true,
+    });
+    await routeCommand(
+      {
+        type: "UPDATE_SETTINGS",
+        settings: { excludeEventDescriptions: false },
+      },
+      h.auth,
+      async () => {},
+      h.sync,
+    );
+    h.google.getInstances.mockClear();
+    await h.sync.run({ reason: "manual" });
+    expect(h.google.getInstances).toHaveBeenCalledTimes(1);
+    expect((await h.db.events.toArray())[0]!.description).toBe(
+      "Sensitive provider notes",
+    );
+    expect(
+      (await h.db.events.toArray())[0]!.descriptionOmitted,
+    ).toBeUndefined();
+  });
+
   it("polls busy-only calendars without cursors, caches availability and respects cadence", async () => {
     const a = account("a");
     a.calendars[0]!.accessRole = "freeBusyReader";
@@ -279,6 +394,7 @@ describe("Google event synchronization", () => {
       "a-calendar",
       "2026-08-30T00:00:00Z",
       "2027-06-03T00:00:00Z",
+      false,
     );
     expect(
       JSON.stringify([

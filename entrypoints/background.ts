@@ -238,6 +238,9 @@ export default defineBackground(() => {
       accessLevel: "TRUSTED_CONTEXTS",
     });
     await reschedule();
+    await eventSync.repository.applyDescriptionPrivacy(
+      (await service.snapshot()).settings.excludeEventDescriptions,
+    );
     await eventSync.repository.recover();
     await eventWrites.recover();
     await reminderFeatures.sounds.recover();

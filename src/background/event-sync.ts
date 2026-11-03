@@ -172,6 +172,9 @@ export class EventSyncService {
       }
     }
     const snapshot = await this.auth.snapshot();
+    await this.repository.applyDescriptionPrivacy(
+      snapshot.settings.excludeEventDescriptions,
+    );
     await this.repository.reconcile(snapshot.accounts);
     if (!snapshot.oauthConfigured) return;
     const home = homeRange(this.now(), snapshot.settings);
@@ -282,6 +285,7 @@ export class EventSyncService {
                     calendar.id,
                     bounds.start,
                     bounds.end,
+                    snapshot.settings.excludeEventDescriptions,
                   );
                   const normalized = result.events
                     .map((raw) =>
@@ -291,6 +295,7 @@ export class EventSyncService {
                         calendar,
                         result.timeZone,
                         at,
+                        snapshot.settings.excludeEventDescriptions,
                       ),
                     )
                     .filter((event): event is CalendarEvent => event !== null);

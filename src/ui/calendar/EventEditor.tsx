@@ -553,6 +553,16 @@ export function EventEditor({
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                     />
+                    {settings.excludeEventDescriptions && (
+                      <small>
+                        Descriptions are excluded from Google downloads.{" "}
+                        {base?.descriptionOmitted
+                          ? "Leave this blank to keep the description in Google unchanged. "
+                          : ""}
+                        Descriptions you write are stored locally with pending
+                        changes until saved to Google.
+                      </small>
+                    )}
                   </label>
                   <EventOptions
                     value={options}
