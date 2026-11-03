@@ -82,3 +82,8 @@ Keep concise, verified implementation facts here. Include the date and supportin
 - The availability scope was explicitly approved by the user and save-confirmed in the existing Cloud project on 2026-11-02. This does not prove an active account grant; reload/Reconnect and live busy-calendar verification remain pending.
 
 - V0.5.3 includes upcoming availability in the next-event badge on user request. Join its day segments per account/calendar before selection and read ongoing availability too, otherwise UTC midnight creates a false next start. Keep the busy-period tooltip explicit; reminders stay disabled for availability.
+
+## 2026-11-03 · Settings organization
+
+- Settings uses anchor navigation, everyday groups and native advanced disclosures. Keep forms mounted in closed disclosures; reveal ancestor details on native invalid events so users can fix hidden required controls. Preference components may remount after saves, so integration flows should reopen their disclosure through visible navigation before editing again.
+- Cache information belongs with sync; OAuth setup/connection timing and diagnostics are advanced. Account removal/token tests are under More options. These layout choices add no preference keys, permissions or background behavior.

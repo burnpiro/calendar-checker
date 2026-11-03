@@ -9,6 +9,7 @@ import { TimePicker } from "./calendar/TimePicker";
 import { settingsSchema } from "../shared/preferences";
 import { ReminderInbox } from "./ReminderInbox";
 import "./reminders.css";
+import { revealInvalidSetting } from "./settings-validation";
 const list = (value: string) => {
   const parts = value.split(",").map((v) => v.trim());
   if (parts.some((v) => !/^\d+$/.test(v))) throw new Error();
@@ -131,18 +132,12 @@ export function NotificationSettings({
       <p className="eyebrow">REMINDERS</p>
       <h2>Notifications, sounds and Do not disturb</h2>
       <p className="muted">
-        Local reminders use saved events, including offline changes. They are
-        independent of display filters and do not change Google reminder
-        settings. Chrome must be running; sleep and operating-system settings
-        can delay or suppress alerts.
+        Choose how and when you are reminded. Local reminders work from saved
+        events; Chrome must be running. Display filters do not silence alerts.
       </p>
-      {error && (
-        <p role="alert" className="write-error">
-          {error}
-        </p>
-      )}
       <form
         className="settings-form appearance-form"
+        onInvalidCapture={revealInvalidSetting}
         onSubmit={(e) => {
           e.preventDefault();
           setError("");
@@ -180,397 +175,444 @@ export function NotificationSettings({
           }
         }}
       >
-        <label className="check-setting">
-          <input
-            type="checkbox"
-            checked={reminders.desktop}
-            onChange={(e) =>
-              setReminders({ ...reminders, desktop: e.target.checked })
-            }
-          />
-          Desktop notifications
-        </label>
-        <label className="check-setting">
-          <input
-            type="checkbox"
-            checked={reminders.sound}
-            onChange={(e) =>
-              setReminders({ ...reminders, sound: e.target.checked })
-            }
-          />
-          Sound notifications
-        </label>
-        <label>
-          Reminder minutes before event
-          <input
-            required
-            value={offsets}
-            onChange={(e) => setOffsets(e.target.value)}
-          />
-          <small>
-            Up to five distinct values, 0–40320. Comma-separated; 0 is at start.
-          </small>
-        </label>
-        <label>
-          Snooze presets in minutes
-          <input
-            required
-            value={snoozes}
-            onChange={(e) => setSnoozes(e.target.value)}
-          />
-          <small>
-            Up to five values, 1–1440. The first is the desktop notification's
-            snooze button.
-          </small>
-        </label>
-        <label>
-          Notification privacy
-          <select
-            value={reminders.privacy}
-            onChange={(e) =>
-              setReminders({
-                ...reminders,
-                privacy: e.target.value as typeof reminders.privacy,
-              })
-            }
-          >
-            <option value="details">Title, time, calendar and location</option>
-            <option value="title">Title and time</option>
-            <option value="private">Hide event details</option>
-          </select>
-        </label>
-        <label>
-          Missed reminders
-          <select
-            value={reminders.missed}
-            onChange={(e) =>
-              setReminders({
-                ...reminders,
-                missed: e.target.value as "skip" | "deliver",
-              })
-            }
-          >
-            <option value="deliver">Deliver within recovery window</option>
-            <option value="skip">Skip reminders delayed over one minute</option>
-          </select>
-        </label>
-        <label>
-          Recovery window in minutes
-          <input
-            type="number"
-            min={1}
-            max={1440}
-            required
-            value={reminders.graceMinutes}
-            onChange={(e) =>
-              setReminders({
-                ...reminders,
-                graceMinutes: Number(e.target.value),
-              })
-            }
-          />
-          <small>
-            Reminders after the event ends are always skipped. Multiple missed
-            offsets combine into one alert.
-          </small>
-        </label>
-        <label>
-          Default sound
-          <select
-            aria-label="Default sound"
-            value={reminders.soundId}
-            onChange={(e) =>
-              setReminders({ ...reminders, soundId: e.target.value })
-            }
-          >
-            {soundOptions}
-          </select>
-        </label>
-        <label>
-          Sound volume
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={reminders.volume}
-            onChange={(e) =>
-              setReminders({ ...reminders, volume: Number(e.target.value) })
-            }
-          />
-          <small>{Math.round(reminders.volume * 100)}%</small>
-        </label>
-        <label className="check-setting">
-          <input
-            type="checkbox"
-            checked={reminders.includeAllDay}
-            onChange={(e) =>
-              setReminders({ ...reminders, includeAllDay: e.target.checked })
-            }
-          />
-          Remind for all-day events
-        </label>
-        <label>
-          All-day reminder base hour
-          <input
-            type="number"
-            min={0}
-            max={23}
-            required
-            value={reminders.allDayHour}
-            onChange={(e) =>
-              setReminders({ ...reminders, allDayHour: Number(e.target.value) })
-            }
-          />
-          <small>
-            In the primary display zone on the first event day. Reminder offsets
-            apply before this hour.
-          </small>
-        </label>
-        <div className="reminder-form-wide">
-          <h3>Do not disturb</h3>
-          <p>
-            Currently{" "}
-            {dndActive(settings.dnd, new Date(clock.now))
-              ? "active"
-              : "inactive"}{" "}
-            · applied to both desktop and sound reminders.
-          </p>
-        </div>
-        <label className="check-setting">
-          <input
-            type="checkbox"
-            checked={dnd.manual}
-            onChange={(e) => setDnd({ ...dnd, manual: e.target.checked })}
-          />
-          Manual Do not disturb
-        </label>
-        <label>
-          Manual DND until
-          <input
-            type="datetime-local"
-            value={until}
-            onChange={(e) => setUntil(e.target.value)}
-          />
-          <small>Device local time. Leave empty for indefinite DND.</small>
-        </label>
-        <label className="check-setting">
-          <input
-            type="checkbox"
-            checked={dnd.scheduleEnabled}
-            onChange={(e) =>
-              setDnd({ ...dnd, scheduleEnabled: e.target.checked })
-            }
-          />
-          Scheduled Do not disturb
-        </label>
-        <label>
-          DND schedule time zone
-          <input
-            list="dnd-zones"
-            required
-            value={dnd.timeZone}
-            onChange={(e) => setDnd({ ...dnd, timeZone: e.target.value })}
-          />
-          <datalist id="dnd-zones">
-            <option value="device" />
-            <option value="UTC" />
-            {Intl.supportedValuesOf("timeZone").map((z) => (
-              <option key={z} value={z} />
-            ))}
-          </datalist>
-        </label>
-        <label>
-          During Do not disturb
-          <select
-            value={dnd.policy}
-            onChange={(e) =>
-              setDnd({ ...dnd, policy: e.target.value as "skip" | "defer" })
-            }
-          >
-            <option value="skip">Skip due reminders</option>
-            <option value="defer">Defer within recovery window</option>
-          </select>
-        </label>
-        <div className="reminder-form-wide">
-          {dnd.rules.map((rule, index) => (
-            <fieldset key={index} className="dnd-rule">
-              <legend>Schedule {index + 1}</legend>
-              <div className="dnd-days">
-                {days.map((day, i) => (
-                  <label key={day}>
-                    <input
-                      type="checkbox"
-                      checked={rule.days.includes(i + 1)}
-                      onChange={(e) =>
+        <fieldset className="settings-field-group">
+          <legend>Delivery & timing</legend>
+          <label className="check-setting">
+            <input
+              type="checkbox"
+              checked={reminders.desktop}
+              onChange={(e) =>
+                setReminders({ ...reminders, desktop: e.target.checked })
+              }
+            />
+            Desktop notifications
+          </label>
+          <label className="check-setting">
+            <input
+              type="checkbox"
+              checked={reminders.sound}
+              onChange={(e) =>
+                setReminders({ ...reminders, sound: e.target.checked })
+              }
+            />
+            Sound notifications
+          </label>
+          <label>
+            Reminder minutes before event
+            <input
+              required
+              value={offsets}
+              onChange={(e) => setOffsets(e.target.value)}
+            />
+            <small>
+              Up to five distinct values, 0–40320. Comma-separated; 0 is at
+              start.
+            </small>
+          </label>
+          <label>
+            Snooze presets in minutes
+            <input
+              required
+              value={snoozes}
+              onChange={(e) => setSnoozes(e.target.value)}
+            />
+            <small>
+              Up to five values, 1–1440. The first is the desktop notification's
+              snooze button.
+            </small>
+          </label>
+          <label>
+            Notification privacy
+            <select
+              value={reminders.privacy}
+              onChange={(e) =>
+                setReminders({
+                  ...reminders,
+                  privacy: e.target.value as typeof reminders.privacy,
+                })
+              }
+            >
+              <option value="details">
+                Title, time, calendar and location
+              </option>
+              <option value="title">Title and time</option>
+              <option value="private">Hide event details</option>
+            </select>
+          </label>
+        </fieldset>
+        <fieldset className="settings-field-group">
+          <legend>Sound</legend>
+          <label>
+            Default sound
+            <select
+              aria-label="Default sound"
+              value={reminders.soundId}
+              onChange={(e) =>
+                setReminders({ ...reminders, soundId: e.target.value })
+              }
+            >
+              {soundOptions}
+            </select>
+          </label>
+          <label>
+            Sound volume
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={reminders.volume}
+              onChange={(e) =>
+                setReminders({ ...reminders, volume: Number(e.target.value) })
+              }
+            />
+            <small>{Math.round(reminders.volume * 100)}%</small>
+          </label>
+        </fieldset>
+        <fieldset className="settings-field-group">
+          <legend>Do not disturb</legend>
+          <div className="reminder-form-wide">
+            <p>
+              Currently{" "}
+              {dndActive(settings.dnd, new Date(clock.now))
+                ? "active"
+                : "inactive"}{" "}
+              · applied to both desktop and sound reminders.
+            </p>
+          </div>
+          <label className="check-setting">
+            <input
+              type="checkbox"
+              checked={dnd.manual}
+              onChange={(e) => setDnd({ ...dnd, manual: e.target.checked })}
+            />
+            Manual Do not disturb
+          </label>
+          <label>
+            Manual DND until
+            <input
+              type="datetime-local"
+              value={until}
+              onChange={(e) => setUntil(e.target.value)}
+            />
+            <small>Device local time. Leave empty for indefinite DND.</small>
+          </label>
+        </fieldset>
+        <details className="settings-disclosure reminder-form-wide">
+          <summary>
+            <span>Recovery & all-day reminders</span>
+            <small>Advanced · late alerts and all-day timing</small>
+          </summary>
+          <div className="settings-fields-grid">
+            <label>
+              Missed reminders
+              <select
+                value={reminders.missed}
+                onChange={(e) =>
+                  setReminders({
+                    ...reminders,
+                    missed: e.target.value as "skip" | "deliver",
+                  })
+                }
+              >
+                <option value="deliver">Deliver within recovery window</option>
+                <option value="skip">
+                  Skip reminders delayed over one minute
+                </option>
+              </select>
+            </label>
+            <label>
+              Recovery window in minutes
+              <input
+                type="number"
+                min={1}
+                max={1440}
+                required
+                value={reminders.graceMinutes}
+                onChange={(e) =>
+                  setReminders({
+                    ...reminders,
+                    graceMinutes: Number(e.target.value),
+                  })
+                }
+              />
+              <small>
+                Reminders after the event ends are always skipped. Multiple
+                missed offsets combine into one alert.
+              </small>
+            </label>
+            <label className="check-setting">
+              <input
+                type="checkbox"
+                checked={reminders.includeAllDay}
+                onChange={(e) =>
+                  setReminders({
+                    ...reminders,
+                    includeAllDay: e.target.checked,
+                  })
+                }
+              />
+              Remind for all-day events
+            </label>
+            <label>
+              All-day reminder base hour
+              <input
+                type="number"
+                min={0}
+                max={23}
+                required
+                value={reminders.allDayHour}
+                onChange={(e) =>
+                  setReminders({
+                    ...reminders,
+                    allDayHour: Number(e.target.value),
+                  })
+                }
+              />
+              <small>
+                In the primary display zone on the first event day. Reminder
+                offsets apply before this hour.
+              </small>
+            </label>
+          </div>
+        </details>
+        <details className="settings-disclosure reminder-form-wide">
+          <summary>
+            <span>Do not disturb schedule</span>
+            <small>Advanced · weekly schedules and quiet-hour behavior</small>
+          </summary>
+          <div className="settings-fields-grid">
+            <label className="check-setting">
+              <input
+                type="checkbox"
+                checked={dnd.scheduleEnabled}
+                onChange={(e) =>
+                  setDnd({ ...dnd, scheduleEnabled: e.target.checked })
+                }
+              />
+              Scheduled Do not disturb
+            </label>
+            <label>
+              DND schedule time zone
+              <input
+                list="dnd-zones"
+                required
+                value={dnd.timeZone}
+                onChange={(e) => setDnd({ ...dnd, timeZone: e.target.value })}
+              />
+              <datalist id="dnd-zones">
+                <option value="device" />
+                <option value="UTC" />
+                {Intl.supportedValuesOf("timeZone").map((z) => (
+                  <option key={z} value={z} />
+                ))}
+              </datalist>
+            </label>
+            <label>
+              During Do not disturb
+              <select
+                value={dnd.policy}
+                onChange={(e) =>
+                  setDnd({ ...dnd, policy: e.target.value as "skip" | "defer" })
+                }
+              >
+                <option value="skip">Skip due reminders</option>
+                <option value="defer">Defer within recovery window</option>
+              </select>
+            </label>
+            <div className="reminder-form-wide">
+              {dnd.rules.map((rule, index) => (
+                <fieldset key={index} className="dnd-rule">
+                  <legend>Schedule {index + 1}</legend>
+                  <div className="dnd-days">
+                    {days.map((day, i) => (
+                      <label key={day}>
+                        <input
+                          type="checkbox"
+                          checked={rule.days.includes(i + 1)}
+                          onChange={(e) =>
+                            setDnd({
+                              ...dnd,
+                              rules: dnd.rules.map((r, j) =>
+                                j === index
+                                  ? {
+                                      ...r,
+                                      days: e.target.checked
+                                        ? [...r.days, i + 1]
+                                        : r.days.filter((n) => n !== i + 1),
+                                    }
+                                  : r,
+                              ),
+                            })
+                          }
+                        />
+                        {day}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="dnd-times">
+                    <TimePicker
+                      label={`Schedule ${index + 1} starts`}
+                      value={rule.start}
+                      onChange={(value) =>
                         setDnd({
                           ...dnd,
                           rules: dnd.rules.map((r, j) =>
-                            j === index
-                              ? {
-                                  ...r,
-                                  days: e.target.checked
-                                    ? [...r.days, i + 1]
-                                    : r.days.filter((n) => n !== i + 1),
-                                }
-                              : r,
+                            j === index ? { ...r, start: value } : r,
                           ),
                         })
                       }
                     />
-                    {day}
-                  </label>
-                ))}
-              </div>
-              <div className="dnd-times">
-                <TimePicker
-                  label={`Schedule ${index + 1} starts`}
-                  value={rule.start}
-                  onChange={(value) =>
-                    setDnd({
-                      ...dnd,
-                      rules: dnd.rules.map((r, j) =>
-                        j === index ? { ...r, start: value } : r,
-                      ),
-                    })
-                  }
-                />
-                <TimePicker
-                  label={`Schedule ${index + 1} ends`}
-                  value={rule.end}
-                  onChange={(value) =>
-                    setDnd({
-                      ...dnd,
-                      rules: dnd.rules.map((r, j) =>
-                        j === index ? { ...r, end: value } : r,
-                      ),
-                    })
-                  }
-                />
-                <button
-                  type="button"
-                  className="button subtle"
-                  onClick={() =>
-                    setDnd({
-                      ...dnd,
-                      rules: dnd.rules.filter((_, j) => j !== index),
-                    })
-                  }
-                >
-                  Remove schedule {index + 1}
-                </button>
-              </div>
-              <small>
-                Days select when an overnight schedule starts; equal times cover
-                the full selected day.
-              </small>
-            </fieldset>
-          ))}
-          <button
-            type="button"
-            className="button subtle"
-            disabled={dnd.rules.length >= 7}
-            onClick={() =>
-              setDnd({
-                ...dnd,
-                rules: [
-                  ...dnd.rules,
-                  { days: [1, 2, 3, 4, 5], start: "22:00", end: "08:00" },
-                ],
-              })
-            }
-          >
-            Add DND schedule
-          </button>
-        </div>
-        <div className="reminder-form-wide">
-          <h3>Calendar reminder overrides</h3>
-          <p>
-            Shared calendar copies use one policy and one reminder. Display
-            visibility does not disable reminders.
+                    <TimePicker
+                      label={`Schedule ${index + 1} ends`}
+                      value={rule.end}
+                      onChange={(value) =>
+                        setDnd({
+                          ...dnd,
+                          rules: dnd.rules.map((r, j) =>
+                            j === index ? { ...r, end: value } : r,
+                          ),
+                        })
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="button subtle"
+                      onClick={() =>
+                        setDnd({
+                          ...dnd,
+                          rules: dnd.rules.filter((_, j) => j !== index),
+                        })
+                      }
+                    >
+                      Remove schedule {index + 1}
+                    </button>
+                  </div>
+                  <small>
+                    Days select when an overnight schedule starts; equal times
+                    cover the full selected day.
+                  </small>
+                </fieldset>
+              ))}
+              <button
+                type="button"
+                className="button subtle"
+                disabled={dnd.rules.length >= 7}
+                onClick={() =>
+                  setDnd({
+                    ...dnd,
+                    rules: [
+                      ...dnd.rules,
+                      { days: [1, 2, 3, 4, 5], start: "22:00", end: "08:00" },
+                    ],
+                  })
+                }
+              >
+                Add DND schedule
+              </button>
+            </div>
+          </div>
+        </details>
+        <details className="settings-disclosure reminder-form-wide">
+          <summary>
+            <span>Calendar reminder overrides</span>
+            <small>Advanced · customize individual calendars</small>
+          </summary>
+          <div className="settings-fields-grid">
+            <div className="reminder-form-wide">
+              <p>
+                Shared calendar copies use one policy and one reminder. Display
+                visibility does not disable reminders.
+              </p>
+              {calendars.map((c) => {
+                const rule = overrides[c.id] ?? { enabled: true };
+                return (
+                  <details className="calendar-reminder-rule" key={c.id}>
+                    <summary>
+                      {c.name} · {c.account}
+                    </summary>
+                    <label className="check-setting">
+                      <input
+                        type="checkbox"
+                        checked={rule.enabled}
+                        onChange={(e) =>
+                          setOverrides({
+                            ...overrides,
+                            [c.id]: { ...rule, enabled: e.target.checked },
+                          })
+                        }
+                      />
+                      Enable reminders for this calendar
+                    </label>
+                    <label>
+                      Calendar reminder minutes
+                      <input
+                        value={calendarOffsets[c.id] ?? ""}
+                        placeholder="Use default"
+                        onChange={(e) => {
+                          setCalendarOffsets({
+                            ...calendarOffsets,
+                            [c.id]: e.target.value,
+                          });
+                          setOverrides({ ...overrides, [c.id]: { ...rule } });
+                        }}
+                      />
+                    </label>
+                    <label>
+                      Calendar sound
+                      <select
+                        value={rule.soundId ?? ""}
+                        onChange={(e) =>
+                          setOverrides({
+                            ...overrides,
+                            [c.id]: {
+                              ...rule,
+                              soundId: e.target.value || undefined,
+                            },
+                          })
+                        }
+                      >
+                        <option value="">Use default sound</option>
+                        {soundOptions}
+                      </select>
+                    </label>
+                    <label className="check-setting">
+                      <input
+                        type="checkbox"
+                        checked={rule.desktop !== false}
+                        onChange={(e) =>
+                          setOverrides({
+                            ...overrides,
+                            [c.id]: { ...rule, desktop: e.target.checked },
+                          })
+                        }
+                      />
+                      Allow desktop alerts when globally enabled
+                    </label>
+                    <label className="check-setting">
+                      <input
+                        type="checkbox"
+                        checked={rule.sound !== false}
+                        onChange={(e) =>
+                          setOverrides({
+                            ...overrides,
+                            [c.id]: { ...rule, sound: e.target.checked },
+                          })
+                        }
+                      />
+                      Allow sound when globally enabled
+                    </label>
+                  </details>
+                );
+              })}
+            </div>
+          </div>
+        </details>
+        {error && (
+          <p role="alert" className="write-error">
+            {error}
           </p>
-          {calendars.map((c) => {
-            const rule = overrides[c.id] ?? { enabled: true };
-            return (
-              <details className="calendar-reminder-rule" key={c.id}>
-                <summary>
-                  {c.name} · {c.account}
-                </summary>
-                <label className="check-setting">
-                  <input
-                    type="checkbox"
-                    checked={rule.enabled}
-                    onChange={(e) =>
-                      setOverrides({
-                        ...overrides,
-                        [c.id]: { ...rule, enabled: e.target.checked },
-                      })
-                    }
-                  />
-                  Enable reminders for this calendar
-                </label>
-                <label>
-                  Calendar reminder minutes
-                  <input
-                    value={calendarOffsets[c.id] ?? ""}
-                    placeholder="Use default"
-                    onChange={(e) => {
-                      setCalendarOffsets({
-                        ...calendarOffsets,
-                        [c.id]: e.target.value,
-                      });
-                      setOverrides({ ...overrides, [c.id]: { ...rule } });
-                    }}
-                  />
-                </label>
-                <label>
-                  Calendar sound
-                  <select
-                    value={rule.soundId ?? ""}
-                    onChange={(e) =>
-                      setOverrides({
-                        ...overrides,
-                        [c.id]: {
-                          ...rule,
-                          soundId: e.target.value || undefined,
-                        },
-                      })
-                    }
-                  >
-                    <option value="">Use default sound</option>
-                    {soundOptions}
-                  </select>
-                </label>
-                <label className="check-setting">
-                  <input
-                    type="checkbox"
-                    checked={rule.desktop !== false}
-                    onChange={(e) =>
-                      setOverrides({
-                        ...overrides,
-                        [c.id]: { ...rule, desktop: e.target.checked },
-                      })
-                    }
-                  />
-                  Allow desktop alerts when globally enabled
-                </label>
-                <label className="check-setting">
-                  <input
-                    type="checkbox"
-                    checked={rule.sound !== false}
-                    onChange={(e) =>
-                      setOverrides({
-                        ...overrides,
-                        [c.id]: { ...rule, sound: e.target.checked },
-                      })
-                    }
-                  />
-                  Allow sound when globally enabled
-                </label>
-              </details>
-            );
-          })}
-        </div>
+        )}
         <button className="button primary" disabled={busy || uploading}>
           Save reminder preferences
         </button>

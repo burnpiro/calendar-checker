@@ -338,6 +338,9 @@ test("secondary-zone week labels, hover details and preference changes stay insi
     await settings.goto(`chrome-extension://${session.id}/options.html`);
     await settings.getByLabel("Primary time zone").fill("UTC");
     await settings.getByLabel("Secondary time zone").fill("Asia/Tokyo");
+    await settings
+      .locator("#appearance .settings-disclosure > summary")
+      .click();
     await settings.getByLabel("Week view starts at").fill("0");
     await settings.getByLabel("Week view ends at").fill("24");
     await settings
@@ -361,6 +364,9 @@ test("secondary-zone week labels, hover details and preference changes stay insi
       )
       .toBe(true);
     await popup.screenshot({ path: "test-results/dual-timezone-week.png" });
+    await settings
+      .locator("#appearance .settings-disclosure > summary")
+      .click();
     await settings.getByLabel("Week view layout").selectOption("fit");
     await settings
       .getByRole("button", { name: "Save calendar preferences", exact: true })

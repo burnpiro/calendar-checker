@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: 2026-11-02.
+Last updated: 2026-11-03.
 
 ## Stage 1
 
@@ -23,7 +23,13 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 Stage 6: live Google multi-account/read/write acceptance, real OS notification/audio/native-button and sleep/wake acceptance, accessibility/performance review, and local unpacked/ZIP packaging. Publishing remains a separate request.
 
-Reload v0.5.3 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+Reload v0.5.4 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+
+## Compact, grouped Settings · v0.5.4
+
+Settings now orders accounts, display/time zones, notifications/sounds, event defaults, and sync/offline storage before collapsed connection/OAuth setup and diagnostics. A responsive section navigator opens advanced destinations and marks the selected anchor. Smaller cards, consistent label/help hierarchy and two-column field groups reduce scanning and scrolling. Week layout, recovery/all-day rules, DND schedules and calendar overrides have labelled disclosures. Token renewal/removal live under account More options. Sync details start collapsed, while calendar errors open their account summary. Cache information is alongside sync. Feedback stays visible when saving deep in the page. Native validation opens an invalid field's ancestor disclosures before focus, preserving access to hidden required controls. Preference commands, defaults, scopes, storage and background behavior are unchanged.
+
+Validation: `npm run check` passes (TypeScript, **220 unit/adapter tests**, formatting and production build), followed by **17 isolated Chromium tests** after updating their navigation to the new sections. Disposable-profile manual QA verified 1360px desktop, 390px mobile without horizontal overflow, dark theme, advanced-section navigation and native invalid-field reveal/focus. Fictional-account screenshots were inspected. No personal account settings were changed.
 
 ## Busy periods in the next-event badge · v0.5.3
 

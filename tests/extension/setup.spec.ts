@@ -196,7 +196,7 @@ test("setup, local settings and background alarms survive a browser restart", as
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(`chrome-extension://${first.id}/options.html`);
     await expect(
-      page.getByRole("heading", { name: "Together, on your terms." }),
+      page.getByRole("heading", { name: "Settings", exact: true }),
     ).toBeVisible();
     await expect(page.locator("footer code")).toHaveText(first.id);
     // Setup-free checks are meaningful even if a developer has configured their own OAuth client.
@@ -209,6 +209,9 @@ test("setup, local settings and background alarms survive a browser restart", as
         page.getByRole("button", { name: "+ Add Google account" }),
       ).toBeDisabled();
     }
+    await page
+      .getByRole("link", { name: "Connection & setup", exact: true })
+      .click();
     await page
       .getByRole("spinbutton", { name: "Connection check interval" })
       .fill("9");
@@ -237,6 +240,7 @@ test("setup, local settings and background alarms survive a browser restart", as
         )
       )?.periodInMinutes,
     ).toBe(1);
+    await page.getByRole("link", { name: "Diagnostics", exact: true }).click();
     await page.getByRole("button", { name: "Generate report" }).click();
     await expect(page.locator("pre")).toContainText(
       '"connectionCheckMinutes": 9',
@@ -250,6 +254,9 @@ test("setup, local settings and background alarms survive a browser restart", as
     expect(second.id).toBe(first.id);
     const reopened = await second.context.newPage();
     await reopened.goto(`chrome-extension://${second.id}/options.html`);
+    await reopened
+      .getByRole("link", { name: "Connection & setup", exact: true })
+      .click();
     await expect(
       reopened.getByRole("spinbutton", { name: "Connection check interval" }),
     ).toHaveValue("9");
@@ -669,6 +676,9 @@ test("bundled worker syncs Google fixtures, updates instances and retains them a
     ).toBeVisible();
     await expect(settings.getByText(/2 cached Google events/)).toBeVisible();
     await settings
+      .getByRole("link", { name: "Diagnostics", exact: true })
+      .click();
+    await settings
       .getByRole("button", { name: "Generate report", exact: true })
       .click();
     await expect(settings.locator("pre")).toContainText('"cachedRanges": 1');
@@ -947,6 +957,9 @@ test("explicit Google chooser adds a second account without replacing the native
       page.locator("article").filter({ hasText: "native@example.test" }),
     ).toBeVisible();
     await page
+      .getByRole("link", { name: "Connection & setup", exact: true })
+      .click();
+    await page
       .getByRole("textbox", { name: "Web application client ID", exact: true })
       .fill("123456789-fixture.apps.googleusercontent.com");
     await page
@@ -1064,6 +1077,9 @@ test("week view scrolls at a readable hour height by default and shares the opti
     active = first.context;
     const settings = await active.newPage();
     await settings.goto(`chrome-extension://${first.id}/options.html`);
+    await settings
+      .locator("#appearance .settings-disclosure > summary")
+      .click();
     await expect(
       settings.getByRole("combobox", { name: "Week view layout", exact: true }),
     ).toHaveValue("scroll");
@@ -1115,6 +1131,9 @@ test("week view scrolls at a readable hour height by default and shares the opti
     // Full calendar uses half-hour slots, maintaining the same minimum per hour.
     expect((await metrics(full)).slotHeight * 2).toBeGreaterThanOrEqual(47);
     await settings
+      .locator("#appearance .settings-disclosure > summary")
+      .click();
+    await settings
       .getByRole("spinbutton", { name: "Minimum hour height", exact: true })
       .fill("72");
     await settings
@@ -1123,6 +1142,9 @@ test("week view scrolls at a readable hour height by default and shares the opti
     await expect
       .poll(async () => (await metrics(popup)).slotHeight)
       .toBeGreaterThanOrEqual(71);
+    await settings
+      .locator("#appearance .settings-disclosure > summary")
+      .click();
     await settings
       .getByRole("combobox", { name: "Week view layout", exact: true })
       .selectOption("fit");
@@ -1155,6 +1177,9 @@ test("week view scrolls at a readable hour height by default and shares the opti
     active = reopened.context;
     const savedSettings = await active.newPage();
     await savedSettings.goto(`chrome-extension://${reopened.id}/options.html`);
+    await savedSettings
+      .locator("#appearance .settings-disclosure > summary")
+      .click();
     await expect(
       savedSettings.getByRole("combobox", {
         name: "Week view layout",

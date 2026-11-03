@@ -358,6 +358,7 @@ test("offline all-day creation selects a writable account and survives a browser
     await expect(
       settings.getByText("Offline personal day", { exact: true }),
     ).toBeVisible();
+    await settings.locator(".account-more > summary").last().click();
     settings.once("dialog", (dialog) => dialog.accept());
     await settings
       .getByRole("button", { name: "Remove", exact: true })

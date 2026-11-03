@@ -7,13 +7,15 @@ import {
   type Settings,
 } from "../shared/model";
 import { useExtensionState } from "./use-extension-state";
-import { AppearanceSettings } from "./AppearanceSettings";
+import { AppearanceSettings, LocalStorageSettings } from "./AppearanceSettings";
 import { useTheme } from "./use-theme";
 import { NotificationSettings } from "./NotificationSettings";
 import { WriteSettings } from "./WriteSettings";
 import { SyncSettings } from "./SyncSettings";
 import { AccountChooserSettings } from "./AccountChooserSettings";
+import { SettingsNavigation } from "./SettingsNavigation";
 import "./styles.css";
+import "./settings.css";
 
 function timeLabel(value: string | null): string {
   if (!value) return "Not checked yet";
@@ -158,33 +160,38 @@ function AccountCard({
             Check connection
           </button>
         )}
-        <button
-          className="button subtle"
-          disabled={busy || !account.enabled}
-          title="Discard the cached access token for this account and request another without a sign-in prompt."
-          onClick={() =>
-            void run(
-              { type: "CHECK", accountId: account.id, freshToken: true },
-              "A fresh token was obtained and calendar access verified.",
-            )
-          }
-        >
-          Test token renewal
-        </button>
-        <button
-          className="button text danger"
-          disabled={busy}
-          onClick={() => {
-            if (
-              window.confirm(
-                `Remove ${account.email} and its cached calendars/events from this device? This does not sign you out of Google.`,
-              )
-            )
-              void run({ type: "REMOVE", accountId: account.id });
-          }}
-        >
-          Remove
-        </button>
+        <details className="account-more">
+          <summary>More options</summary>
+          <div className="account-secondary-actions">
+            <button
+              className="button subtle"
+              disabled={busy || !account.enabled}
+              title="Discard the cached access token for this account and request another without a sign-in prompt."
+              onClick={() =>
+                void run(
+                  { type: "CHECK", accountId: account.id, freshToken: true },
+                  "A fresh token was obtained and calendar access verified.",
+                )
+              }
+            >
+              Test token renewal
+            </button>
+            <button
+              className="button text danger"
+              disabled={busy}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Remove ${account.email} and its cached calendars/events from this device? This does not sign you out of Google.`,
+                  )
+                )
+                  void run({ type: "REMOVE", accountId: account.id });
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        </details>
       </div>
     </article>
   );
@@ -237,7 +244,7 @@ function SettingsForm({
         </span>
         <small>
           Checks account access and refreshes calendar lists. Event sync has its
-          own interval below.
+          own interval in Sync & offline storage.
         </small>
       </label>
       <label>
@@ -315,10 +322,10 @@ export function App({ compact = false }: { compact?: boolean }) {
         <div className="page-heading">
           <div>
             <p className="eyebrow">YOUR GOOGLE CALENDARS</p>
-            <h1>{compact ? "Your accounts" : "Together, on your terms."}</h1>
+            <h1>{compact ? "Your accounts" : "Settings"}</h1>
             <p className="lead">
-              Connect your accounts. Keep your settings and calendar cache on
-              this device.
+              Manage accounts, personalize your calendar, and choose how you are
+              reminded.
             </p>
           </div>
           {compact && (
@@ -330,233 +337,275 @@ export function App({ compact = false }: { compact?: boolean }) {
             </button>
           )}
         </div>
-        {error && (
-          <div className="banner error" role="alert">
-            {error}
-          </div>
-        )}
-        {notice && (
-          <div className="banner success" role="status">
-            {notice}
-          </div>
-        )}
-        {busy && (
-          <div className="working" role="status">
-            <span className="spinner" /> {progress}
-          </div>
-        )}
-        {!state && !error && (
-          <p className="muted" role="status">
-            Loading your accounts…
-          </p>
-        )}
+        <div className="settings-feedback">
+          {error && (
+            <div className="banner error" role="alert">
+              {error}
+            </div>
+          )}
+          {notice && (
+            <div className="banner success" role="status">
+              {notice}
+            </div>
+          )}
+          {busy && (
+            <div className="working" role="status">
+              <span className="spinner" /> {progress}
+            </div>
+          )}
+          {!state && !error && (
+            <p className="muted" role="status">
+              Loading your accounts…
+            </p>
+          )}
+        </div>
         {state && (
-          <>
-            {reconnectCount > 0 && (
-              <div className="banner warning" role="alert">
-                {reconnectCount} account
-                {reconnectCount === 1 ? " needs" : "s need"} to be reconnected.
-                Saved information is still available below.
-              </div>
-            )}
-            {!state.oauthConfigured && (
-              <section className="setup-card">
-                <p className="eyebrow">ONE-TIME GOOGLE SETUP</p>
-                <h2>Connect your extension to Google</h2>
-                <p>
-                  Register this extension ID as a Chrome Extension OAuth client
-                  in Google Cloud:
-                </p>
-                <code className="extension-id">{state.extensionId}</code>
-                <p>
-                  Add the resulting client ID to <code>.env.local</code>, then
-                  rebuild and reload the extension. Follow{" "}
-                  <code>docs/GOOGLE-SETUP.md</code> in the project for each
-                  step.
-                </p>
-                {compact && (
+          <div className={compact ? "" : "settings-layout"}>
+            {!compact && <SettingsNavigation />}
+            <div className="settings-content">
+              {reconnectCount > 0 && (
+                <div className="banner warning" role="alert">
+                  {reconnectCount} account
+                  {reconnectCount === 1 ? " needs" : "s need"} to be
+                  reconnected. Saved information is still available below.
+                </div>
+              )}
+              {!state.oauthConfigured && (
+                <section className="setup-card">
+                  <p className="eyebrow">ONE-TIME GOOGLE SETUP</p>
+                  <h2>Connect your extension to Google</h2>
+                  <p>
+                    Register this extension ID as a Chrome Extension OAuth
+                    client in Google Cloud:
+                  </p>
+                  <code className="extension-id">{state.extensionId}</code>
+                  <p>
+                    Add the resulting client ID to <code>.env.local</code>, then
+                    rebuild and reload the extension. Follow{" "}
+                    <code>docs/GOOGLE-SETUP.md</code> in the project for each
+                    step.
+                  </p>
+                  {compact && (
+                    <button
+                      className="button subtle"
+                      onClick={() => void chrome.runtime.openOptionsPage()}
+                    >
+                      Open setup & settings ↗
+                    </button>
+                  )}
+                </section>
+              )}
+              <section
+                id="accounts"
+                className="settings-section accounts-section"
+              >
+                <div className="section-heading">
+                  <div>
+                    <h2>
+                      Connected accounts{" "}
+                      <span className="count">{state.accounts.length}</span>
+                    </h2>
+                    <p className="muted">
+                      Choose which accounts are checked in the background.
+                    </p>
+                  </div>
+                  <button
+                    className="button primary"
+                    disabled={busy || !state.oauthConfigured}
+                    onClick={() =>
+                      void run(
+                        { type: "CONNECT" },
+                        "Account connected and calendar list loaded.",
+                      )
+                    }
+                  >
+                    + Add Google account
+                  </button>
+                </div>
+                {state.accounts.length === 0 ? (
+                  <div className="empty-state">
+                    <span className="empty-icon" aria-hidden="true">
+                      ◎
+                    </span>
+                    <h3>A little more connected.</h3>
+                    <p>
+                      Add your first Google account to see its calendars here.
+                      Google will ask for permission.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="accounts">
+                    {state.accounts.map((account) => (
+                      <AccountCard
+                        key={account.id}
+                        account={account}
+                        busy={busy}
+                        staleAfterMinutes={state.settings.staleAfterMinutes}
+                        run={run}
+                      />
+                    ))}
+                  </div>
+                )}
+                {state.accounts.length > 0 && (
                   <button
                     className="button subtle"
-                    onClick={() => void chrome.runtime.openOptionsPage()}
+                    disabled={busy || !state.oauthConfigured}
+                    onClick={() =>
+                      void run(
+                        { type: "CHECK_ALL" },
+                        "Enabled accounts checked. See each account for its status.",
+                      )
+                    }
                   >
-                    Open setup & settings ↗
+                    Check all enabled accounts
                   </button>
                 )}
               </section>
-            )}
-            <div className="section-heading">
-              <div>
-                <h2>
-                  Connected accounts{" "}
-                  <span className="count">{state.accounts.length}</span>
-                </h2>
-                <p className="muted">
-                  Choose which accounts are checked in the background.
-                </p>
-              </div>
-              <button
-                className="button primary"
-                disabled={busy || !state.oauthConfigured}
-                onClick={() =>
-                  void run(
-                    { type: "CONNECT" },
-                    "Account connected and calendar list loaded.",
-                  )
-                }
-              >
-                + Add Google account
-              </button>
+              {!compact && (
+                <>
+                  <div id="appearance" className="settings-block">
+                    <AppearanceSettings
+                      key={JSON.stringify(state.settings)}
+                      settings={state.settings}
+                      busy={busy}
+                      run={run}
+                    />
+                  </div>
+                  <div id="notifications" className="settings-block">
+                    <NotificationSettings
+                      key={`notify-${JSON.stringify([state.settings.reminders, state.settings.dnd, state.settings.notificationCalendars])}`}
+                      settings={state.settings}
+                      accounts={state.accounts}
+                      busy={busy}
+                      run={run}
+                    />
+                  </div>
+                  <div id="event-defaults" className="settings-block">
+                    <WriteSettings
+                      key={`write-${state.settings.defaultWriteCalendar}`}
+                      accounts={state.accounts}
+                      settings={state.settings}
+                      busy={busy}
+                      run={run}
+                    />
+                  </div>
+                  <div id="sync" className="settings-block">
+                    <SyncSettings
+                      key={`sync-${JSON.stringify(state.settings)}`}
+                      settings={state.settings}
+                      accounts={state.accounts}
+                      busy={busy}
+                      run={run}
+                    />
+                    <LocalStorageSettings />
+                  </div>
+                  <details
+                    id="connection-settings"
+                    className="settings-disclosure settings-advanced"
+                  >
+                    <summary>
+                      <span>Connection & setup</span>
+                      <small>
+                        Advanced · account checks and Google OAuth configuration
+                      </small>
+                    </summary>
+                    <div className="disclosure-body">
+                      <section className="settings-section">
+                        <div>
+                          <p className="eyebrow">BACKGROUND ACTIVITY</p>
+                          <h2>Connection preferences</h2>
+                          <p className="muted">
+                            Adjust how often Google access is checked. Changes
+                            apply immediately.
+                          </p>
+                        </div>
+                        <SettingsForm
+                          key={`${state.settings.connectionCheckMinutes}-${state.settings.staleAfterMinutes}`}
+                          settings={state.settings}
+                          busy={busy}
+                          run={run}
+                        />
+                      </section>
+                      <AccountChooserSettings
+                        key={`chooser-${state.settings.webOAuthClientId}`}
+                        settings={state.settings}
+                        extensionId={state.extensionId}
+                        busy={busy}
+                        run={run}
+                      />
+                    </div>
+                  </details>
+                  <details
+                    id="diagnostics"
+                    className="settings-disclosure settings-advanced"
+                  >
+                    <summary>
+                      <span>Diagnostics</span>
+                      <small>
+                        Advanced · generate a private local troubleshooting
+                        report
+                      </small>
+                    </summary>
+                    <div className="disclosure-body">
+                      <section className="settings-section">
+                        <div>
+                          <p className="eyebrow">TROUBLESHOOTING</p>
+                          <h2>Connection diagnostics</h2>
+                          <p className="muted">
+                            Generate a local report of check results. It
+                            excludes tokens, email addresses, account IDs, and
+                            calendar names.
+                          </p>
+                        </div>
+                        <div className="diagnostics-actions">
+                          <button
+                            className="button subtle"
+                            disabled={busy}
+                            onClick={() =>
+                              void run({ type: "GET_DIAGNOSTICS" })
+                            }
+                          >
+                            Generate report
+                          </button>
+                          {report && (
+                            <button
+                              className="button subtle"
+                              onClick={() => {
+                                void navigator.clipboard
+                                  .writeText(report)
+                                  .then(() => setNotice("Diagnostics copied."))
+                                  .catch(() =>
+                                    setError(
+                                      "Copy failed. Select the report below to copy it manually.",
+                                    ),
+                                  );
+                              }}
+                            >
+                              Copy report
+                            </button>
+                          )}
+                        </div>
+                        {report && (
+                          <pre className="diagnostics" tabIndex={0}>
+                            {report}
+                          </pre>
+                        )}
+                      </section>
+                    </div>
+                  </details>
+                  <footer>
+                    <p>
+                      Extension ID <code>{state.extensionId}</code>
+                    </p>
+                    <p>
+                      Preferences, cached events and notification sounds stay on
+                      this device.
+                    </p>
+                  </footer>
+                </>
+              )}
             </div>
-            {state.accounts.length === 0 ? (
-              <div className="empty-state">
-                <span className="empty-icon" aria-hidden="true">
-                  ◎
-                </span>
-                <h3>A little more connected.</h3>
-                <p>
-                  Add your first Google account to see its calendars here.
-                  Google will ask for permission.
-                </p>
-              </div>
-            ) : (
-              <div className="accounts">
-                {state.accounts.map((account) => (
-                  <AccountCard
-                    key={account.id}
-                    account={account}
-                    busy={busy}
-                    staleAfterMinutes={state.settings.staleAfterMinutes}
-                    run={run}
-                  />
-                ))}
-              </div>
-            )}
-            {state.accounts.length > 0 && (
-              <button
-                className="button subtle"
-                disabled={busy || !state.oauthConfigured}
-                onClick={() =>
-                  void run(
-                    { type: "CHECK_ALL" },
-                    "Enabled accounts checked. See each account for its status.",
-                  )
-                }
-              >
-                Check all enabled accounts
-              </button>
-            )}
-            {!compact && (
-              <>
-                <section className="settings-section">
-                  <div>
-                    <p className="eyebrow">BACKGROUND ACTIVITY</p>
-                    <h2>Connection preferences</h2>
-                    <p className="muted">
-                      Adjust how often Google access is checked. Changes apply
-                      immediately.
-                    </p>
-                  </div>
-                  <SettingsForm
-                    key={`${state.settings.connectionCheckMinutes}-${state.settings.staleAfterMinutes}`}
-                    settings={state.settings}
-                    busy={busy}
-                    run={run}
-                  />
-                </section>
-                <AccountChooserSettings
-                  key={`chooser-${state.settings.webOAuthClientId}`}
-                  settings={state.settings}
-                  extensionId={state.extensionId}
-                  busy={busy}
-                  run={run}
-                />
-                <AppearanceSettings
-                  key={JSON.stringify(state.settings)}
-                  settings={state.settings}
-                  busy={busy}
-                  run={run}
-                />
-                <WriteSettings
-                  key={`write-${state.settings.defaultWriteCalendar}`}
-                  accounts={state.accounts}
-                  settings={state.settings}
-                  busy={busy}
-                  run={run}
-                />
-                <NotificationSettings
-                  key={`notify-${JSON.stringify([state.settings.reminders, state.settings.dnd, state.settings.notificationCalendars])}`}
-                  settings={state.settings}
-                  accounts={state.accounts}
-                  busy={busy}
-                  run={run}
-                />
-                <SyncSettings
-                  key={`sync-${JSON.stringify(state.settings)}`}
-                  settings={state.settings}
-                  accounts={state.accounts}
-                  busy={busy}
-                  run={run}
-                />
-                <section className="settings-section">
-                  <div>
-                    <p className="eyebrow">TROUBLESHOOTING</p>
-                    <h2>Connection diagnostics</h2>
-                    <p className="muted">
-                      Generate a local report of check results. It excludes
-                      tokens, email addresses, account IDs, and calendar names.
-                    </p>
-                  </div>
-                  <div className="diagnostics-actions">
-                    <button
-                      className="button subtle"
-                      disabled={busy}
-                      onClick={() => void run({ type: "GET_DIAGNOSTICS" })}
-                    >
-                      Generate report
-                    </button>
-                    {report && (
-                      <button
-                        className="button subtle"
-                        onClick={() => {
-                          void navigator.clipboard
-                            .writeText(report)
-                            .then(() => setNotice("Diagnostics copied."))
-                            .catch(() =>
-                              setError(
-                                "Copy failed. Select the report below to copy it manually.",
-                              ),
-                            );
-                        }}
-                      >
-                        Copy report
-                      </button>
-                    )}
-                  </div>
-                  {report && (
-                    <pre className="diagnostics" tabIndex={0}>
-                      {report}
-                    </pre>
-                  )}
-                </section>
-                <footer>
-                  <p>
-                    Extension ID <code>{state.extensionId}</code>
-                  </p>
-                  <p>
-                    Google events are cached locally for offline use. Event
-                    editing works offline through a local queue. Reminder sounds
-                    and Do not disturb are configured above.
-                  </p>
-                  <p>
-                    Adding another account resets this extension’s cached token
-                    selection. Existing connected accounts remain saved and are
-                    checked independently. Removing an account only removes its
-                    saved data from this device.
-                  </p>
-                </footer>
-              </>
-            )}
-          </>
+          </div>
         )}
       </main>
     </div>

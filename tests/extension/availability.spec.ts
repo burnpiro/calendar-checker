@@ -140,6 +140,7 @@ test("busy-only calendars sync through freeBusy, render read-only blocks and sur
     await options
       .getByRole("button", { name: "Sync Google calendars", exact: true })
       .click();
+    await options.locator(".sync-account > summary").click();
     await expect(
       options.getByText(
         "Busy-only calendar · shows occupied times without event details.",

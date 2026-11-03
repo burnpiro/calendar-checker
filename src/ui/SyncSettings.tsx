@@ -130,9 +130,19 @@ export function SyncSettings({
         <p role="alert">Local sync status could not be read.</p>
       )}
       {accounts.map((account) => (
-        <details className="sync-account" key={account.id} open>
+        <details
+          className="sync-account"
+          key={account.id}
+          open={metadata?.states.some(
+            (s) => s.accountId === account.id && Boolean(s.errorCode),
+          )}
+        >
           <summary>
-            {account.email} {account.enabled ? "" : "· paused"}
+            {account.email} · {account.calendars.length} calendars{" "}
+            {account.enabled ? "" : "· paused"}
+            {metadata?.states.some(
+              (s) => s.accountId === account.id && Boolean(s.errorCode),
+            ) && <span className="status-error"> · Needs attention</span>}
           </summary>
           {!account.eventsReadGranted && (
             <p className="muted">
