@@ -118,7 +118,7 @@ export async function verifyBuild(
       else {
         const name = relative(directory, absolute).replaceAll("\\", "/");
         requireThat(
-          /^(manifest\.json|third-party-notices\.txt|(?:chunks|assets|icon|sounds)\/[A-Za-z0-9_./-]+\.(?:js|css|png|wav)|[a-z-]+\.(?:html|js))$/.test(
+          /^(manifest\.json|LICENSE\.txt|third-party-notices\.txt|(?:chunks|assets|icon|sounds)\/[A-Za-z0-9_./-]+\.(?:js|css|png|wav)|[a-z-]+\.(?:html|js))$/.test(
             name,
           ),
           `Unexpected release file: ${name}`,
@@ -162,6 +162,7 @@ export async function verifyBuild(
     "calendar.html",
     "offscreen.html",
     "third-party-notices.txt",
+    "LICENSE.txt",
   ])
     requireThat(
       typeof path === "string" && names.has(path),

@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="All your Google calendars in one calm Chrome extension. Month and week views, local storage, event editing, custom reminders and two time zones."
+    />
+    <meta name="theme-color" content="#f6f5f0" />
+    <meta
+      property="og:title"
+      content="Calendar Checker — Make room for your day"
+    />
+    <meta
+      property="og:description"
+      content="Your Google calendars, together on your device. An open-source Chrome extension with local storage, thoughtful reminders and a clearer view of your day."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="assets/icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="site.js" defer></script>
+    <title>Calendar Checker — Make room for your day</title>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header wrap">
+      <a class="brand" href="./" aria-label="Calendar Checker home"
+        ><img src="assets/icon.png" width="32" height="32" alt="" /><span
+          >Calendar Checker</span
+        ></a
+      >
+      <nav aria-label="Main navigation">
+        <a href="#features">Features</a><a href="#screens">Screens</a
+        ><a href="#privacy">Privacy</a>
+      </nav>
+      <a class="github-link" href="https://github.com/burnpiro/calendar-checker"
+        >View on GitHub <span aria-hidden="true">↗</span></a
+      >
+    </header>
+    <main id="main">
+      <section class="hero wrap" aria-labelledby="hero-title">
+        <div class="hero-top">
+          <p class="eyebrow">
+            <span class="status-dot"></span> A little more room for your day
+          </p>
+          <span class="release-label">Chrome extension · Open source</span>
+        </div>
+        <div class="hero-copy">
+          <h1 id="hero-title">
+            Every calendar. <br /><span>One calmer view.</span>
+          </h1>
+          <div>
+            <p class="hero-lead">
+              Work, personal, and everything between. Bring your Google
+              calendars together in Chrome, with thoughtful reminders and a home
+              on your device.
+            </p>
+            <div class="hero-actions">
+              <a class="button primary" href="#get-started"
+                >Get started <span aria-hidden="true">↗</span></a
+              ><a class="text-link" href="#screens"
+                >Take a look <span aria-hidden="true">↓</span></a
+              >
+            </div>
+            <p class="hero-note">
+              Local storage. No application server. Yours to configure.
+            </p>
+          </div>
+        </div>
+        <figure class="hero-figure">
+          <div class="window-bar">
+            <span class="window-dots" aria-hidden="true"
+              ><i></i><i></i><i></i></span
+            ><span>Your week, all together</span
+            ><span class="window-tag">Calendar Checker</span>
+          </div>
+          <img
+            src="assets/screens/week.png"
+            width="1280"
+            height="800"
+            alt="Week view combining Studio, Product, Personal and team availability calendars, with Warsaw and New York time labels"
+            fetchpriority="high"
+          />
+          <figcaption>
+            <span>Different accounts. The same clear picture.</span
+            ><span>All names and events shown are fictional.</span>
+          </figcaption>
+        </figure>
+      </section>
+      <section class="intro-strip wrap" aria-label="At a glance">
+        <p><strong>Multiple accounts</strong><span>One place to look</span></p>
+        <p>
+          <strong>Month + week</strong><span>The right amount of detail</span>
+        </p>
+        <p>
+          <strong>Available offline</strong
+          ><span>Your saved calendar stays close</span>
+        </p>
+        <p>
+          <strong>GPL-3.0</strong><span>Open source, inspectable code</span>
+        </p>
+      </section>
+      <section class="everyday wrap" aria-labelledby="everyday-title">
+        <div class="section-copy">
+          <p class="eyebrow">Less switching. More clarity.</p>
+          <h2 id="everyday-title">A small space.<br />A better overview.</h2>
+          <p>
+            Check your day from the toolbar, or give the full calendar its own
+            tab. Choose which accounts and calendars appear, then filter down to
+            what matters.
+          </p>
+          <ul class="check-list">
+            <li>Calendars grouped by account</li>
+            <li>Color-coded events and shared busy periods</li>
+            <li>Search and Google event-type filters</li>
+            <li>A toolbar badge for your next event</li>
+          </ul>
+          <a class="text-link" href="#screens" data-select-screen="popup"
+            >See the popup <span aria-hidden="true">↗</span></a
+          >
+        </div>
+        <figure class="popup-figure">
+          <span class="small-caption">Right there in your toolbar</span
+          ><img
+            src="assets/screens/popup.png"
+            width="800"
+            height="600"
+            loading="lazy"
+            alt="The compact calendar popup shows a full month and upcoming events"
+          />
+          <figcaption>
+            Today's next start time, or +1d and beyond for a later date.
+          </figcaption>
+        </figure>
+      </section>
+      <section
+        class="screens-section"
+        id="screens"
+        aria-labelledby="screens-title"
+      >
+        <div class="wrap">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">A closer look</p>
+              <h2 id="screens-title">Built around your actual day.</h2>
+            </div>
+            <p>
+              Actual extension screens.<br />Illustrative accounts and events.
+            </p>
+          </div>
+          <div
+            class="screen-tabs"
+            role="tablist"
+            aria-label="Extension screenshots"
+          >
+            <button
+              id="tab-month"
+              role="tab"
+              aria-selected="true"
+              aria-controls="screen-panel"
+              data-screen="month"
+            >
+              Month</button
+            ><button
+              id="tab-week"
+              role="tab"
+              aria-selected="false"
+              aria-controls="screen-panel"
+              tabindex="-1"
+              data-screen="week"
+            >
+              Week</button
+            ><button
+              id="tab-editor"
+              role="tab"
+              aria-selected="false"
+              aria-controls="screen-panel"
+              tabindex="-1"
+              data-screen="editor"
+            >
+              Event editor</button
+            ><button
+              id="tab-reminders"
+              role="tab"
+              aria-selected="false"
+              aria-controls="screen-panel"
+              tabindex="-1"
+              data-screen="reminders"
+            >
+              Reminders</button
+            ><button
+              id="tab-dark"
+              role="tab"
+              aria-selected="false"
+              aria-controls="screen-panel"
+              tabindex="-1"
+              data-screen="dark"
+            >
+              Dark mode</button
+            ><button
+              id="tab-popup"
+              role="tab"
+              aria-selected="false"
+              aria-controls="screen-panel"
+              tabindex="-1"
+              data-screen="popup"
+            >
+              Popup
+            </button>
+          </div>
+          <div
+            class="screen-layout"
+            id="screen-panel"
+            role="tabpanel"
+            aria-labelledby="tab-month"
+          >
+            <button
+              class="screen-image-button"
+              type="button"
+              id="enlarge-screen"
+              aria-label="Enlarge the current screenshot"
+            >
+              <img
+                id="screen-image"
+                src="assets/screens/month.png"
+                width="1280"
+                height="800"
+                alt="Light month view with calendars grouped by account and color-coded events"
+                loading="lazy"
+              /><span class="enlarge-hint"
+                >View full size <span aria-hidden="true">↗</span></span
+              >
+            </button>
+            <div class="screen-description" aria-live="polite">
+              <span class="screen-number" id="screen-number">01 / 06</span>
+              <h3 id="screen-title">See the month.<br />Keep the context.</h3>
+              <p id="screen-copy">
+                Bring work and personal calendars into a single view. Calendar
+                colors, all-day events and shared availability help you see what
+                is coming.
+              </p>
+              <a
+                id="download-screen"
+                class="text-link"
+                href="assets/screens/month.png"
+                download="calendar-checker-month.png"
+                >Download image <span aria-hidden="true">↓</span></a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+      <section
+        class="features wrap"
+        id="features"
+        aria-labelledby="features-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">The details make the difference</p>
+            <h2 id="features-title">
+              A calendar that fits<br />the way you work.
+            </h2>
+          </div>
+          <p>Useful defaults.<br />Room to make it your own.</p>
+        </div>
+        <dl class="feature-grid">
+          <div>
+            <dt><span>01</span> Every account, together</dt>
+            <dd>
+              Explicitly connect multiple Google accounts. Enable or pause each
+              one, choose visible calendars and set a default calendar for new
+              events.
+            </dd>
+          </div>
+          <div>
+            <dt><span>02</span> Two ways to see your time</dt>
+            <dd>
+              Month and week views, a mini date navigator, weekends on or off,
+              configurable hours, readable scrolling or a fit-to-height week.
+            </dd>
+          </div>
+          <div>
+            <dt><span>03</span> Events with all the details</dt>
+            <dd>
+              Create, edit and delete events. Add guests, optional attendance,
+              Google Meet, location, notes, colors, Busy/Free and visibility.
+            </dd>
+          </div>
+          <div>
+            <dt><span>04</span> Repeats and reminders</dt>
+            <dd>
+              Recurring events with intervals, weekdays and end rules. Edit an
+              occurrence or its series. Configure per-event Google notifications
+              separately.
+            </dd>
+          </div>
+          <div>
+            <dt><span>05</span> Alerts your way</dt>
+            <dd>
+              Desktop and sound notifications, imported local sounds, volume,
+              multiple reminder times, snooze, privacy settings and calendar
+              overrides.
+            </dd>
+          </div>
+          <div>
+            <dt><span>06</span> Make space for quiet</dt>
+            <dd>
+              Manual Do not disturb, an until-time or a weekly schedule. Set
+              overnight quiet hours and choose whether delayed reminders are
+              skipped or deferred.
+            </dd>
+          </div>
+          <div>
+            <dt><span>07</span> Time zones, side by side</dt>
+            <dd>
+              Choose a primary and optional second time zone. Week labels align;
+              event details show precise times in both zones. Use a 12- or
+              24-hour clock.
+            </dd>
+          </div>
+          <div>
+            <dt><span>08</span> A useful offline fallback</dt>
+            <dd>
+              Saved events remain available without a connection. Coverage and
+              stale-data messages explain what is cached; queued edits wait
+              safely for access.
+            </dd>
+          </div>
+          <div>
+            <dt><span>09</span> Changes you can trust</dt>
+            <dd>
+              Durable pending changes, duplicate-safe creation and explicit
+              conflict review. Reconnect alerts identify the affected account
+              while keeping its saved data.
+            </dd>
+          </div>
+          <div>
+            <dt><span>10</span> The right details, on demand</dt>
+            <dd>
+              Hover for a preview after one second, or open full event details.
+              Search by text and filter Google event types or individual
+              calendars.
+            </dd>
+          </div>
+          <div>
+            <dt><span>11</span> Comfortable or compact</dt>
+            <dd>
+              Light, dark and device themes. Choose density, week start and hour
+              height. Keep a next-event badge with the event's color on the
+              toolbar.
+            </dd>
+          </div>
+          <div>
+            <dt><span>12</span> Preferences that stay put</dt>
+            <dd>
+              Valid settings save automatically across extension windows. Adjust
+              sync timing, cache range, event defaults and notification
+              behavior.
+            </dd>
+          </div>
+        </dl>
+        <p class="feature-note">
+          Reminders need Chrome running. Browser suspension, sleep and system
+          notification settings can delay alerts.
+        </p>
+      </section>
+      <section
+        class="privacy-section"
+        id="privacy"
+        aria-labelledby="privacy-title"
+      >
+        <div class="wrap privacy-layout">
+          <div>
+            <p class="eyebrow">A home on your device</p>
+            <h2 id="privacy-title">Your calendar.<br />Your local space.</h2>
+            <p>
+              Calendar Checker talks directly to Google's APIs. Your settings,
+              saved events, pending edits and custom sounds stay in your Chrome
+              profile.
+            </p>
+            <a class="text-link" href="privacy.html"
+              >Read the privacy policy <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <div class="privacy-facts">
+            <div>
+              <span>01</span>
+              <p>
+                <strong>Explicit access</strong>You choose which Google accounts
+                to authorize.
+              </p>
+            </div>
+            <div>
+              <span>02</span>
+              <p>
+                <strong>Direct connection</strong>OAuth and calendar requests go
+                to Google.
+              </p>
+            </div>
+            <div>
+              <span>03</span>
+              <p>
+                <strong>Local storage</strong>No application backend, telemetry
+                or cloud preference sync.
+              </p>
+            </div>
+            <div class="source-note">
+              The code is open. You can see how it works.<a
+                href="https://github.com/burnpiro/calendar-checker"
+                >Explore the repository ↗</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+      <section
+        class="get-started wrap"
+        id="get-started"
+        aria-labelledby="get-started-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Make room for your day</p>
+            <h2 id="get-started-title">Ready when you are.</h2>
+          </div>
+          <span class="release-label">v0.6.0 · Developer preview</span>
+        </div>
+        <ol class="setup-steps">
+          <li>
+            <span>01</span>
+            <h3>Get the source</h3>
+            <p>
+              Clone the repository, install dependencies and build the extension
+              locally.
+            </p>
+          </li>
+          <li>
+            <span>02</span>
+            <h3>Register Google access</h3>
+            <p>
+              Follow the OAuth setup guide. Registration authorizes API access;
+              it does not host your data.
+            </p>
+          </li>
+          <li>
+            <span>03</span>
+            <h3>Load it into Chrome</h3>
+            <p>
+              Use Load unpacked, connect your accounts and choose the calendars
+              you want to see.
+            </p>
+          </li>
+        </ol>
+        <div class="setup-actions">
+          <a
+            class="button primary"
+            href="https://github.com/burnpiro/calendar-checker#run-locally"
+            >Installation guide <span aria-hidden="true">↗</span></a
+          ><a
+            class="button secondary"
+            href="https://github.com/burnpiro/calendar-checker/blob/main/docs/GOOGLE-SETUP.md"
+            >Google setup guide <span aria-hidden="true">↗</span></a
+          >
+          <p>
+            Available from source. A Chrome Web Store listing has not been
+            published.
+          </p>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer wrap">
+      <a class="brand" href="./"
+        ><img src="assets/icon.png" width="27" height="27" alt="" /><span
+          >Calendar Checker</span
+        ></a
+      >
+      <p>Make room for your day.</p>
+      <div>
+        <a href="privacy.html">Privacy</a
+        ><a
+          href="https://github.com/burnpiro/calendar-checker/blob/main/LICENSE"
+          >GPL-3.0</a
+        ><a href="https://github.com/burnpiro/calendar-checker">GitHub ↗</a>
+      </div>
+      <small
+        >Independent open-source project. Not affiliated with Google.</small
+      >
+    </footer>
+    <dialog
+      class="image-dialog"
+      id="image-dialog"
+      aria-label="Full-size extension screenshot"
+    >
+      <button type="button" id="close-image" aria-label="Close screenshot">
+        ×</button
+      ><img
+        id="large-image"
+        src="assets/screens/month.png"
+        alt="Full-size calendar screenshot"
+      />
+    </dialog>
+  </body>
+</html>

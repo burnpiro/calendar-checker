@@ -4,7 +4,7 @@ The native Chrome token API can return the same remembered account even after it
 
 ## Configure Google once
 
-1. Open [Google Auth Platform → Clients](https://console.cloud.google.com/auth/clients?project=YOUR_GOOGLE_CLOUD_PROJECT) in project `YOUR_GOOGLE_CLOUD_PROJECT`.
+1. Open [Google Auth Platform → Clients](https://console.cloud.google.com/auth/clients) in your Google Cloud project.
 2. Choose **Create client → Web application**. Name it **Calendar Checker account chooser**.
 3. Add this exact **Authorized redirect URI**, including the final slash:
 
@@ -16,7 +16,7 @@ The native Chrome token API can return the same remembered account even after it
 5. Keep Calendar API enabled and the project's current identity/calendar-list/event-read scopes. If the OAuth app is in Testing, add both Google accounts under **Audience → Test users**.
 6. In the extension, open **Settings → Connection & setup → Google account chooser**, paste the public ID, and wait for **Saved automatically**. Alternatively, set `WXT_GOOGLE_WEB_CLIENT_ID` in the existing `.env.local`, rebuild, and reload. Preserve `WXT_GOOGLE_CLIENT_ID` and the extension key.
 
-The user's Web client ID is already set in this workspace's ignored `.env.local`. Reload the v0.3.3 build. The Settings field should already be filled unless an explicit saved setting overrides it; the saved setting takes precedence over the build default.
+If you configure the public Web client ID in your ignored `.env.local`, the Settings field uses it as a build default. An explicit saved setting takes precedence.
 
 Chrome intercepts the redirect. It is not an application server and no calendar information is hosted there.
 

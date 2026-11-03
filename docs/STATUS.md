@@ -2,6 +2,16 @@
 
 Last updated: 2026-11-03.
 
+## GitHub publication preparation · v0.6.0
+
+GPL-3.0-only application license added to source/package metadata and copied into production builds; dependency notices are preserved. The environment ignore rules cover dotenv variants, `.envrc`, local credential files and generated archives. Gitleaks 8.30.1 found no detected secrets across the original 29-commit history. Documentation project identifiers and personal commit email metadata are being sanitized before the first push; the extension public identity key is intentionally preserved.
+
+Five 1280 × 800 Chrome Web Store screenshots and an extra website popup capture use fictional two-account fixtures in a disposable Chromium profile with network access blocked. No store listing is submitted. The buildless `site/` adds a responsive feature tour, six-screen keyboard-accessible gallery, source setup links and a privacy policy. A commit-pinned GitHub Actions workflow deploys only `site/` to Pages. See `PUBLICATION.md`.
+
+Validation: `npm run check` passes (239 unit/adapter tests, TypeScript, formatting, production build and 3 release-auditor tests). The GPL-bearing build contains 25 files. Both desktop (1440 px) and mobile (390 px) website checks pass, including gallery image loads, keyboard selection, dialog focus return, zero horizontal overflow, no third-party resource requests and four WCAG A/AA axe scans. The screenshot generator passes. All 21 isolated Chromium extension regression tests pass, including actual toolbar-popup sizing. Local site and public screenshot layout were visually inspected.
+
+Repository visibility is awaiting the user's selection; nothing has been pushed or deployed yet. Next concrete task: finish extension regression checks, sanitize all reachable history, re-scan, then push the audited source and enable the requested GitHub Pages site once visibility is confirmed. Existing live Google/OS acceptance gates remain unchanged.
+
 ## Stage 1
 
 Implemented: local Git project, WXT/React/strict TypeScript, stable extension ID, optional build-time OAuth client configuration, native identity adapter, account isolation, calendar-list loading/cache, silent token checks/retry, reconnect controls and badge, enabled-account checks, local preferences, popup/options UI, and sanitized diagnostics.

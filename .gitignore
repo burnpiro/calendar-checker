@@ -12,3 +12,16 @@ test-results/
 *.key
 *.crx
 *.zip
+
+# Local environment and credential files (the empty template is intentional).
+*.env
+.envrc
+.direnv/
+secrets/
+credentials*.json
+client_secret*.json
+application_default_credentials.json
+*.bundle
+
+# Generated from the repository license by prebuild/prezip.
+public/LICENSE.txt

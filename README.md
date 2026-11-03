@@ -2,6 +2,10 @@
 
 A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
 
+[Feature tour and screenshots](https://burnpiro.github.io/calendar-checker/) · [Privacy policy](https://burnpiro.github.io/calendar-checker/privacy.html) · [GPL-3.0 license](LICENSE)
+
+![Calendar Checker week view with fictional events](site/assets/screens/week.png)
+
 ## Current release candidate: stage 6 · v0.6.0
 
 Google event reading/synchronization, event creation/editing, local reminders and dual time zones are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
@@ -184,4 +188,6 @@ After resolving/discarding any pending changes, removing an account deletes its 
 - [Stage 6 verification and local packaging](docs/STAGE-6.md)
 - [Durable notes for future agents](docs/agents/LEARNINGS.md)
 
-This repository is developed in local Git. No remote, publication, hosting, or deployment is required.
+## License and public assets
+
+Calendar Checker is licensed under [GPL-3.0-only](LICENSE). Dependencies keep their upstream licenses and notices. The [publication guide](docs/PUBLICATION.md) describes the privacy review and GitHub Pages workflow. Five [Chrome Web Store screenshots](marketing/chrome-web-store/README.md) use fictional data; regenerate them with `npm run screenshots`. Run `npm run test:site` to verify the static feature website. The extension itself requires no application hosting.

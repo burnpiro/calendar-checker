@@ -38,7 +38,7 @@ These identify the authorized account, list its calendars, read events, allow st
 
 Manage this Chrome Extension app's Data Access scopes through the Cloud Console. The similarly named `gcloud iam oauth-clients` commands manage Workforce Identity Federation clients, a different resource; see [Google's distinction](https://docs.cloud.google.com/iam/docs/workforce-manage-oauth-app). [Data Access documentation](https://support.google.com/cloud/answer/15549135) describes selecting scopes, updating the selection, and saving it.
 
-For this workspace, the availability scope was added to project `YOUR_GOOGLE_CLOUD_PROJECT` after explicit user approval and the Console confirmed **Data access changes saved!** on 2026-11-02. Existing accounts still need Reconnect; a saved declaration is not an active grant.
+After adding the availability scope to your project, reconnect existing accounts. A saved declaration is not an active grant.
 
 ### Permissions prepared for later stages
 

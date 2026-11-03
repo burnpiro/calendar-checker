@@ -46,6 +46,12 @@ Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.
 - Reuse local design tokens, Tailwind, Radix primitives, and Lucide icons. Do not add unused packages or duplicate the existing component system.
 - Never rotate `config/extension-key.json` casually: it fixes the extension ID and OAuth registration. Its public key is safe to commit; no private signing key belongs in the repository.
 
+## Public assets
+
+- Application source is GPL-3.0-only; preserve upstream dependency licenses. Build hooks copy the root license and generate runtime notices.
+- `site/` is the static GitHub Pages feature site, separate from extension storage. Deploy only that directory. Keep assets local; do not add telemetry or remote fonts/scripts.
+- Public screenshots must use fictional fixtures in a disposable profile. Use `npm run screenshots`; run `npm run test:site` for site changes. Never publish a personal build, account data or local environment files. Read `docs/PUBLICATION.md` before changing publication tooling.
+
 ## Handoff
 
 Record what changed, tests actually run, remaining limitations, and the next concrete task. Maintain `docs/STATUS.md`; keep durable facts in documentation rather than relying on chat history.

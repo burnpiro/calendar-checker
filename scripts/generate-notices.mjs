@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { copyFile, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -47,4 +47,5 @@ await writeFile(
   resolve(root, "public/third-party-notices.txt"),
   `Calendar Checker — third-party runtime notices\nGenerated from the installed production dependency tree. Development test tools are not bundled.\nThe react-remove-scroll-bar fallback notice is from its upstream master/LICENSE, retrieved 2026-11-03.\n\n${rows.map((r) => r.text).join("\n\n" + "=".repeat(72) + "\n\n")}\n`,
 );
+await copyFile(resolve(root, "LICENSE"), resolve(root, "public/LICENSE.txt"));
 console.log(`Generated runtime notices for ${rows.length} packages.`);

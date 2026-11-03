@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="How Calendar Checker handles Google Calendar access and local data."
+    />
+    <link rel="icon" href="assets/icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Privacy — Calendar Checker</title>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header wrap">
+      <a class="brand" href="./"
+        ><img src="assets/icon.png" width="32" height="32" alt="" /><span
+          >Calendar Checker</span
+        ></a
+      ><a
+        class="github-link"
+        href="https://github.com/burnpiro/calendar-checker"
+        >View source ↗</a
+      >
+    </header>
+    <main class="privacy-page wrap" id="main">
+      <p class="eyebrow">Your data, on your device</p>
+      <h1>Privacy policy</h1>
+      <p class="date">Effective November 3, 2026 · Calendar Checker v0.6.0</p>
+      <p>
+        Calendar Checker is an open-source Chrome extension that connects
+        directly to Google Calendar. It has no application backend and does not
+        send your calendar information to the developer.
+      </p>
+      <h2>Google account access</h2>
+      <p>
+        You explicitly authorize each Google account. The extension requests
+        identity/email information, access to the account's calendar list,
+        permission to read and edit events, and access to available free/busy
+        information. It does not read Gmail messages or discover accounts by
+        scraping cookies.
+      </p>
+      <p>
+        Google OAuth and Calendar API requests go directly to Google. When you
+        save an event with guests or a video-conference request, that
+        information is sent to Google to carry out the requested event change.
+        Invitation delivery and meeting creation are handled by Google.
+      </p>
+      <h2>Information stored locally</h2>
+      <ul>
+        <li>
+          Account identifiers, email addresses, calendar lists and validated
+          preferences.
+        </li>
+        <li>
+          Cached events, availability periods, sync state and pending offline
+          changes.
+        </li>
+        <li>
+          Reminder delivery history, snoozes and imported notification sound
+          files.
+        </li>
+        <li>
+          Sanitized diagnostics that exclude OAuth tokens, event contents,
+          account emails and calendar identifiers.
+        </li>
+      </ul>
+      <p>
+        Preferences use chrome.storage.local. Event data, pending changes and
+        sound files use local IndexedDB. Preferences are not synchronized
+        through Chrome's cloud storage.
+      </p>
+      <h2>Authentication</h2>
+      <p>
+        Native-account access tokens are managed by Chrome. Tokens for the
+        optional account chooser are held in the extension worker's memory. The
+        application does not persist these access tokens or collect client
+        secrets. Google's and Chrome's own account/session handling remains
+        subject to their policies.
+      </p>
+      <h2>Notifications</h2>
+      <p>
+        Optional desktop notifications can show event information through Chrome
+        and your operating system. Notification privacy settings let you limit
+        the displayed detail. Custom sound files remain local and are not
+        uploaded. Per-event Google notifications are managed separately by
+        Google.
+      </p>
+      <h2>Telemetry and sharing</h2>
+      <p>
+        The extension contains no analytics, advertising or telemetry and does
+        not sell user data. Data is sent to Google only for the authorized
+        account and calendar operations. If you manually share a diagnostic
+        report or submit a GitHub issue, review what you include.
+      </p>
+      <h2>Control and deletion</h2>
+      <p>
+        You can pause accounts, choose visible calendars, disable reminders and
+        remove accounts. Account removal clears its local cached data after
+        pending changes are resolved. Removing an account locally does not
+        revoke Google's app consent or sign you out of Gmail; consent can be
+        revoked in your Google Account settings.
+      </p>
+      <p>
+        Uninstalling the extension clears its local Chrome-profile storage,
+        including unsynced changes and imported sounds. An uninstall does not
+        delete events already saved in Google Calendar.
+      </p>
+      <h2>This website</h2>
+      <p>
+        This is a static GitHub Pages site. It has no forms, tracking scripts,
+        analytics or application cookies. Images and scripts load from the same
+        site. GitHub processes ordinary hosting requests under the
+        <a
+          href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+          >GitHub privacy statement</a
+        >. All screenshots use fictional accounts and events.
+      </p>
+      <h2>Questions</h2>
+      <p>
+        Open an issue in the
+        <a href="https://github.com/burnpiro/calendar-checker/issues"
+          >project repository</a
+        >. Do not include passwords, tokens, OAuth callback URLs or private
+        event data. The source code is available under
+        <a href="https://github.com/burnpiro/calendar-checker/blob/main/LICENSE"
+          >GPL-3.0</a
+        >.
+      </p>
+      <p><a href="./">← Back to Calendar Checker</a></p>
+    </main>
+    <footer class="site-footer wrap">
+      <a class="brand" href="./"
+        ><img src="assets/icon.png" width="27" height="27" alt="" /><span
+          >Calendar Checker</span
+        ></a
+      >
+      <p>Make room for your day.</p>
+      <div>
+        <a href="https://github.com/burnpiro/calendar-checker">GitHub ↗</a>
+      </div>
+      <small
+        >Independent open-source project. Not affiliated with Google.</small
+      >
+    </footer>
+  </body>
+</html>

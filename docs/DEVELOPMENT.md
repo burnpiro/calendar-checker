@@ -2,7 +2,7 @@
 
 ## Working locally
 
-Use Node 22.12+, `npm ci`, and the committed lockfile. Dependencies are pinned; update intentionally and rerun checks. `npm run dev` is for rapid UI work; `npm run build` produces the unpacked acceptance-test build. No remote Git repository or hosting is needed.
+Use Node 22.12+, `npm ci`, and the committed lockfile. Dependencies are pinned; update intentionally and rerun checks. `npm run dev` is for rapid UI work; `npm run build` produces the unpacked acceptance-test build. The extension needs no application hosting. The public feature site is static GitHub Pages content in `site/`; see `PUBLICATION.md`.
 
 Use feature branches after the initial implementation. Keep changes focused and commit locally after appropriate verification. Never commit `.env.local`, tokens, downloaded diagnostics, private keys, browser profiles, generated builds, or test artifacts. The public extension manifest key is intentionally committed.
 
@@ -45,4 +45,8 @@ For every completed change, inspect `git diff --check`, update relevant docs, an
 
 Read `STAGE-6.md` before packaging. `npm run release:local` runs the regular checks, isolated browser suite, WXT ZIP and archive audit sequentially; Python 3 is required for the standard-library ZIP reader. `npm run check` now also exercises the artifact auditor and audits the production build. Generated ZIPs/reports stay in ignored `.output/`; do not upload or publish them without a request. The personal build embeds public OAuth client IDs, never `.env.local` or local profile data.
 
-`prebuild`/`prezip` generate bundled third-party notices from the pinned installed production tree. The react-remove-scroll-bar license fallback is committed with upstream provenance. If a dependency lacks its license text, resolve that explicitly rather than silently omitting it. Axe is a development-only dependency: scan both themes/populated views and keep native keyboard/focus tests alongside it. Automated scans are not a VoiceOver or all-platform certification. Preserve semantic calendar roles when adding keyboard entry points; never make aria-hidden label copies focusable or target generated FullCalendar classes.
+`prebuild`/`prezip` copy the GPL application license and generate bundled third-party notices from the pinned installed production tree. The react-remove-scroll-bar license fallback is committed with upstream provenance. If a dependency lacks its license text, resolve that explicitly rather than silently omitting it. Axe is a development-only dependency: scan both themes/populated views and keep native keyboard/focus tests alongside it. Automated scans are not a VoiceOver or all-platform certification. Preserve semantic calendar roles when adding keyboard entry points; never make aria-hidden label copies focusable or target generated FullCalendar classes.
+
+## Public documentation and screenshots
+
+Keep environment files ignored; `.env.example` contains empty public-client configuration only. Screenshots are intentionally versioned public assets generated from fictional fixtures in `tests/marketing/`. Run `npm run screenshots` to refresh them and `npm run test:site` after changing the static Pages site. Never capture a personal account/profile for public assets. Only `site/` is deployed by the Pages workflow. Source publication is separate from Chrome Web Store submission and live Google acceptance.
