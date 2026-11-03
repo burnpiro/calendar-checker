@@ -188,14 +188,14 @@ test("setup, local settings and background alarms survive a browser restart", as
     const worker = first.context.serviceWorkers()[0]!;
     const response = await worker.evaluateHandle(
       browserFetch,
-      "data:application/json,%7B%7D",
+      `chrome-extension://${first.id}/manifest.json`,
     );
     expect(
       await response.evaluate(async (value) => ({
         status: value.status,
-        body: await value.json(),
+        manifestVersion: (await value.json()).manifest_version,
       })),
-    ).toEqual({ status: 200, body: {} });
+    ).toEqual({ status: 200, manifestVersion: 3 });
     await response.dispose();
     const page = await first.context.newPage();
     const errors: string[] = [];
@@ -769,8 +769,8 @@ test("bundled worker syncs Google fixtures, updates instances and retains them a
       .locator(".calendar-event")
       .filter({ hasText: "Rescheduled fixture standup" });
     await expect(updated).toBeVisible();
-    await expect(updated).toHaveAttribute(
-      "aria-label",
+    await expect(updated).toHaveAccessibleName(/Rescheduled fixture standup/);
+    await expect(updated).toHaveAccessibleDescription(
       /Rescheduled fixture standup/,
     );
     await expect(

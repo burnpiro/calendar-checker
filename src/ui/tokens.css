@@ -5,7 +5,8 @@
   --text: #292c3c;
   --muted: #696f83;
   --line: #e8eaf2;
-  --accent: #7765d8;
+  --accent: #6954c0;
+  --on-accent: #ffffff;
   --accent-light: #f0edfb;
   --danger: #a33b49;
 }
@@ -17,6 +18,7 @@
   --muted: #a0a6bb;
   --line: #363949;
   --accent: #a495f1;
+  --on-accent: #191b25;
   --accent-light: #34304c;
   --danger: #f398a7;
 }

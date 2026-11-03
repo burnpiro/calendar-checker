@@ -2,7 +2,7 @@
 
 A local-first Google Calendar Chrome extension built with React, strict TypeScript, and WXT (Manifest V3). It connects directly to Google. There is no application backend or cloud database.
 
-## Current release: stage 5 · v0.5.7
+## Current release candidate: stage 6 · v0.6.0
 
 Google event reading/synchronization, event creation/editing, local reminders and dual time zones are implemented. The toolbar popup opens a full-width month/week calendar with compact controls, with a larger calendar in its own tab. It includes:
 
@@ -33,7 +33,7 @@ The stage 1 account features remain available in Settings:
 - A settings page with check interval and stale-data threshold controls.
 - A local diagnostic report containing safe failure steps, timeout/offline categories, HTTP statuses, and native browser network codes, without tokens, email addresses, account IDs, or calendar names.
 
-**Full live Google verification is pending.** Authorized token acquisition and account/calendar endpoint probes have succeeded in the running extension. A Chrome native-fetch receiver bug causing the initial account-connection failure has been reproduced and fixed; the user has confirmed successful account connection after reloading the rebuilt extension. Real secondary-account selection, renewal after a full Chrome restart, and revoked-consent recovery must also be exercised. See [the validation matrix](docs/STAGE-1-VALIDATION.md). A successful endpoint probe does not count as full account-flow acceptance.
+**Basic real two-account connection/sync is user-confirmed (2026-11-03); full lifecycle acceptance remains pending.** Authorized token acquisition and account/calendar endpoint probes have succeeded in the running extension. A Chrome native-fetch receiver bug causing the initial account-connection failure has been reproduced and fixed; the user has confirmed successful account connection after reloading the rebuilt extension. Renewal after a full Chrome restart, natural token expiry and revoked-consent recovery must still be exercised. See [the validation matrix](docs/STAGE-1-VALIDATION.md). A successful endpoint probe does not count as full account-flow acceptance.
 
 **Upgrading existing accounts:** v0.5.2 adds `calendar.events.freebusy` to display busy-only shared calendars. Add `https://www.googleapis.com/auth/calendar.events.freebusy` in Google Cloud → Google Auth Platform → Data Access, reload the extension and use **Reconnect** to approve availability access. Existing `calendar.events` access remains for reading/editing full events; no new OAuth client or application server is needed. See [the stage 4 guide](docs/STAGE-4.md).
 
@@ -53,11 +53,15 @@ npm run build
 npm run extension:id
 ```
 
-Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.5.7. The native-popup sizing correction remains covered by an actual toolbar-popup test.
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `.output/chrome-mv3` from this project. Pin Calendar Checker to the toolbar. Its popup opens the calendar; the **Open full calendar** and **Settings** toolbar icons open the larger view and account/calendar preferences. After rebuilding an already loaded extension, click its Reload control in `chrome://extensions` to load v0.6.0. The native-popup sizing correction remains covered by an actual toolbar-popup test.
 
 Without connected accounts, the calendar shows an empty grid and a prompt to connect an account. Settings displays setup instructions and disables Google sign-in until a client ID is configured. Preserve any existing `.env.local` when updating.
 
 For development, `npm run dev` starts WXT. Use the production build above for the live authentication acceptance run, so hot reload cannot be mistaken for a token lifecycle failure.
+
+## Local verification and packaging
+
+Stage 6 adds accessibility/keyboard checks, a crowded offline-calendar performance check, explicit production CSP and an audited local ZIP with runtime license notices. Run `PLAYWRIGHT_BROWSERS_PATH=/private/tmp/calendar-checker-browsers npm run release:local` to check, test and package sequentially. Python 3 is needed only for archive verification. The ZIP, SHA-256 checksum and file report are written under `.output/releases/0.6.0/`. To install a new copy, extract it and use **Load unpacked**; to upgrade the existing copy, rebuild/reload its original folder without uninstalling. See [stage 6 evidence, installation and remaining live gates](docs/STAGE-6.md). No publishing occurs.
 
 ## Settings organization
 
@@ -127,21 +131,24 @@ WXT_GOOGLE_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
 
 Then run `npm run build` and reload the extension in `chrome://extensions`. Keep the actual value supplied by Google; the example above is descriptive and is deliberately rejected by build-time validation. Never paste a client secret into this project.
 
-Use **Add Google account** once for each account. To force an explicit chooser for a second account, configure the optional Web application OAuth client in **Settings → Google account chooser**. See [multi-account setup](docs/MULTI-ACCOUNT-SETUP.md). Existing native connections remain usable; new chooser accounts use short-lived access with session-dependent silent renewal. A lost Google session requires Reconnect. The native chooser failed the user's second-account attempt; the alternative still needs live acceptance. Choosing an existing identity now reports it as already connected.
+Use **Add Google account** once for each account. To force an explicit chooser for a second account, configure the optional Web application OAuth client in **Settings → Google account chooser**. See [multi-account setup](docs/MULTI-ACCOUNT-SETUP.md). Existing native connections remain usable; new chooser accounts use short-lived access with session-dependent silent renewal. A lost Google session requires Reconnect. The native chooser failed the user's second-account attempt; the user has now confirmed basic two-account connection/sync through the configured alternative. Renewal/revocation acceptance remains pending. Choosing an existing identity now reports it as already connected.
 
 ## Commands
 
-| Command                  | Purpose                                               |
-| ------------------------ | ----------------------------------------------------- |
-| `npm run dev`            | WXT development session                               |
-| `npm run build`          | Unpacked production extension in `.output/chrome-mv3` |
-| `npm run zip`            | Local distribution ZIP; does not publish              |
-| `npm run typecheck`      | Generate WXT types and check strict TypeScript        |
-| `npm test`               | Domain and browser-adapter tests                      |
-| `npm run test:extension` | Build and run isolated Chromium extension tests       |
-| `npm run check`          | Typecheck, tests, formatting, and production build    |
-| `npm run format`         | Apply repository formatting                           |
-| `npm run extension:id`   | Print the registered local extension ID               |
+| Command                  | Purpose                                                  |
+| ------------------------ | -------------------------------------------------------- |
+| `npm run dev`            | WXT development session                                  |
+| `npm run build`          | Unpacked production extension in `.output/chrome-mv3`    |
+| `npm run zip`            | Local distribution ZIP; does not publish                 |
+| `npm run typecheck`      | Generate WXT types and check strict TypeScript           |
+| `npm test`               | Domain and browser-adapter tests                         |
+| `npm run test:extension` | Build and run isolated Chromium extension tests          |
+| `npm run check`          | Typecheck, tests, formatting, and production build       |
+| `npm run format`         | Apply repository formatting                              |
+| `npm run verify:build`   | Audit the unpacked bundle, identity, CSP and permissions |
+| `npm run test:release`   | Exercise release-auditor rejection cases                 |
+| `npm run release:local`  | Run checks/browser tests, build and verify a local ZIP   |
+| `npm run extension:id`   | Print the registered local extension ID                  |
 
 Install Chromium once before running browser tests:
 
@@ -174,6 +181,7 @@ After resolving/discarding any pending changes, removing an account deletes its 
 - [Stage 3 synchronization and upgrade guide](docs/STAGE-3.md)
 - [Stage 4 event editing and offline queue](docs/STAGE-4.md)
 - [Stage 5 reminders, audio, DND and dual zones](docs/STAGE-5.md)
+- [Stage 6 verification and local packaging](docs/STAGE-6.md)
 - [Durable notes for future agents](docs/agents/LEARNINGS.md)
 
 This repository is developed in local Git. No remote, publication, hosting, or deployment is required.

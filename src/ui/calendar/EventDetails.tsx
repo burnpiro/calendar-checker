@@ -1,3 +1,4 @@
+import { useDialogFocus } from "../use-dialog-focus";
 import * as Dialog from "@radix-ui/react-dialog";
 import { CalendarDays, Clock3, MapPin, UserRound, X } from "lucide-react";
 import { EVENT_TYPE_NAMES, type CalendarEvent } from "../../calendar/model";
@@ -25,6 +26,7 @@ export function EventDetails({
   editingError?: string;
   preparing?: boolean;
 }) {
+  const dialogFocus = useDialogFocus();
   return (
     <Dialog.Root
       open={Boolean(event)}
@@ -36,6 +38,7 @@ export function EventDetails({
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content
           className="event-dialog"
+          {...dialogFocus}
           aria-describedby="event-description"
         >
           {event && (

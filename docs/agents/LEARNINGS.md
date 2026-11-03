@@ -100,3 +100,12 @@ Keep concise, verified implementation facts here. Include the date and supportin
 - V0.5.7: event-specific Google reminders are separate from the extension’s local notification rules. Keep optional new metadata compatible with schema-5 cache/outbox rows and do not default absent write fields into unintended PATCHes.
 - Preserve guest response/comment/resource metadata when editing unchanged addresses. Never replace a partial or unavailable guest list. Guest permissions and conference changes require organizer access in this editor. Google Meet requests use the durable operation UUID, with conferenceDataVersion=1 only for explicit conference changes.
 - Snapshot label refresh must preserve event color IDs instead of painting every event with its calendar color. Save/open uses the provider’s returned Google URL, never a guessed account-index or template URL; record the one-shot intent durably and keep automatic opening limited to Google Calendar origins.
+
+## 2026-11-03 · Stage 6 local acceptance
+
+- Basic real two-account connection/sync is user-confirmed; do not keep calling that gate untested, or expand it into renewal/revocation/event-write acceptance. Browser automation cannot claim Chrome internal extension tabs; no profile-file/token workaround is authorized by that limitation.
+- Axe is test-only. Scan stable themes with reduced motion; short color transitions can otherwise produce spurious contrast findings. Use a dark on-accent text token with light dark-theme buttons. Do not fade adjacent-month text below readable contrast.
+- FullCalendar hides visual time-label copies from accessibility. Add keyboard entry points only to semantic row headers/day cells; focusing arbitrary grid wrappers breaks required-child roles. Controlled Radix dialogs without Trigger require explicit focus restoration.
+- `release:local` is a local-only sequential pipeline. Generated notices accompany the ZIP; build/ZIP audits and checksums do not prove live OAuth/OS acceptance. Keep the stable public key, public OAuth setup and user's original unpacked path for upgrades.
+
+- Native event names should follow rendered visible contents; keep full date/calendar context in `aria-describedby` hidden nodes, rather than hand-building a name from a different time formatter. The native Worker fetch regression now requests self/manifest.json; do not loosen connect-src to keep its former data-URL fixture working.

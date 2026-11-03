@@ -40,3 +40,9 @@ Important test areas are account isolation, token retry limits, no credential le
 For real OAuth checks, use a production build, two test accounts, and `STAGE-1-VALIDATION.md`. Do not save tokens, unredacted screenshots, or identifying diagnostic artifacts in Git. Record browser version, scenario, outcome, and sanitized failure codes. Tests that simulate Google responses do not count as successful real Google verification.
 
 For every completed change, inspect `git diff --check`, update relevant docs, and report what actually passed and what still requires live input. Add durable findings to `agents/LEARNINGS.md` and nontrivial decisions to `decisions/`.
+
+## Local release checks
+
+Read `STAGE-6.md` before packaging. `npm run release:local` runs the regular checks, isolated browser suite, WXT ZIP and archive audit sequentially; Python 3 is required for the standard-library ZIP reader. `npm run check` now also exercises the artifact auditor and audits the production build. Generated ZIPs/reports stay in ignored `.output/`; do not upload or publish them without a request. The personal build embeds public OAuth client IDs, never `.env.local` or local profile data.
+
+`prebuild`/`prezip` generate bundled third-party notices from the pinned installed production tree. The react-remove-scroll-bar license fallback is committed with upstream provenance. If a dependency lacks its license text, resolve that explicitly rather than silently omitting it. Axe is a development-only dependency: scan both themes/populated views and keep native keyboard/focus tests alongside it. Automated scans are not a VoiceOver or all-platform certification. Preserve semantic calendar roles when adding keyboard entry points; never make aria-hidden label copies focusable or target generated FullCalendar classes.

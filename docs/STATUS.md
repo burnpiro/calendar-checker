@@ -21,9 +21,19 @@ Live OAuth checks: **partially exercised, full acceptance pending**. Native auth
 
 ## Next work
 
-Stage 6: live Google multi-account/read/write acceptance, real OS notification/audio/native-button and sleep/wake acceptance, accessibility/performance review, and local unpacked/ZIP packaging. Publishing remains a separate request.
+Stage 6 remaining live gates: account renewal/restart/expiry/revocation, disposable real Google event/guest/Meet behavior, automatic OS notification/audio/sleep acceptance and VoiceOver/platform review. Basic real two-account connection/sync is now user-confirmed. Local audits and packaging are implemented; publishing remains separate.
 
-Reload v0.5.7 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+Reload v0.6.0 and approve/re-enable the updated extension if Chrome requests the new notifications/offscreen permissions. Enable desktop and/or sound in Settings to activate automatic reminders; defaults are off. Existing OAuth scopes/clients stay unchanged. Continue the live matrices in `STAGE-1-VALIDATION.md`, `STAGE-4.md` and `STAGE-5.md`.
+
+## Stage 6 local verification and packaging · v0.6.0
+
+Adds automated WCAG/keyboard review in both themes, populated calendar/dialog coverage and a crowded offline-month performance smoke test. Fixes selected-menu/date contrast, primary button text in dark mode, clock accessible names and controlled-dialog focus return. Week grid cells receive a keyboard scrolling entry point while retaining provider grid semantics. Production CSP explicitly restricts scripts/network/media/frames. A release auditor checks identity, exact capabilities, CSP, entry points, popup CSS, file contents and size; negative tests exercise rejection paths. The local packaging command verifies ZIP entries against the unpacked build, emits SHA-256/file reports and includes runtime notices. No backend, app publishing, new production dependency or new permission/scope is introduced; axe is test-only.
+
+Live evidence: on 2026-11-03 the user confirmed **both accounts connect and sync**. Earlier connection/desktop notification reports remain user-confirmed basic operations. Browser tooling cannot claim Chrome internal extension tabs, so no private profile/token workaround was used. Renewal/revocation/write/guest/Meet/OS sleep/VoiceOver gates remain pending in `STAGE-6.md`.
+
+Validation: `PLAYWRIGHT_BROWSERS_PATH=/private/tmp/calendar-checker-browsers npm run release:local` passed end to end: TypeScript, **239 unit/adapter tests**, formatting, production build, **3 release-auditor tests**, exact build audit and **21 isolated Chromium tests**, followed by ZIP parity/path checks. Sixteen populated/expanded UI axe scans across both themes reported no WCAG 2/2.1 A/AA violations; keyboard focus and actual PageDown scrolling passed. The 840-event offline smoke sample rendered in **226 ms** and filtered in **125 ms** on Chromium 156.0.8078.4 (not an all-device guarantee). Light editor and dark Settings screenshots were inspected. npm's production audit and dependency installation reported zero known vulnerabilities on this date.
+
+The verified package contains **24 files / 1,506,779 unpacked bytes**; ZIP size is **454,321 bytes**. Artifacts: `.output/releases/0.6.0/calendar-checker-0.6.0-chrome.zip`, its `.sha256` and `release-report.json`. SHA-256: `2e6f1b3f632a68c88dc8ac5e09f099408c0105488cc0f5bab00451c42b983c06`. After normalizing line endings/trailing blanks in the generated license notice, packaging and all three auditor tests were rerun; file hashes confirm every application file is identical to the full tested build. Nothing was published. Reload the existing unpacked installation to use v0.6.0; retain its location/key/data. The next concrete task is the live lifecycle/disposable-event/OS matrix in `STAGE-6.md`.
 
 ## Complete event editor · v0.5.7
 

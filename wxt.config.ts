@@ -27,6 +27,10 @@ export default defineConfig({
       name: "Calendar Checker",
       description: "Your Google calendars, together on your device.",
       minimum_chrome_version: "120",
+      content_security_policy: {
+        extension_pages:
+          "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; connect-src 'self' https://www.googleapis.com; img-src 'self' data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-src 'none'",
+      },
       key: publicKey,
       permissions: [
         "identity",

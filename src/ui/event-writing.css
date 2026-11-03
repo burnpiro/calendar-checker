@@ -129,7 +129,7 @@
 }
 .write-button.primary {
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 .write-button.danger,
@@ -280,7 +280,7 @@
 }
 .clock-mode button[aria-pressed="true"] {
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 .clock-face {
@@ -329,7 +329,7 @@
 }
 .clock-number[aria-pressed="true"] {
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
 }
 .clock-number:hover {
   outline: 1px solid var(--accent);

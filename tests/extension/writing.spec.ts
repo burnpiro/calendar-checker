@@ -494,7 +494,7 @@ test("editing resolves Google conflicts explicitly and targets the series master
       seriesEditor.getByLabel("Starts", { exact: true }),
     ).toHaveValue(`${month}-01`);
     await expect(
-      seriesEditor.getByRole("button", { name: "Start time", exact: true }),
+      seriesEditor.getByRole("button", { name: /^Start time / }),
     ).toHaveText("08:00");
     await seriesEditor
       .getByLabel("Title", { exact: true })
@@ -518,7 +518,7 @@ test("editing resolves Google conflicts explicitly and targets the series master
       `${month}-05`,
     );
     await expect(
-      occurrence.getByRole("button", { name: "Start time", exact: true }),
+      occurrence.getByRole("button", { name: /^Start time / }),
     ).toHaveText("08:00");
     await occurrence
       .getByLabel("Title", { exact: true })
@@ -604,14 +604,12 @@ test("new events default to one hour with a clock picker and an unfiltered searc
       `${month}-10`,
     );
     await expect(
-      editor.getByRole("button", { name: "Start time", exact: true }),
+      editor.getByRole("button", { name: /^Start time / }),
     ).toHaveText("09:00");
-    await expect(
-      editor.getByRole("button", { name: "End time", exact: true }),
-    ).toHaveText("10:00");
-    await editor
-      .getByRole("button", { name: "Start time", exact: true })
-      .click();
+    await expect(editor.getByRole("button", { name: /^End time / })).toHaveText(
+      "10:00",
+    );
+    await editor.getByRole("button", { name: /^Start time / }).click();
     const clock = page.getByRole("dialog", { name: "Start time", exact: true });
     await clock.getByRole("button", { name: "14 hours", exact: true }).click();
     await clock
@@ -625,13 +623,13 @@ test("new events default to one hour with a clock picker and an unfiltered searc
     await expect(clock).toHaveCount(0);
     await expect(editor).toBeVisible();
     await expect(
-      editor.getByRole("button", { name: "Start time", exact: true }),
+      editor.getByRole("button", { name: /^Start time / }),
     ).toHaveText("14:30");
-    await expect(
-      editor.getByRole("button", { name: "End time", exact: true }),
-    ).toHaveText("15:30");
+    await expect(editor.getByRole("button", { name: /^End time / })).toHaveText(
+      "15:30",
+    );
     // Exact minutes stay available without a native scrolling time control.
-    await editor.getByRole("button", { name: "End time", exact: true }).click();
+    await editor.getByRole("button", { name: /^End time / }).click();
     const endClock = page.getByRole("dialog", {
       name: "End time",
       exact: true,
@@ -642,9 +640,9 @@ test("new events default to one hour with a clock picker and an unfiltered searc
     await endClock
       .getByRole("button", { name: "Set time", exact: true })
       .click();
-    await expect(
-      editor.getByRole("button", { name: "End time", exact: true }),
-    ).toHaveText("15:47");
+    await expect(editor.getByRole("button", { name: /^End time / })).toHaveText(
+      "15:47",
+    );
     await expect(
       editor.getByRole("button", {
         name: "Event time zone UTC · default",

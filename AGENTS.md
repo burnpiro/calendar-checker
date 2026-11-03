@@ -16,7 +16,7 @@ Read `README.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, and `docs/DEVELOPMENT.
 
 ## Development workflow
 
-1. Confirm scope against the stage plan. Stage 5 adds reminders/audio/DND/dual zones; stage 6 remains acceptance and packaging. Read `docs/STAGE-3.md`, `docs/STAGE-4.md`, ADR 0004 and ADR 0006 before modifying sync, writes or cleanup. For reminders/audio read `docs/STAGE-5.md` and ADR 0007.
+1. Confirm scope against the stage plan. Stage 5 adds reminders/audio/DND/dual zones. Stage 6 local verification/packaging is implemented; live acceptance gates remain open. Read `docs/STAGE-6.md` before packaging. Read `docs/STAGE-3.md`, `docs/STAGE-4.md`, ADR 0004 and ADR 0006 before modifying sync, writes or cleanup. For reminders/audio read `docs/STAGE-5.md` and ADR 0007.
 2. Verify changing Chrome/Google API behavior against primary documentation. Record architecture decisions in `docs/decisions/`.
 3. Keep browser adapters small and domain behavior independently testable. Validate external data and runtime messages.
 4. Add tests for meaningful auth, sync, persistence, scheduling, or conflict behavior. Avoid tests that merely restate markup or constants.

@@ -1,3 +1,4 @@
+import { useDialogFocus } from "../use-dialog-focus";
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Users } from "lucide-react";
@@ -35,6 +36,7 @@ export function EventEditor({
   seed?: { start: string };
   onClose: () => void;
 }) {
+  const dialogFocus = useDialogFocus();
   const id = useRef(crypto.randomUUID());
   const choices = accounts
     .filter((a) => a.enabled)
@@ -241,6 +243,7 @@ export function EventEditor({
         <Dialog.Overlay className="write-overlay" />
         <Dialog.Content
           className="write-dialog"
+          {...dialogFocus}
           aria-describedby="editor-description"
           onEscapeKeyDown={(e) => {
             if (busy) e.preventDefault();

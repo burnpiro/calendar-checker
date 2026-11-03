@@ -96,3 +96,9 @@ Startup reconstructs the badge and ensures the periodic alarm exists. The one-mi
 The unexpanded change feed requests only IDs/cursors; bounded expanded queries fetch display data. Google handles recurrence, moved/cancelled exceptions, and DST. No-change feeds validate coverage; changes refresh retained ranges. Coverage absence, invalidation, staleness, offline state, and a successful empty result remain distinct. Shared calendar display prefers the best-covered/freshest authorized copy while retaining account provenance.
 
 Stage 4 adds the runtime event-write scope, original recurring master/edit models, independent outbox/conflicts, stable creation IDs/private markers and conditional mutations. Remote read sync does not create changes; draining explicitly saved operations precedes remote synchronization. No application server or additional Chrome permission is used.
+
+## Release boundary
+
+Stage 6 makes extension CSP explicit: bundled scripts/fonts, local/data images, local/blob audio and self/Google API connections; no objects, frames, form navigation or base-URL replacement. React/FullCalendar still need inline styles. Runtime notices are generated before build/ZIP. The local artifact auditor fixes identity/permissions/scopes and compares ZIP contents with the audited build; release metadata has file hashes and no user-state export. See `STAGE-6.md`.
+
+Calendar keyboard scrolling focuses semantic day cells/row headers discovered through local render-hook classes and layout, preserving FullCalendar roles and avoiding hidden label duplicates. Controlled dialogs capture/restore the prior focus target with a calendar-launcher fallback. Light/dark accent and on-accent tokens are paired for readable text.

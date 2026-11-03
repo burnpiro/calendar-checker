@@ -62,7 +62,7 @@ export function TimePicker({
           type="button"
           ref={trigger}
           className="time-trigger"
-          aria-label={label}
+          aria-label={`${label} ${value || "Choose time"}`}
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => {

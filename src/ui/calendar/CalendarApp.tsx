@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ReminderInbox } from "../ReminderInbox";
@@ -68,6 +75,7 @@ import { IconButton } from "./controls";
 import { MiniCalendar } from "./MiniCalendar";
 import { EventDetails } from "./EventDetails";
 import { useViewportPopovers } from "./use-viewport-popovers";
+import { useScrollRegions } from "./use-scroll-regions";
 import { useCurrentHourScroll } from "./use-current-hour-scroll";
 import { useSyncMetadata, useConnectionClock } from "../use-sync-metadata";
 import {
@@ -168,6 +176,7 @@ function CalendarBody({
   const [visibleRange, setVisibleRange] = useState(() =>
     monthRange(month, 0, 0),
   );
+  useScrollRegions(viewport, view);
   useCurrentHourScroll(
     viewport,
     calendar,
@@ -287,6 +296,17 @@ function CalendarBody({
     () => new Map(filtered.map((event) => [event.key, event])),
     [filtered],
   );
+  const descriptionPrefix = useId();
+  const descriptionIds = useMemo(
+    () =>
+      new Map(
+        filtered.map((event, index) => [
+          event.key,
+          `${descriptionPrefix}-event-${index}`,
+        ]),
+      ),
+    [filtered, descriptionPrefix],
+  );
   const liveEvents = useRef(eventMap);
   liveEvents.current = eventMap;
   const mountedEvents = useRef(new Map<HTMLElement, string>());
@@ -297,14 +317,10 @@ function CalendarBody({
     clearTimeout(hoverTimer.current);
     setTooltip(null);
     for (const [el, id] of mountedEvents.current) {
-      const event = eventMap.get(id);
-      if (event)
-        el.setAttribute(
-          "aria-label",
-          `${event.title}, ${eventWhen(event, zone, settings.timeFormat)}, ${event.calendarName}`,
-        );
+      el.removeAttribute("aria-label");
+      el.setAttribute("aria-describedby", descriptionIds.get(id) ?? "");
     }
-  }, [eventMap, zone, settings.timeFormat]);
+  }, [eventMap, descriptionIds, zone, settings.timeFormat]);
   const inputs = useMemo(
     () =>
       filtered.map((event) => ({
@@ -360,10 +376,8 @@ function CalendarBody({
           ? "week-block"
           : "row";
       el.style.setProperty("--event-accent", event.color);
-      el.setAttribute(
-        "aria-label",
-        `${event.title}, ${eventWhen(event, zone, settings.timeFormat)}, ${event.calendarName}`,
-      );
+      el.removeAttribute("aria-label");
+      el.setAttribute("aria-describedby", descriptionIds.get(event.key) ?? "");
       mountedEvents.current.set(el, event.key);
       const show = () => {
         const latest = liveEvents.current.get(event.key);
@@ -376,7 +390,7 @@ function CalendarBody({
         el.removeEventListener("blur", hidePreview);
       });
     },
-    [zone, settings.timeFormat, preview, hidePreview],
+    [descriptionIds, preview, hidePreview],
   );
   const handleClick = useCallback(
     (info: EventClickInfo) => {
@@ -457,6 +471,14 @@ function CalendarBody({
       <div
         className={`calendar-app ${compact ? "calendar-popup" : "calendar-page"} ${fitWeek ? "week-fit" : "week-scroll"} density-${settings.density} ${sidebar ? "sidebar-open" : "sidebar-closed"}`}
       >
+        <div hidden>
+          {filtered.map((event) => (
+            <span key={event.key} id={descriptionIds.get(event.key)}>
+              {event.title}, {eventWhen(event, zone, settings.timeFormat)},{" "}
+              {event.calendarName}
+            </span>
+          ))}
+        </div>
         {sidebar && (
           <button
             type="button"

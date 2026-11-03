@@ -84,7 +84,7 @@ code {
   display: grid;
   place-items: center;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   width: 30px;
   height: 30px;
   border-radius: 9px;
@@ -147,7 +147,7 @@ main {
 }
 .button.primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .button.subtle {
   border-color: var(--line);

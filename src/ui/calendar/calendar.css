@@ -146,14 +146,14 @@
   font-size: 10px;
 }
 .mini-grid button.other-month {
-  opacity: 0.32;
+  color: var(--muted);
 }
 .mini-grid button:hover {
   background: var(--accent-light);
 }
 .mini-grid button.selected {
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   opacity: 1;
 }
 .sidebar-section-title {
@@ -519,8 +519,8 @@
 .calendar-event-title {
   font-weight: 500;
 }
-.calendar-other-month {
-  opacity: 0.55;
+.calendar-other-month .calendar-day-number {
+  color: var(--muted);
 }
 .calendar-today {
   background: color-mix(in srgb, var(--accent-light) 40%, var(--card));
