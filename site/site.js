@@ -11,17 +11,17 @@ const screens = {
   },
   editor: {
     title: "More than\na title and time.",
-    copy: "Choose a calendar, add guests and Google Meet, set visibility and event notifications, then save through the durable local queue.",
-    alt: "Event editor with color, Busy/Free, visibility, Google Meet, notifications and guest controls",
+    copy: "Choose a calendar, add guests and Google Meet, set visibility and event notifications, and save your plans without switching tabs.",
+    alt: "Event editor for choosing a calendar, dates and times, with location and notes",
   },
   reminders: {
     title: "A nudge,\non your terms.",
-    copy: "Choose desktop and sound alerts, snooze presets, custom sounds and quiet hours. Valid settings save automatically.",
+    copy: "Choose desktop and sound alerts, snooze presets, custom sounds and quiet hours. Your choices save automatically.",
     alt: "Notification settings with sound controls, snooze timing and Do not disturb",
   },
   dark: {
     title: "A quieter look\nfor later hours.",
-    copy: "Use light, dark or your device's theme. Compact and comfortable density let you choose how much space the calendar uses.",
+    copy: "Use light, dark or your device's theme. Choose a compact layout or give your plans a little more room.",
     alt: "Dark month view with fictional work and personal events",
   },
   popup: {

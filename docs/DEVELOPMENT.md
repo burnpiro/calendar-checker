@@ -50,3 +50,5 @@ Read `STAGE-6.md` before packaging. `npm run release:local` runs the regular che
 ## Public documentation and screenshots
 
 Keep environment files ignored; `.env.example` contains empty public-client configuration only. Screenshots are intentionally versioned public assets generated from fictional fixtures in `tests/marketing/`. Run `npm run screenshots` to refresh them and `npm run test:site` after changing the static Pages site. Never capture a personal account/profile for public assets. Only `site/` is deployed by the Pages workflow. Source publication is separate from Chrome Web Store submission and live Google acceptance.
+
+The README and Pages site introduce the product to everyday users: explain benefits in plain language and keep **Privacy first. 100% free. No subscriptions. No hidden costs.** visible. Keep the original Google connection and manual early-access installation clear. Put commands, implementation details and validation history in `TECHNICAL-REFERENCE.md`, `INSTALLATION.md` or the stage guides; do not turn the product introduction into a development report.

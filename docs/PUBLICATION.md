@@ -16,7 +16,7 @@ Before each later push, inspect staged changes and reachable history for secrets
 
 ## Feature website
 
-`site/` is a buildless static site with feature descriptions, a six-screen interactive gallery, source installation instructions and a privacy policy. All scripts, styles, icons and screenshots are local assets. There are no forms, analytics, external fonts or automatic third-party resource requests. GitHub Pages serves ordinary public website requests; its hosting is separate from extension data storage.
+`site/` is a buildless static site with feature descriptions, a six-screen interactive gallery, plain-language early-access instructions and a privacy policy. Detailed installation is linked through `docs/INSTALLATION.md`, while `docs/TECHNICAL-REFERENCE.md` retains the previous README's technical material. All scripts, styles, icons and screenshots are local assets. There are no forms, analytics, external fonts or automatic third-party resource requests. GitHub Pages serves ordinary public website requests; its hosting is separate from extension data storage.
 
 The Pages workflow uploads **only `site/`**. It never uploads the working directory, `.env.local`, `.output/` or test artifacts. It uses commit-pinned official GitHub Actions and scoped deployment permissions. Pushes to `main` that change the site or its workflow deploy it; other source-only pushes do not trigger a site deployment. Manual dispatch is also available.
 

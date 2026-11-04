@@ -895,3 +895,30 @@ h2 {
     animation: none !important;
   }
 }
+
+.hero-promise {
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.hero-promise strong {
+  color: var(--purple);
+}
+.setup-intro {
+  max-width: 650px;
+  margin: -14px 0 32px;
+  color: var(--muted);
+}
+.privacy-summary {
+  margin: 26px 0;
+  padding: 22px 25px;
+  border-left: 3px solid var(--purple);
+  background: #eeebf5;
+  border-radius: 0 10px 10px 0;
+}
+.privacy-summary p {
+  margin: 0;
+}
+.privacy-summary p + p {
+  margin-top: 8px;
+}
