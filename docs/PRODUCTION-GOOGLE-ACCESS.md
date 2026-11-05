@@ -45,13 +45,26 @@ https://www.googleapis.com/auth/calendar.events.freebusy
 
 The existing public calendar website and privacy policy do not by themselves prove domain ownership to Google. Current OAuth domain-troubleshooting guidance specifies a DNS-verified Domain property; ordinary Search Console URL-prefix verification is different. The user has explicitly chosen GitHub Pages without a custom domain. Retain that choice in draft settings and check Google's actual validation/review outcome; do not promise acceptance or silently substitute another domain. This remains an unresolved production-verification requirement.
 
-## Remaining inputs
+## Current Console and draft evidence · 2026-11-05
 
-- Authenticated Console access for the production project owner.
-- Actual Chrome Web Store draft Item ID/public key.
-- Production public client IDs after creation and Google's verification result.
+The authenticated project owner approved the User Data Policy and the explicit production-audience warning. Branding fields/logo and all five runtime scopes are saved. The Chrome Extension client uses the assigned store draft identity and its app ownership was verified. The Web chooser client has exactly `https://STORE_ITEM_ID.chromiumapp.org/` as its redirect, with no JavaScript origins. Only the two public client IDs were kept locally; no secret-bearing dialog was exported or JSON credentials downloaded.
 
-These inputs are needed before preparing a store-specific build. No production client IDs are available merely because project provisioning succeeded. Preserve the current unpacked installation and use a separate production build/profile when validating the store identity.
+The OAuth audience is **In production / External**. Google's branding check has not passed: it reports that the homepage is not registered to the owner and asks for ownership verification followed by a 24-hour propagation wait. The data-access review remains disabled until branding is verified and published. No sensitive-scope approval is claimed.
+
+Search Console offers an HTML file for the exact GitHub Pages URL-prefix property. Its public proof file is included under `site/`; it contains only the expected one-line verification marker. The file is deployed, and Search Console reported **Ownership auto verified / HTML file** for that exact homepage on 2026-11-05. No unrelated Search Console property was accessed after the user's restriction. URL-prefix ownership is distinct from Google's stated DNS Domain-property requirement. Do not mark OAuth domain ownership complete based only on that HTML file or a Search Console success message. The user has prohibited access to unrelated work-domain Search Console properties; use only the Calendar Checker homepage property.
+
+The store draft has the public description, category/language, icon, five fictional-data screenshots, permission explanations, privacy disclosures and reviewer instructions saved. The user approved the three required limited-use certifications before they were checked and saved. The configured production package has replaced the bootstrap upload. **No review submission or extension publication has occurred.** The first package was rejected because the store disallows `manifest.key`. Keep the existing local key and produce a separate upload manifest without that field. Preserve the assigned store public key for an isolated unpacked production test target; never replace the developer's existing key or `.env.local`.
+
+The new production build's manifest/bundle audit and three isolated Chromium popup/restart/chooser regressions pass. ZIP validation permits only omission of `manifest.key` from the tested build and compares all other bytes. The configured archive and keyed unpacked target are ignored local artifacts; see the local release handoff for checksums and identity. Live production OAuth and store review are separate remaining gates.
+
+## Remaining work
+
+- Retry branding no earlier than **2026-11-06 15:10 Europe/Warsaw**, after Google's stated 24-hour propagation wait from the successful homepage ownership verification. GitHub Pages acceptance for OAuth domain/branding verification remains unresolved.
+- Preserve the configured production ZIP and keyed unpacked target in ignored `.output/`; the store draft already contains the configured upload.
+- Complete Google's sensitive-scope justification and demonstration-video requirements once branding allows the review.
+- Review store distribution and publisher readiness, then obtain the final submission decision once Google verification is complete. Draft privacy fields, limited-use certifications and reviewer instructions are already saved.
+
+Concrete project/client/store identifiers are retained in ignored `config/.env.production-setup`, not public setup instructions. Preserve the current unpacked installation and use the separate production identity for live validation.
 
 ## Sources
 
@@ -60,4 +73,7 @@ These inputs are needed before preparing a store-specific build. No production c
 - [Sensitive-scope verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification)
 - [Domain ownership requirements](https://support.google.com/cloud/answer/13804266?hl=en)
 - [Deprecated IAP OAuth client management](https://docs.cloud.google.com/sdk/gcloud/reference/iap/oauth-clients)
+- [Chrome Web Store v2 API: uploads target existing items](https://developer.chrome.com/docs/webstore/api/reference/rest)
+- [First store draft upload](https://developer.chrome.com/docs/webstore/publish)
+- [Homepage ownership issues](https://support.google.com/cloud/answer/13807376)
 - [Chrome extension identity](https://developer.chrome.com/docs/extensions/reference/manifest/key)
