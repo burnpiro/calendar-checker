@@ -1,6 +1,6 @@
 # Stage 6: Verification and local packaging
 
-Release candidate: **v0.6.0**, 2026-11-03. Local verification and packaging are implemented. The full live acceptance gate remains open; nothing is published or uploaded.
+Release candidate: **v0.6.0**, 2026-11-03. Local verification and packaging are implemented. The user reported completing prepublication checks on 2026-11-05; see the acceptance note below. Google OAuth production configuration and Chrome Web Store submission are separate remaining steps.
 
 ## Build and install
 
@@ -42,6 +42,10 @@ The final `release:local` pipeline passed: 239 unit/adapter tests, 3 release-aud
 Accessibility fixes include stronger light-theme accent text, readable adjacent-month dates, theme-appropriate button text, clock accessible names containing their displayed time and focus restoration for controlled dialogs. Week scrolling exposes semantic grid cells to the keyboard without changing FullCalendar's generated classes, hiding semantics or making aria-hidden label copies focusable. Reduced-motion mode is used during accessibility scans so transitional theme colors are not mistaken for steady-state contrast.
 
 Production CSP permits only bundled scripts/fonts, local/data images, local/blob audio and local/Google API connections. Objects, frames, form navigation and base-URL changes are blocked. Inline styles remain allowed for React/FullCalendar layout; inline/remote scripts and eval are not enabled. Runtime notices cover the installed production dependency tree; the missing react-remove-scroll-bar notice is copied from its upstream repository and its provenance is documented in the generated notice.
+
+## Latest user acceptance report
+
+On 2026-11-05 the user reported completing all prepublication checks. This is accepted as a user-confirmed overall result. The earlier detailed matrix below retains the last individually recorded evidence; this report does not invent scenario-specific observations, browser versions or recordings. Continue production configuration rather than asking the user to repeat completed checks. Google OAuth verification and store submission remain separate external steps; see `PRODUCTION-GOOGLE-ACCESS.md`.
 
 ## Live acceptance matrix
 

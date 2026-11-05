@@ -1,6 +1,16 @@
 # Implementation status
 
-Last updated: 2026-11-04.
+Last updated: 2026-11-05.
+
+## Production Cloud preparation · 2026-11-05
+
+The user reports completing all prepublication checks. This is user-confirmed general acceptance; no scenario-by-scenario independent observation is added. The next work is production Google access and store preparation, not repeating those checks.
+
+Created a separate **Calendar Checker Production** Google Cloud project using the user's existing CLI login and enabled Google Calendar API. Verified the project is ACTIVE, the active CLI identity has the project's Owner role, billing is disabled and the previous global CLI project remains unchanged. Existing development project, extension identity, clients and local account data are preserved. The private provisioning handoff is in ignored `config/.env.production-setup`; no Cloud project IDs/account emails are added to public documentation.
+
+The original installed SDK remains inaccessible because macOS returns Operation not permitted even for file reads. A checksum-verified official ARM SDK 592.0.0 in a temporary directory successfully performed the supported CLI work without replacing the installation or changing shell settings. This is not a permanent SDK repair. Google Auth Platform branding, audience, client creation and verification still need Console work. The production Console tab was opened and is waiting for user sign-in; the store draft Item ID has been requested.
+
+The requested production homepage remains GitHub Pages without a custom domain. Domain/brand acceptance by Google is unresolved; no approval is claimed. No OAuth audience, clients or app scopes have been changed, and no store submission was made. Next concrete task: sign in as the production project owner, supply the actual store Item ID and complete the supported Console flow. See `PRODUCTION-GOOGLE-ACCESS.md`.
 
 ## Everyday-user product copy · v0.6.0
 

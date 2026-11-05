@@ -109,3 +109,7 @@ Testing status is intended for development and can have authorization lifetime l
 - [Google OAuth consent configuration](https://developers.google.com/workspace/guides/configure-oauth-consent)
 - [Chrome Identity API](https://developer.chrome.com/docs/extensions/reference/api/identity)
 - [Calendar API scopes](https://developers.google.com/workspace/calendar/api/auth)
+
+## Public release
+
+For production provisioning, Console-only OAuth steps, store identity and the current domain-verification limitation, see [production Google access](PRODUCTION-GOOGLE-ACCESS.md). The existing local development setup remains unchanged.
