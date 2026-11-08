@@ -26,8 +26,8 @@ const screens = {
   },
   popup: {
     title: "Your next stop,\none click away.",
-    copy: "Check a full month or week from the toolbar. Open the larger calendar when you want more room to plan.",
-    alt: "The 800 by 600 calendar popup with a month of fictional events",
+    copy: "Open your calendar straight from the Chrome toolbar. See your next event time on the icon, then check your month or week in the popup.",
+    alt: "The real calendar popup anchored to its Chrome toolbar icon, with the next-event time badge visible",
   },
 };
 const tabs = [...document.querySelectorAll("[data-screen]")];

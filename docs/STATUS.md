@@ -1,6 +1,12 @@
 # Implementation status
 
-Last updated: 2026-11-05.
+Last updated: 2026-11-08.
+
+## Clearer product wording and toolbar popup gallery · 2026-11-08
+
+Changed the website headline and social description to **Every calendar. One clear view.** The Popup gallery and toolbar feature figure now reuse the real toolbar-anchored screenshot with a visible next-event badge, exported at 1280×800 RGB without alpha. Its website backdrop was refreshed with the same headline and all calendar data remains fictional. Updated the image dimensions, alt text, gallery caption and headline assertion. Existing privacy/free-use messaging and hosting are preserved.
+
+Publication is limited to this website copy/gallery change; unrelated local extension features and development assets are not part of this deployment. Both desktop/mobile website checks pass, including gallery image loading, keyboard/dialog behavior, no horizontal overflow, local-resource isolation and four accessibility scans. The native screenshot fixture passes and the anchored image was visually inspected. Deployment evidence follows once Pages completes.
 
 ## Production OAuth and store preparation · 2026-11-05
 

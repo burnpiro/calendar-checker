@@ -16,7 +16,7 @@ for (const width of [1440, 390]) {
     });
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      "Every calendar. One calmer view.",
+      "Every calendar. One clear view.",
     );
     for (const name of [
       "Week",
