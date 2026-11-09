@@ -1,6 +1,12 @@
 # Implementation status
 
-Last updated: 2026-11-08.
+Last updated: 2026-11-09.
+
+## Chrome Web Store website link · 2026-11-09
+
+The public Chrome Web Store listing was inspected and shows v0.6.0. Updated the website header, hero and installation actions to point directly to that listing without forcing a Google account or language. Replaced obsolete manual-install/unavailable-store copy with Chrome Web Store installation steps while preserving the privacy-first, 100%-free messaging and anchored popup screenshot.
+
+Validation: both desktop/mobile website checks pass, including gallery, keyboard/dialog behavior, no horizontal overflow, resource isolation and four accessibility scans. This publication includes only the website and its status note. Google OAuth verification remains a separate unresolved gate; no OAuth configuration or Web Store package is published by the site deployment. Deployment evidence follows after completion.
 
 ## Clearer product wording and toolbar popup gallery · 2026-11-08
 
