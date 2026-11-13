@@ -1,6 +1,12 @@
 # Implementation status
 
-Last updated: 2026-11-09.
+Last updated: 2026-11-14.
+
+## Google data disclosure and Limited Use statement · 2026-11-14
+
+Added a clear Google data-access disclosure beside the website installation steps, explaining account identity/email, calendars, events/shared busy times, user-requested editing/reminders, local offline copies including descriptions by default, direct Google access and removal/revocation choices. Linked the relevant privacy-policy section. The policy explicitly states compliance with Google's API Services User Data Policy and Limited Use requirements, and excludes AI/model training, third-party AI services, advertising, analytics, data sales and credit/lending use. Updated the policy date.
+
+Both desktop/mobile website checks pass, including four accessibility scans, gallery/keyboard/dialog behavior, no horizontal overflow and local-resource isolation. Publication contains only the website files and this status note. The pre-authorization extension dialog is a separate local change and still requires a new Store upload to reach installed users. No new OAuth scopes, data handling, Google configuration or verification submission is part of this website change. Deployment evidence follows after publication.
 
 ## Chrome Web Store website link · 2026-11-09
 

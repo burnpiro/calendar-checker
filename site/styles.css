@@ -531,6 +531,25 @@ h2 {
 .get-started {
   padding-block: 95px 85px;
 }
+.google-disclosure {
+  padding: 24px;
+  margin-bottom: 32px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #eeece5;
+}
+.google-disclosure h3 {
+  font-size: 20px;
+}
+.google-disclosure p {
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.google-disclosure a {
+  color: var(--purple);
+  font-weight: 600;
+}
 .setup-steps {
   list-style: none;
   margin: 0;
